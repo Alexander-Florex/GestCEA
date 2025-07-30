@@ -63,7 +63,6 @@ function SearchableSelect({ options, value, onChange, placeholder, getLabel, get
           getLabel(option).toLowerCase().includes(search.toLowerCase())
       ), [options, search, getLabel]
   );
-
   const selectedOption = options.find(option => getValue(option) === value);
 
   return (

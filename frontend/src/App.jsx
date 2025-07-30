@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Alumnos from './pages/Alumnos';
 import Profesores from './pages/Profesores';
 import Cursos from './pages/Cursos';
+import Inscripciones from './pages/Inscripciones';
 import { useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute({ children }) {
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="alumnos" element={<Alumnos />} />
         <Route path="profesores" element={<Profesores />} />
         <Route path="cursos" element={<Cursos />} />
+        <Route path="inscripciones" element={<Inscripciones />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>

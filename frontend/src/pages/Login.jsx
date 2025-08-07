@@ -1,14 +1,14 @@
 // src/pages/Login.jsx
 
 import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate(); // Uso de useNavigate
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +31,7 @@ export default function Login() {
       // Aquí podrías guardar un token o la info del usuario en localStorage/context
       console.log('Usuario autenticado:', data.user);
       // Redirige al dashboard u otra ruta protegida
-      history.push('/dashboard');
+      navigate('/dashboard'); // Uso de navigate()
     } catch (err) {
       console.error(err);
       setError('No se pudo conectar con el servidor');

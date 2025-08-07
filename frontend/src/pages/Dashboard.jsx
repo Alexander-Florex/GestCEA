@@ -51,6 +51,13 @@ export default function Dashboard() {
           linkText="Ver deudores"
           to="deudores"
         />
+          <AnimatedCard
+              icon={FaDollarSign}
+              title="Usuarios"
+              subtitle="Visualiza los usuarios con acceso al sistema."
+              linkText="Ver usuarios"
+              to="usuarios"
+          />
       </div>
       <div className="flex-1">
         <Outlet />

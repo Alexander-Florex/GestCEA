@@ -3816,7 +3816,7 @@ var require_react_dom_client_development = __commonJS({
         var trackedThenables = thenableState2.thenables;
         index = trackedThenables[index];
         void 0 === index ? trackedThenables.push(thenable) : index !== thenable && (thenableState2.didWarnAboutUncachedPromise || (thenableState2.didWarnAboutUncachedPromise = true, console.error(
-          "A component was suspended by an uncached promise. Creating promises inside a Client Component or hook is not yet supported, except via a Suspense-compatible library or framework."
+          "A component was suspended by an uncached promise. Creating promises inside a Client Component or hooks is not yet supported, except via a Suspense-compatible library or framework."
         )), thenable.then(noop$3, noop$3), thenable = index);
         switch (thenable.status) {
           case "fulfilled":
@@ -4165,7 +4165,7 @@ var require_react_dom_client_development = __commonJS({
       }
       function throwInvalidHookError() {
         throw Error(
-          "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem."
+          "Invalid hooks call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem."
         );
       }
       function areHookInputsEqual(nextDeps, prevDeps) {
@@ -4337,7 +4337,7 @@ var require_react_dom_client_development = __commonJS({
           if (null === nextCurrentHook) {
             if (null === currentlyRenderingFiber.alternate)
               throw Error(
-                "Update hook called on initial render. This is likely a bug in React. Please file an issue."
+                "Update hooks called on initial render. This is likely a bug in React. Please file an issue."
               );
             throw Error("Rendered more hooks than during the previous render.");
           }

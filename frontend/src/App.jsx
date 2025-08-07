@@ -7,11 +7,24 @@ import Profesores from './pages/Profesores';
 import Cursos from './pages/Cursos';
 import Inscripciones from './pages/Inscripciones';
 import { useAuth } from './contexts/AuthContext';
+import Usuarios from "./pages/Usuarios.jsx";
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth();
-  return user?.role === 'Administrador' ? children : <Navigate to="/login" />;
+    const { user } = useAuth();
+
+    if (!user) {
+        console.warn('🔒 Usuario no logueado');
+        return <Navigate to="/login" />;
+    }
+
+    if (user.rol !== 'Administrador') {
+        console.warn(`⛔ Usuario con rol inválido: ${user.rol}`);
+        return <Navigate to="/login" />;
+    }
+
+    return children;
 }
+
 
 export default function App() {
   return (
@@ -24,6 +37,7 @@ export default function App() {
         <Route path="profesores" element={<Profesores />} />
         <Route path="cursos" element={<Cursos />} />
         <Route path="inscripciones" element={<Inscripciones />} />
+          <Route path="usuarios" element={<Usuarios />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>

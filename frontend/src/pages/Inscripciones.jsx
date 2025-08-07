@@ -22,8 +22,8 @@ const mockCourses = [
     totalTarjeta: 18000,
     cuotas: 3,
     profesores: ['Carlos Mendez', 'Ana Rodriguez'],
-    tiposCertificado: ['Digital', 'Físico'],
-    costosCertificado: { 'Digital': 500, 'Físico': 1200 }
+    tiposCertificado: ['UTN', 'CEA'],
+    costosCertificado: { 'UTN': 1000, 'CEA': 0 }
   },
   {
     id: 2,
@@ -35,8 +35,8 @@ const mockCourses = [
     totalTarjeta: 25000,
     cuotas: 4,
     profesores: ['Miguel Torres', 'Sofia Lopez'],
-    tiposCertificado: ['Digital', 'Físico', 'Premium'],
-    costosCertificado: { 'Digital': 800, 'Físico': 1500, 'Premium': 2000 }
+    iposCertificado: ['UTN', 'CEA'],
+    costosCertificado: { 'UTN': 1000, 'CEA': 0 }
   },
   {
     id: 3,
@@ -48,8 +48,8 @@ const mockCourses = [
     totalTarjeta: 21000,
     cuotas: 3,
     profesores: ['Eduardo Silva', 'Maria Gonzalez'],
-    tiposCertificado: ['Digital'],
-    costosCertificado: { 'Digital': 600 }
+    iposCertificado: ['UTN', 'CEA'],
+    costosCertificado: { 'UTN': 1000, 'CEA': 0 }
   }
 ];
 

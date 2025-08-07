@@ -397,7 +397,7 @@ var require_react_development = __commonJS({
       function resolveDispatcher() {
         var dispatcher = ReactSharedInternals.H;
         null === dispatcher && console.error(
-          "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem."
+          "Invalid hooks call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem."
         );
         return dispatcher;
       }
@@ -910,7 +910,7 @@ var require_react_development = __commonJS({
       };
       exports.useEffect = function(create, createDeps, update) {
         null == create && console.warn(
-          "React Hook useEffect requires an effect callback. Did you forget to pass a callback to the hook?"
+          "React Hook useEffect requires an effect callback. Did you forget to pass a callback to the hooks?"
         );
         var dispatcher = resolveDispatcher();
         if ("function" === typeof update)
@@ -927,13 +927,13 @@ var require_react_development = __commonJS({
       };
       exports.useInsertionEffect = function(create, deps) {
         null == create && console.warn(
-          "React Hook useInsertionEffect requires an effect callback. Did you forget to pass a callback to the hook?"
+          "React Hook useInsertionEffect requires an effect callback. Did you forget to pass a callback to the hooks?"
         );
         return resolveDispatcher().useInsertionEffect(create, deps);
       };
       exports.useLayoutEffect = function(create, deps) {
         null == create && console.warn(
-          "React Hook useLayoutEffect requires an effect callback. Did you forget to pass a callback to the hook?"
+          "React Hook useLayoutEffect requires an effect callback. Did you forget to pass a callback to the hooks?"
         );
         return resolveDispatcher().useLayoutEffect(create, deps);
       };

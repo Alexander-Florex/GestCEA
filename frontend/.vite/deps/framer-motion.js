@@ -3316,7 +3316,7 @@ var MotionValue = class {
    * It returns a function that, when called, will cancel the subscription.
    *
    * When calling `onChange` inside a React component, it should be wrapped with the
-   * `useEffect` hooks. As it returns an unsubscribe function, this should be returned
+   * `useEffect` hook. As it returns an unsubscribe function, this should be returned
    * from the `useEffect` function to ensure you don't add duplicate subscribers..
    *
    * ```jsx
@@ -10099,7 +10099,7 @@ function animationControls() {
       return () => void subscribers.delete(visualElement);
     },
     start(definition, transitionOverride) {
-      invariant(hasMounted, "controls.start() should only be called after a component has mounted. Consider calling within a useEffect hooks.");
+      invariant(hasMounted, "controls.start() should only be called after a component has mounted. Consider calling within a useEffect hook.");
       const animations2 = [];
       subscribers.forEach((visualElement) => {
         animations2.push(animateVisualElement(visualElement, definition, {
@@ -10109,7 +10109,7 @@ function animationControls() {
       return Promise.all(animations2);
     },
     set(definition) {
-      invariant(hasMounted, "controls.set() should only be called after a component has mounted. Consider calling within a useEffect hooks.");
+      invariant(hasMounted, "controls.set() should only be called after a component has mounted. Consider calling within a useEffect hook.");
       return subscribers.forEach((visualElement) => {
         setValues(visualElement, definition);
       });

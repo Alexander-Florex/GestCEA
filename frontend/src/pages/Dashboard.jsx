@@ -52,9 +52,9 @@ export default function Dashboard() {
           to="deudores"
         />
           <AnimatedCard
-              icon={FaDollarSign}
+              icon={FaUsers}
               title="Usuarios"
-              subtitle="Visualiza los usuarios con acceso al sistema."
+              subtitle="Visualiza a los usuarios con acceso al sistema."
               linkText="Ver usuarios"
               to="usuarios"
           />

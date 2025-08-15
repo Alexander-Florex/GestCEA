@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind utilities;
+@tailwind utilities;
+
+/* Fondo con formas */
+body {
+    @apply bg-gradient-to-br from-blue-800 via-indigo-700 to-purple-700 min-h-screen;
+  }
+  
+  .bg-shapes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url('/assets/shape1.svg'), url('/assets/shape2.svg');
+    background-repeat: no-repeat, no-repeat;
+    background-position: top right, bottom left;
+    opacity: 0.2;
+  } 

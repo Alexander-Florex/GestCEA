@@ -173,6 +173,39 @@ const getTeacherNames = (teacherIds, availableTeachers = []) =>
         .filter(Boolean)
         .join(', ');
 
+// Función para determinar el estado del curso
+const getCourseStatus = (inicio, fin) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!inicio || !fin) return 'Sin fechas';
+
+    const startDate = new Date(inicio);
+    const endDate = new Date(fin);
+
+    if (today < startDate) {
+        return 'Por iniciar';
+    } else if (today >= startDate && today <= endDate) {
+        return 'En curso';
+    } else {
+        return 'Finalizado';
+    }
+};
+
+// Función para obtener el color del estado
+const getStatusColor = (status) => {
+    switch (status) {
+        case 'Por iniciar':
+            return 'bg-blue-100 text-blue-800';
+        case 'En curso':
+            return 'bg-green-100 text-green-800';
+        case 'Finalizado':
+            return 'bg-gray-100 text-gray-800';
+        default:
+            return 'bg-yellow-100 text-yellow-800';
+    }
+};
+
 /* ==================== Página Cursos ==================== */
 
 export default function Cursos() {
@@ -201,7 +234,6 @@ export default function Cursos() {
         recargoEfectivo: '',
         totalEfectivo: '',
         precioTarjeta: '',
-        recargoTarjeta: '',
         totalTarjeta: '',
         cuotas: '',
         // certificados múltiples
@@ -246,7 +278,6 @@ export default function Cursos() {
                 recargoEfectivo: String(course.recargoEfectivo ?? ''),
                 totalEfectivo: String(course.totalEfectivo ?? ''),
                 precioTarjeta: String(course.precioTarjeta ?? ''),
-                recargoTarjeta: String(course.recargoTarjeta ?? ''),
                 totalTarjeta: String(course.totalTarjeta ?? ''),
                 cuotas: String(course.cuotas ?? ''),
                 tiposCertificado: course.tiposCertificado || [],
@@ -267,7 +298,6 @@ export default function Cursos() {
                 recargoEfectivo: '',
                 totalEfectivo: '',
                 precioTarjeta: '',
-                recargoTarjeta: '',
                 totalTarjeta: '',
                 cuotas: '',
                 tiposCertificado: [],
@@ -371,7 +401,7 @@ export default function Cursos() {
 
             const numericFields = [
                 'precioEfectivo', 'recargoEfectivo', 'totalEfectivo',
-                'precioTarjeta', 'recargoTarjeta', 'totalTarjeta',
+                'precioTarjeta', 'totalTarjeta',
                 'cuotas', 'vacantes'
             ];
             for (const field of numericFields) {
@@ -410,7 +440,6 @@ export default function Cursos() {
                 recargoEfectivo: Number(formData.recargoEfectivo),
                 totalEfectivo: Number(formData.totalEfectivo),
                 precioTarjeta: Number(formData.precioTarjeta),
-                recargoTarjeta: Number(formData.recargoTarjeta),
                 totalTarjeta: Number(formData.totalTarjeta),
                 cuotas: Number(formData.cuotas),
                 tiposCertificado: [...formData.tiposCertificado],
@@ -464,76 +493,74 @@ export default function Cursos() {
                 </button>
             </div>
 
-            {/* Tabla */}
+            {/* Tabla con nuevo orden */}
             <div className="overflow-auto border-2 border-purple-500 rounded-lg shadow-sm">
                 <table className="min-w-full bg-white">
                     <thead className="bg-purple-500 text-white">
                     <tr>
                         {[
-                            'ID','Nombre','Profesor/es','Precio Efectivo','Recargo Efectivo','Total Curso Efectivo',
-                            'Precio Tarjeta','Recargo Tarjeta','Total Curso Tarjeta','Nº de Cuotas',
-                            'Certificados','Horarios','Acciones'
+                            'ID','Nombre Curso','Fecha Inicio','Fecha Fin','Horario','Profesor/es','Estado','Acciones'
                         ].map(h => (
                             <th key={h} className="px-4 py-2 whitespace-nowrap">{h}</th>
                         ))}
                     </tr>
                     </thead>
                     <tbody className="divide-y">
-                    {filtered.map(course => (
-                        <motion.tr
-                            key={course.id}
-                            className="hover:bg-gray-50"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <td className="px-4 py-2 text-black">{course.id}</td>
-                            <td className="px-4 py-2 text-black">{course.nombre}</td>
-                            <td className="px-4 py-2 text-black">{getTeacherNames(course.profesores || [], professors)}</td>
-                            <td className="px-4 py-2 text-black">${course.precioEfectivo}</td>
-                            <td className="px-4 py-2 text-black">${course.recargoEfectivo}</td>
-                            <td className="px-4 py-2 text-black">${course.totalEfectivo}</td>
-                            <td className="px-4 py-2 text-black">${course.precioTarjeta}</td>
-                            <td className="px-4 py-2 text-black">${course.recargoTarjeta}</td>
-                            <td className="px-4 py-2 text-black">${course.totalTarjeta}</td>
-                            <td className="px-4 py-2 text-black">{course.cuotas}</td>
-                            <td className="px-4 py-2 text-black">
-                                {course.tiposCertificado?.length
-                                    ? course.tiposCertificado.map(t => `${t}: $${course.costosCertificado?.[t] ?? '-'}`).join(' | ')
-                                    : '-'}
-                            </td>
-                            <td className="px-4 py-2 text-black">{resumenHorarios(course.horarios || [])}</td>
-                            <td className="px-4 py-2 space-x-2">
-                                <motion.button
-                                    onClick={() => setViewing(course)}
-                                    whileHover={{ scale: 1.2 }}
-                                    className="text-black hover:text-purple-700 transition-colors"
-                                    title="Ver detalles"
-                                >
-                                    <FiEye size={18} />
-                                </motion.button>
-                                <motion.button
-                                    onClick={() => openForm(course)}
-                                    whileHover={{ scale: 1.2 }}
-                                    className="text-black hover:text-purple-700 transition-colors"
-                                    title="Editar curso"
-                                >
-                                    <FiEdit size={18} />
-                                </motion.button>
-                                <motion.button
-                                    onClick={() => handleDelete(course)}
-                                    whileHover={{ scale: 1.2 }}
-                                    className="text-red-500 hover:text-red-700 transition-colors"
-                                    title="Eliminar curso"
-                                >
-                                    <FiTrash2 size={18} />
-                                </motion.button>
-                            </td>
-                        </motion.tr>
-                    ))}
+                    {filtered.map(course => {
+                        const status = getCourseStatus(course.inicio, course.fin);
+                        const statusColor = getStatusColor(status);
+
+                        return (
+                            <motion.tr
+                                key={course.id}
+                                className="hover:bg-gray-50"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <td className="px-4 py-2 text-black">{course.id}</td>
+                                <td className="px-4 py-2 text-black font-medium">{course.nombre}</td>
+                                <td className="px-4 py-2 text-black">{formatDate(course.inicio)}</td>
+                                <td className="px-4 py-2 text-black">{formatDate(course.fin)}</td>
+                                <td className="px-4 py-2 text-black">{resumenHorarios(course.horarios || [])}</td>
+                                <td className="px-4 py-2 text-black">{getTeacherNames(course.profesores || [], professors)}</td>
+                                <td className="px-4 py-2">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                                        {status}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-2 space-x-2">
+                                    <motion.button
+                                        onClick={() => setViewing(course)}
+                                        whileHover={{ scale: 1.2 }}
+                                        className="text-black hover:text-purple-700 transition-colors"
+                                        title="Ver detalles"
+                                    >
+                                        <FiEye size={18} />
+                                    </motion.button>
+                                    <motion.button
+                                        onClick={() => openForm(course)}
+                                        whileHover={{ scale: 1.2 }}
+                                        className="text-black hover:text-purple-700 transition-colors"
+                                        title="Editar curso"
+                                    >
+                                        <FiEdit size={18} />
+                                    </motion.button>
+                                    <motion.button
+                                        onClick={() => handleDelete(course)}
+                                        whileHover={{ scale: 1.2 }}
+                                        className="text-red-500 hover:text-red-700 transition-colors"
+                                        title="Eliminar curso"
+                                    >
+                                        <FiTrash2 size={18} />
+                                    </motion.button>
+                                </td>
+                            </motion.tr>
+                        );
+                    })}
                     {filtered.length === 0 && (
                         <tr>
-                            <td colSpan={13} className="text-center py-4 text-gray-500">
+                            <td colSpan={8} className="text-center py-4 text-gray-500">
                                 {search ? 'No se encontraron cursos que coincidan con la búsqueda.' : 'No hay cursos disponibles.'}
                             </td>
                         </tr>
@@ -542,7 +569,7 @@ export default function Cursos() {
                 </table>
             </div>
 
-            {/* Modal Detalles - Estilo alineado con Profesores */}
+            {/* Modal Detalles - Con toda la información */}
             <AnimatePresence>
                 {viewing && (
                     <motion.div
@@ -563,6 +590,11 @@ export default function Cursos() {
                                     <FiX className="w-5 h-5" />
                                 </button>
                                 <h2 className="text-2xl font-bold text-gray-800">Detalles del Curso</h2>
+                                <div className="mt-2">
+                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(getCourseStatus(viewing.inicio, viewing.fin))}`}>
+                                        {getCourseStatus(viewing.inicio, viewing.fin)}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="p-6 space-y-6">
@@ -572,6 +604,10 @@ export default function Cursos() {
                                     <div className="space-y-3">
                                         <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Datos del curso</h4>
                                         <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="font-medium text-gray-600">ID:</span>
+                                                <span className="text-right">{viewing.id}</span>
+                                            </div>
                                             <div className="flex justify-between">
                                                 <span className="font-medium text-gray-600">Nombre:</span>
                                                 <span className="text-right">{viewing.nombre}</span>
@@ -593,7 +629,7 @@ export default function Cursos() {
                                         <div className="space-y-2">
                                             <div className="flex justify-between"><span className="font-medium text-gray-600">Precio:</span><span>${viewing.precioEfectivo}</span></div>
                                             <div className="flex justify-between"><span className="font-medium text-gray-600">Recargo:</span><span>${viewing.recargoEfectivo}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Total:</span><span>${viewing.totalEfectivo}</span></div>
+                                            <div className="flex justify-between font-semibold"><span className="text-gray-700">Total:</span><span className="text-green-600">${viewing.totalEfectivo}</span></div>
                                         </div>
                                     </div>
 
@@ -602,8 +638,8 @@ export default function Cursos() {
                                         <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Tarjeta</h4>
                                         <div className="space-y-2">
                                             <div className="flex justify-between"><span className="font-medium text-gray-600">Precio:</span><span>${viewing.precioTarjeta}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Recargo:</span><span>${viewing.recargoTarjeta}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Total:</span><span>${viewing.totalTarjeta}</span></div>
+                                            <div className="flex justify-between font-semibold"><span className="text-gray-700">Total:</span><span className="text-blue-600">${viewing.totalTarjeta}</span></div>
+                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Cuotas:</span><span>{viewing.cuotas}</span></div>
                                         </div>
                                     </div>
                                 </div>
@@ -615,11 +651,11 @@ export default function Cursos() {
                                         <div className="border-2 border-gray-300 rounded-xl p-4 bg-gray-50 shadow-sm">
                                             <div className="flex justify-between mb-2">
                                                 <span className="font-medium text-gray-600">Inicio:</span>
-                                                <span>{formatDate(viewing.inicio)}</span>
+                                                <span className="font-semibold">{formatDate(viewing.inicio)}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-medium text-gray-600">Fin:</span>
-                                                <span>{formatDate(viewing.fin)}</span>
+                                                <span className="font-semibold">{formatDate(viewing.fin)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -650,9 +686,9 @@ export default function Cursos() {
                                         {viewing.tiposCertificado?.length ? (
                                             <div className="flex flex-wrap gap-2">
                                                 {viewing.tiposCertificado.map((t,i)=>(
-                                                    <span key={i} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm shadow-sm">
-                            {t}: ${viewing.costosCertificado?.[t] ?? '-'}
-                          </span>
+                                                    <span key={i} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+                                                        {t}: ${viewing.costosCertificado?.[t] ?? '-'}
+                                                    </span>
                                                 ))}
                                             </div>
                                         ) : (
@@ -664,11 +700,17 @@ export default function Cursos() {
                                 {/* Acciones */}
                                 <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200">
                                     <button
-                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow"
+                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow font-medium"
                                         onClick={()=>{ setViewing(null); openForm(viewing); }}
                                     >
                                         <FiEdit className="w-4 h-4"/>
-                                        <span>Editar</span>
+                                        <span>Editar Curso</span>
+                                    </button>
+                                    <button
+                                        className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                                        onClick={() => setViewing(null)}
+                                    >
+                                        Cerrar
                                     </button>
                                 </div>
                             </div>
@@ -677,7 +719,7 @@ export default function Cursos() {
                 )}
             </AnimatePresence>
 
-            {/* Modal Formulario - Rediseñado como en Profesores */}
+            {/* Modal Formulario - Sin recargo tarjeta */}
             <AnimatePresence>
                 {isFormOpen && (
                     <motion.div
@@ -733,36 +775,91 @@ export default function Cursos() {
                                         </div>
                                     </div>
 
-                                    {/* Económicos */}
+                                    {/* Económicos - sin recargo tarjeta */}
                                     <div className="shadow-sm rounded-xl">
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                                             <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
                                             Datos Económicos
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                                            {[
-                                                { label: 'Precio Efectivo', name: 'precioEfectivo' },
-                                                { label: 'Recargo Efectivo', name: 'recargoEfectivo' },
-                                                { label: 'Total Curso Efectivo', name: 'totalEfectivo' },
-                                                { label: 'Precio Tarjeta', name: 'precioTarjeta' },
-                                                { label: 'Recargo Tarjeta', name: 'recargoTarjeta' },
-                                                { label: 'Total Curso Tarjeta', name: 'totalTarjeta' },
-                                                { label: 'Nº de Cuotas', name: 'cuotas' },
-                                            ].map(({ label, name }) => (
-                                                <div key={name} className="flex flex-col">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700">{label}:</label>
-                                                    <input
-                                                        name={name}
-                                                        type="number"
-                                                        value={formData[name]}
-                                                        onChange={handleChange}
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
-                                                        required
-                                                        min="0"
-                                                        step="0.01"
-                                                    />
-                                                </div>
-                                            ))}
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Precio Efectivo:</label>
+                                                <input
+                                                    name="precioEfectivo"
+                                                    type="number"
+                                                    value={formData.precioEfectivo}
+                                                    onChange={handleChange}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    required
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Recargo Efectivo:</label>
+                                                <input
+                                                    name="recargoEfectivo"
+                                                    type="number"
+                                                    value={formData.recargoEfectivo}
+                                                    onChange={handleChange}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    required
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Total Efectivo:</label>
+                                                <input
+                                                    name="totalEfectivo"
+                                                    type="number"
+                                                    value={formData.totalEfectivo}
+                                                    onChange={handleChange}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    required
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Precio Tarjeta:</label>
+                                                <input
+                                                    name="precioTarjeta"
+                                                    type="number"
+                                                    value={formData.precioTarjeta}
+                                                    onChange={handleChange}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    required
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Total Tarjeta:</label>
+                                                <input
+                                                    name="totalTarjeta"
+                                                    type="number"
+                                                    value={formData.totalTarjeta}
+                                                    onChange={handleChange}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    required
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Nº de Cuotas:</label>
+                                                <input
+                                                    name="cuotas"
+                                                    type="number"
+                                                    value={formData.cuotas}
+                                                    onChange={handleChange}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    required
+                                                    min="1"
+                                                    step="1"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -800,14 +897,14 @@ export default function Cursos() {
                                                 {/* Chips */}
                                                 <div className="mt-2 min-h-[40px]">
                                                     {formData.tiposCertificado.length === 0 ? (
-                                                        <span className="text-sm text-gray-500">Escribe un tipo y presiona “Agregar”.</span>
+                                                        <span className="text-sm text-gray-500">Escribe un tipo y presiona "Agregar".</span>
                                                     ) : (
                                                         <div className="flex flex-wrap gap-2">
                                                             {formData.tiposCertificado.map(t => (
                                                                 <span key={t} className="inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm shadow-sm">
-                                  {t}
+                                                                    {t}
                                                                     <button type="button" onClick={() => removeCert(t)} className="hover:text-red-600 transition-colors">✕</button>
-                                </span>
+                                                                </span>
                                                             ))}
                                                         </div>
                                                     )}

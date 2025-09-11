@@ -1,8 +1,38 @@
 // src/pages/Inscripciones.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiCheck, FiChevronDown } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiCheck, FiChevronDown, FiPlus, FiTrash, FiInfo } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
+
+/* ================== Tooltip Component ================== */
+function Tooltip({ children, content }) {
+    const [isVisible, setIsVisible] = useState(false);
+
+    return (
+        <div className="relative inline-block">
+            <div
+                onMouseEnter={() => setIsVisible(true)}
+                onMouseLeave={() => setIsVisible(false)}
+                className="cursor-help"
+            >
+                {children}
+            </div>
+            <AnimatePresence>
+                {isVisible && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg max-w-xs"
+                    >
+                        {content}
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
 /* ================== Select buscable (robusto) ================== */
 function SearchableSelect({ options, value, onChange, placeholder, getLabel, getValue }) {
@@ -46,29 +76,29 @@ function SearchableSelect({ options, value, onChange, placeholder, getLabel, get
     return (
         <div className="relative">
             <div
-                className="border-2 border-black rounded-xl p-2 bg-white cursor-pointer flex justify-between items-center"
+                className="border-2 border-gray-300 rounded-xl p-3 bg-white cursor-pointer flex justify-between items-center focus-within:border-purple-500 transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
-        <span className="text-black">
-          {selectedOption ? toSafeLabel(selectedOption) : (placeholder || 'Seleccionar...')}
-        </span>
-                <FiChevronDown className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <span className="text-black">
+                    {selectedOption ? toSafeLabel(selectedOption) : (placeholder || 'Seleccionar...')}
+                </span>
+                <FiChevronDown className={`transition-transform text-gray-500 ${isOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 bg-white border-2 border-black rounded-xl mt-1 z-10 max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 bg-white border-2 border-gray-300 rounded-xl mt-1 z-10 max-h-60 overflow-y-auto shadow-lg">
                     <input
                         type="text"
                         placeholder="Buscar..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full p-2 border-b border-gray-300 focus:outline-none text-black"
+                        className="w-full p-3 border-b border-gray-300 focus:outline-none text-black"
                         onClick={(e) => e.stopPropagation()}
                     />
                     {filtered.map((option, index) => (
                         <div
                             key={index}
-                            className="p-2 hover:bg-purple-100 cursor-pointer text-black"
+                            className="p-3 hover:bg-purple-50 cursor-pointer text-black transition-colors"
                             onClick={() => {
                                 onChange(getSafeValue(option));
                                 setIsOpen(false);
@@ -79,7 +109,7 @@ function SearchableSelect({ options, value, onChange, placeholder, getLabel, get
                         </div>
                     ))}
                     {filtered.length === 0 && (
-                        <div className="p-2 text-gray-500">No hay resultados</div>
+                        <div className="p-3 text-gray-500">No hay resultados</div>
                     )}
                 </div>
             )}
@@ -99,16 +129,25 @@ function Notifications({ notifications, remove }) {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 50 }}
                         transition={{ duration: 0.3 }}
-                        className={`px-4 py-2 rounded shadow ${n.type==='success'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}`}
-                        onClick={()=>remove(n.id)}
-                    >{n.message}</motion.div>
+                        className={`px-4 py-2 rounded shadow-md cursor-pointer ${
+                            n.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}
+                        onClick={() => remove(n.id)}
+                    >
+                        {n.message}
+                    </motion.div>
                 ))}
             </AnimatePresence>
         </div>
     );
 }
 
-/* ================== Fechas / cuotas helpers ================== */
+/* ================== Helpers ================== */
+const formatNumber = (num) => {
+    if (!num && num !== 0) return '';
+    return Number(num).toLocaleString('es-AR');
+};
+
 const formatDate = d => {
     if (!d) return '';
     const date = new Date(d);
@@ -122,6 +161,7 @@ const parseDDMMYYYY = (str) => {
     const [dd, mm, yyyy] = str.split('/').map(Number);
     return new Date(yyyy, mm - 1, dd);
 };
+
 const isOverdue = (dueStr) => {
     const due = parseDDMMYYYY(dueStr);
     if (!due) return false;
@@ -130,6 +170,7 @@ const isOverdue = (dueStr) => {
     const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return nowOnly > dueOnly;
 };
+
 const getAdjustedAmount = (amount, dueDate) => isOverdue(dueDate) ? amount * 2 : amount;
 
 const generarCuotas = (cuotas, total) => {
@@ -152,9 +193,8 @@ const generarCuotas = (cuotas, total) => {
 
 /* ================== Página ================== */
 export default function Inscripciones() {
-    // Usa las claves del contexto EXACTAS de AppDB.jsx (inscriptions, etc.)
     const {
-        students = [], courses = [], professors = [],
+        students = [], courses = [], professors = [], becas = [],
         inscriptions = [], addInscription, updateInscription
     } = useDB();
 
@@ -180,24 +220,36 @@ export default function Inscripciones() {
     );
 
     const [form, setForm] = useState({
-        studentId:'',
-        courseId:'',
-        professorId:'',
-        paymentType:'Efectivo',
-        fullPayment:false,
-        // del curso
-        customInicio:'',
-        customFin:'',
-        customVacantes:0,
-        customTotalEfectivo:0,
-        customTotalTransferencia:0,
-        customTotalTarjeta:0,
-        customCuotas:0,
-        customTipoCertificado:'',
-        customCostoCertificado:0,
-        // bonificación
-        hasBonus:false,
-        bonusAmount:0
+        studentId: '',
+        courseId: '',
+        professorId: '',
+        paymentType: 'Efectivo',
+        fullPayment: false,
+        // Nueva funcionalidad
+        isEnrolled: true,
+        enrollmentCost: 25000,
+        enableInstallments: false,
+        customInstallments: 0,
+        hasBeca: false,
+        becaId: '',
+        // Certificados múltiples
+        certificados: [],
+        certificadoDraft: { tipo: '', costo: 0 },
+        // Del curso
+        customInicio: '',
+        customFin: '',
+        customVacantes: 0,
+        customPagoFechaEfectivo: 0,
+        customPagoVencidoEfectivo: 0,
+        customTotalEfectivo: 0,
+        customPagoFechaTransferencia: 0,
+        customPagoVencidoTransferencia: 0,
+        customTotalTransferencia: 0,
+        customTotalTarjeta: 0,
+        customCuotas: 0,
+        // Bonificación
+        hasBonus: false,
+        bonusAmount: 0
     });
 
     /* ===== Autocompletar por curso ===== */
@@ -209,63 +261,69 @@ export default function Inscripciones() {
                 customInicio: c.inicio || '',
                 customFin: c.fin || '',
                 customVacantes: c.vacantes ?? 0,
+                customPagoFechaEfectivo: Number(c.pagoFechaEfectivo ?? 0),
+                customPagoVencidoEfectivo: Number(c.pagoVencidoEfectivo ?? 0),
                 customTotalEfectivo: Number(c.totalEfectivo ?? 0),
+                customPagoFechaTransferencia: Number(c.pagoFechaTransferencia ?? 0),
+                customPagoVencidoTransferencia: Number(c.pagoVencidoTransferencia ?? 0),
                 customTotalTransferencia: Number(c.totalTransferencia ?? 0),
                 customTotalTarjeta: Number(c.totalTarjeta ?? 0),
                 customCuotas: Number(c.cuotas ?? 0),
-                customTipoCertificado: c.tiposCertificado?.[0] ?? '',
-                customCostoCertificado: Number(c.costosCertificado?.[c.tiposCertificado?.[0]] ?? 0)
+                // Reset certificados cuando cambia el curso
+                certificados: []
             }));
         }
     }, [form.courseId, courses]);
-
-    // costo certificado al cambiar tipo
-    useEffect(() => {
-        const c = courses.find(c=>c.id === Number(form.courseId));
-        if(c && form.customTipoCertificado) {
-            setForm(prev=>({
-                ...prev,
-                customCostoCertificado: Number(c.costosCertificado?.[form.customTipoCertificado] ?? 0)
-            }));
-        }
-    }, [form.customTipoCertificado, form.courseId, courses]);
 
     const openForm = insc => {
         if(insc) {
             setEditing(insc);
             setForm({
-                studentId:insc.studentId.toString(),
-                courseId:insc.courseId.toString(),
-                professorId:insc.professorId?.toString() || '',
-                paymentType:insc.paymentType,
-                fullPayment:insc.fullPayment,
-                customInicio:insc.inicio || '',
-                customFin:insc.fin || '',
-                customVacantes:Number(insc.vacantes ?? 0),
-                customTotalEfectivo:Number(insc.totalEfectivo ?? 0),
-                customTotalTransferencia:Number(insc.totalTransferencia ?? 0),
-                customTotalTarjeta:Number(insc.totalTarjeta ?? 0),
-                customCuotas:Number(insc.cuotas ?? 0),
-                customTipoCertificado:insc.tipoCertificado || '',
-                customCostoCertificado:Number(insc.costoCertificado ?? 0),
+                studentId: insc.studentId.toString(),
+                courseId: insc.courseId.toString(),
+                professorId: insc.professorId?.toString() || '',
+                paymentType: insc.paymentType,
+                fullPayment: insc.fullPayment,
+                isEnrolled: insc.isEnrolled ?? true,
+                enrollmentCost: Number(insc.enrollmentCost ?? 25000),
+                enableInstallments: insc.enableInstallments ?? false,
+                customInstallments: Number(insc.customInstallments ?? 0),
+                hasBeca: insc.hasBeca ?? false,
+                becaId: insc.becaId?.toString() || '',
+                certificados: insc.certificados || [],
+                certificadoDraft: { tipo: '', costo: 0 },
+                customInicio: insc.inicio || '',
+                customFin: insc.fin || '',
+                customVacantes: Number(insc.vacantes ?? 0),
+                customPagoFechaEfectivo: Number(insc.pagoFechaEfectivo ?? 0),
+                customPagoVencidoEfectivo: Number(insc.pagoVencidoEfectivo ?? 0),
+                customTotalEfectivo: Number(insc.totalEfectivo ?? 0),
+                customPagoFechaTransferencia: Number(insc.pagoFechaTransferencia ?? 0),
+                customPagoVencidoTransferencia: Number(insc.pagoVencidoTransferencia ?? 0),
+                customTotalTransferencia: Number(insc.totalTransferencia ?? 0),
+                customTotalTarjeta: Number(insc.totalTarjeta ?? 0),
+                customCuotas: Number(insc.cuotas ?? 0),
                 hasBonus: !!insc.hasBonus,
                 bonusAmount: Number(insc.bonusAmount || 0)
             });
         } else {
             setEditing(null);
             setForm({
-                studentId:'', courseId:'', professorId:'', paymentType:'Efectivo', fullPayment:false,
-                customInicio:'', customFin:'', customVacantes:0,
-                customTotalEfectivo:0, customTotalTransferencia:0, customTotalTarjeta:0, customCuotas:0,
-                customTipoCertificado:'', customCostoCertificado:0,
-                hasBonus:false, bonusAmount:0
+                studentId: '', courseId: '', professorId: '', paymentType: 'Efectivo', fullPayment: false,
+                isEnrolled: true, enrollmentCost: 25000, enableInstallments: false, customInstallments: 0,
+                hasBeca: false, becaId: '', certificados: [], certificadoDraft: { tipo: '', costo: 0 },
+                customInicio: '', customFin: '', customVacantes: 0,
+                customPagoFechaEfectivo: 0, customPagoVencidoEfectivo: 0, customTotalEfectivo: 0,
+                customPagoFechaTransferencia: 0, customPagoVencidoTransferencia: 0, customTotalTransferencia: 0,
+                customTotalTarjeta: 0, customCuotas: 0,
+                hasBonus: false, bonusAmount: 0
             });
         }
         setIsFormOpen(true);
     };
+
     const closeForm = () => { setIsFormOpen(false); setEditing(null); };
 
-    // cambios seguros
     const handleChange = e => {
         const {name, type, checked, value} = e.target;
         if (type === 'checkbox') {
@@ -277,18 +335,60 @@ export default function Inscripciones() {
         }
     };
 
+    // Manejar certificados
+    const handleAddCertificado = () => {
+        if (!form.certificadoDraft.tipo || form.certificadoDraft.costo <= 0) {
+            showNotification('error', 'Completa tipo y costo del certificado');
+            return;
+        }
+        const exists = form.certificados.some(c => c.tipo.toLowerCase() === form.certificadoDraft.tipo.toLowerCase());
+        if (exists) {
+            showNotification('error', 'Ya existe un certificado con ese tipo');
+            return;
+        }
+        setForm(f => ({
+            ...f,
+            certificados: [...f.certificados, { ...f.certificadoDraft }],
+            certificadoDraft: { tipo: '', costo: 0 }
+        }));
+    };
+
+    const removeCertificado = (index) => {
+        setForm(f => ({
+            ...f,
+            certificados: f.certificados.filter((_, i) => i !== index)
+        }));
+    };
+
     const selectedCourse = courses.find(c=>c.id===Number(form.courseId));
     const availableCourseProfessors = (professors || []).filter(p => (selectedCourse?.profesores || []).includes(p.id));
-    const selectedCourseCertificates = selectedCourse?.tiposCertificado || [];
+    const availableBecas = (becas || []).filter(b => b.activa);
+    const selectedBeca = becas.find(b => b.id === Number(form.becaId));
 
-    const calcTotalFinal = (paymentType, totalEf, totalTransf, totalTar, cert, bonus=0) => {
-        let base = 0;
-        if (paymentType === 'Efectivo') base = Number(totalEf);
-        else if (paymentType === 'Transferencia') base = Number(totalTransf);
-        else if (paymentType === 'Tarjeta') base = Number(totalTar);
+    // Verificar si el curso tiene cuotas habilitadas para la forma de pago seleccionada
+    const courseHasInstallments = () => {
+        if (!selectedCourse) return false;
+        if (form.paymentType === 'Efectivo') return selectedCourse.cuotasEfectivoEnabled;
+        if (form.paymentType === 'Transferencia') return selectedCourse.cuotasTransferenciaEnabled;
+        if (form.paymentType === 'Tarjeta') return true; // Las tarjetas siempre tienen cuotas
+        return false;
+    };
 
-        const total = base + Number(cert) - Number(bonus || 0);
-        return Math.max(0, total);
+    const calcTotalFinal = () => {
+        let courseCost = 0;
+        if (form.paymentType === 'Efectivo') courseCost = Number(form.customTotalEfectivo);
+        else if (form.paymentType === 'Transferencia') courseCost = Number(form.customTotalTransferencia);
+        else if (form.paymentType === 'Tarjeta') courseCost = Number(form.customTotalTarjeta);
+
+        const enrollmentCost = form.isEnrolled ? 0 : Number(form.enrollmentCost);
+        const certificadosCost = form.certificados.reduce((sum, cert) => sum + Number(cert.costo), 0);
+        const becaDiscount = form.hasBeca && selectedBeca ? Number(selectedBeca.monto) : 0;
+        const bonusDiscount = form.hasBonus ? Number(form.bonusAmount) : 0;
+
+        const subtotal = courseCost + enrollmentCost + certificadosCost;
+        const totalWithDiscounts = subtotal - becaDiscount - bonusDiscount;
+
+        return Math.max(0, totalWithDiscounts);
     };
 
     const handleSubmit = e => {
@@ -302,19 +402,24 @@ export default function Inscripciones() {
             const professor = professors.find(p => p.id === Number(form.professorId));
             if (!course || !student || !professor) throw new Error('Curso, alumno o profesor no encontrado.');
 
-            const totalNeto = calcTotalFinal(
-                form.paymentType,
-                form.customTotalEfectivo,
-                form.customTotalTransferencia,
-                form.customTotalTarjeta,
-                form.customCostoCertificado,
-                form.hasBonus ? form.bonusAmount : 0
-            );
+            if (!form.isEnrolled && form.enrollmentCost <= 0) {
+                throw new Error('El costo de inscripción debe ser mayor a 0');
+            }
+
+            if (form.certificados.length === 0) {
+                throw new Error('Debe agregar al menos un certificado');
+            }
+
+            const totalFinal = calcTotalFinal();
+
+            if (form.hasBonus && form.bonusAmount > totalFinal + form.bonusAmount) {
+                throw new Error('La bonificación no puede superar el total del curso');
+            }
 
             let installments = [];
-            if(!form.fullPayment) {
-                if (Number(form.customCuotas) <= 0) throw new Error('Ingrese número de cuotas válido.');
-                installments = generarCuotas(Number(form.customCuotas), totalNeto);
+            if (!form.fullPayment && form.enableInstallments) {
+                if (Number(form.customInstallments) <= 0) throw new Error('Ingrese número de cuotas válido.');
+                installments = generarCuotas(Number(form.customInstallments), totalFinal);
             }
 
             const newInsc = {
@@ -328,24 +433,39 @@ export default function Inscripciones() {
                 fin: course.fin,
                 vacantes: course.vacantes,
                 paymentType: form.paymentType,
+                isEnrolled: form.isEnrolled,
+                enrollmentCost: Number(form.enrollmentCost),
+                enableInstallments: form.enableInstallments,
+                customInstallments: Number(form.customInstallments),
+                hasBeca: form.hasBeca,
+                becaId: form.hasBeca ? Number(form.becaId) : null,
+                becaMonto: form.hasBeca && selectedBeca ? selectedBeca.monto : 0,
+                certificados: [...form.certificados],
+                pagoFechaEfectivo: Number(form.customPagoFechaEfectivo),
+                pagoVencidoEfectivo: Number(form.customPagoVencidoEfectivo),
                 totalEfectivo: Number(form.customTotalEfectivo),
+                pagoFechaTransferencia: Number(form.customPagoFechaTransferencia),
+                pagoVencidoTransferencia: Number(form.customPagoVencidoTransferencia),
                 totalTransferencia: Number(form.customTotalTransferencia),
                 totalTarjeta: Number(form.customTotalTarjeta),
                 cuotas: Number(form.customCuotas),
-                tipoCertificado: form.customTipoCertificado,
-                costoCertificado: Number(form.customCostoCertificado),
                 hasBonus: form.hasBonus,
                 bonusAmount: Number(form.bonusAmount || 0),
                 fullPayment: form.fullPayment,
                 installments,
                 horariosCurso: course.horarios || [],
+                totalFinal: totalFinal,
+                // Para CajaDiaria
+                formaPago: form.paymentType,
+                estado: 'Cursando',
+                activo: true,
+                pago: form.fullPayment ? 'Completada' : 'Pendiente'
             };
 
             if(editing) {
                 updateInscription(editing.id, newInsc);
                 showNotification('success', 'Inscripción actualizada correctamente');
             } else {
-                // AppDB.jsx ya asigna el id; no hace falta ponerlo aquí
                 addInscription(newInsc);
                 showNotification('success', 'Inscripción creada exitosamente');
             }
@@ -356,7 +476,6 @@ export default function Inscripciones() {
     };
 
     const handleDelete = insc => {
-        // Si tenés removeInscription en el contexto, podés llamarlo aquí
         showNotification('success', 'Inscripción eliminada (implementa removeInscription si querés borrarla de la DB).');
     };
 
@@ -372,255 +491,200 @@ export default function Inscripciones() {
 
     /* ================== Render ================== */
     return (
-        <div className="p-6 relative min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
-            <Notifications notifications={notifications} remove={removeNotification} />
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+            <div className="p-6 relative max-w-7xl mx-auto">
+                <Notifications notifications={notifications} remove={removeNotification} />
 
-            {/* Encabezado */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-purple-800 mb-2">Sistema de Inscripciones</h1>
-                <p className="text-gray-600">Gestiona las inscripciones de cursos de manera eficiente</p>
-            </div>
+                {/* Header */}
+                <div className="mb-6 space-y-4">
+                    <div className="text-center mb-8">
+                        <h1 className="text-4xl font-bold text-gray-800 mb-2">Sistema de Inscripciones</h1>
+                        <p className="text-gray-600">Gestiona las inscripciones de cursos de manera eficiente</p>
+                    </div>
 
-            {/* Buscador + Nuevo */}
-            <div className="flex mb-6 shadow-lg">
-                <input
-                    type="text"
-                    placeholder="Buscar por alumno o curso..."
-                    value={search}
-                    onChange={e=>setSearch(e.target.value)}
-                    className="flex-grow px-4 py-3 border-2 border-purple-500 rounded-l-lg focus:outline-none focus:border-purple-700 text-black"
-                />
-                <button
-                    onClick={()=>openForm(null)}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-r-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg"
-                >
-                    Nueva Inscripción
-                </button>
-            </div>
-
-            {/* Tabla principal */}
-            <div className="overflow-auto border-2 border-purple-500 rounded-xl shadow-2xl bg-white">
-                <table className="min-w-full">
-                    <thead className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                    <tr>
-                        {['ID','Alumno','Curso','Profesor','Inicio','Fin','Vacantes','Pago Total','Tipo Pago','N° Cuotas','Certificado','Bonificación','Valor Total','Acciones'].map(h=>(
-                            <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap">{h}</th>
-                        ))}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {filtered.map((insc, index)=>(
-                        <motion.tr
-                            key={insc.id}
-                            className={`hover:bg-purple-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                            initial={{opacity:0,y:10}}
-                            animate={{opacity:1,y:0}}
-                            transition={{duration:0.2, delay: index * 0.05}}
+                    <div className="flex shadow-lg rounded-xl overflow-hidden">
+                        <input
+                            type="text"
+                            placeholder="Buscar por alumno o curso..."
+                            className="flex-grow px-6 py-4 border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-white rounded-l-xl focus:outline-none focus:from-white focus:to-blue-50 focus:border-blue-600 text-black placeholder-blue-600 text-lg"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                        <button
+                            onClick={() => openForm(null)}
+                            className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-4 rounded-r-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 font-semibold text-lg shadow-lg"
                         >
-                            <td className="px-4 py-3 text-black font-medium">{insc.id}</td>
-                            <td className="px-4 py-3 text-black">{insc.studentName}</td>
-                            <td className="px-4 py-3 text-black">{insc.courseName}</td>
-                            <td className="px-4 py-3 text-black">{insc.professorName}</td>
-                            <td className="px-4 py-3 text-black">{formatDate(insc.inicio)}</td>
-                            <td className="px-4 py-3 text-black">{formatDate(insc.fin)}</td>
-                            <td className="px-4 py-3 text-black">{insc.vacantes ?? '-'}</td>
-                            <td className="px-4 py-3 text-center">
-                                {insc.fullPayment ?
-                                    <FiCheck size={20} className="text-green-600 mx-auto"/> :
-                                    <FiX size={20} className="text-red-600 mx-auto"/>
-                                }
-                            </td>
-                            <td className="px-4 py-3 text-black">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      insc.paymentType==='Efectivo'?'bg-green-100 text-green-800':
-                          insc.paymentType==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
-                  }`}>
-                    {insc.paymentType}
-                  </span>
-                            </td>
-                            <td className="px-4 py-3 text-black text-center font-medium">{insc.fullPayment ? '-' : insc.cuotas}</td>
-                            <td className="px-4 py-3 text-black">{insc.tipoCertificado}</td>
-                            <td className="px-4 py-3 text-black">{insc.hasBonus ? `-$${Number(insc.bonusAmount).toFixed(2)}` : '-'}</td>
-                            <td className="px-4 py-3 text-black font-bold text-purple-700">
-                                ${ calcTotalFinal(insc.paymentType, insc.totalEfectivo, insc.totalTransferencia, insc.totalTarjeta, insc.costoCertificado, insc.hasBonus ? insc.bonusAmount : 0).toFixed(2) }
-                            </td>
-                            <td className="px-4 py-3 space-x-2">
-                                <motion.button
-                                    onClick={()=>setViewing(insc)}
-                                    whileHover={{scale:1.1}}
-                                    whileTap={{scale:0.95}}
-                                    className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-100 transition-all"
+                            Nueva Inscripción
+                        </button>
+                    </div>
+                </div>
+
+                {/* Tabla */}
+                <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
+                    <div className="overflow-auto">
+                        <table className="min-w-full">
+                            <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                            <tr>
+                                {['ID','Alumno','Curso','Profesor','Inicio','Fin','Vacantes','Forma Pago','Pago Total','Total Final','Beca','Acciones'].map(h=>(
+                                    <th key={h} className="px-6 py-4 text-left font-semibold tracking-wide">{h}</th>
+                                ))}
+                            </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                            {filtered.map((insc, index)=>(
+                                <motion.tr
+                                    key={insc.id}
+                                    className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition-all duration-200 ${
+                                        index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                                    }`}
+                                    initial={{opacity:0,y:10}}
+                                    animate={{opacity:1,y:0}}
+                                    transition={{duration:0.2, delay: index * 0.05}}
                                 >
-                                    <FiEye size={18}/>
-                                </motion.button>
-                                <motion.button
-                                    onClick={()=>openForm(insc)}
-                                    whileHover={{scale:1.1}}
-                                    whileTap={{scale:0.95}}
-                                    className="text-yellow-600 hover:text-yellow-800 p-1 rounded-full hover:bg-yellow-100 transition-all"
-                                >
-                                    <FiEdit size={18}/>
-                                </motion.button>
-                                <motion.button
-                                    onClick={()=>handleDelete(insc)}
-                                    whileHover={{scale:1.1}}
-                                    whileTap={{scale:0.95}}
-                                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100 transition-all"
-                                >
-                                    <FiTrash2 size={18}/>
-                                </motion.button>
-                            </td>
-                        </motion.tr>
-                    ))}
-                    {filtered.length===0 && (
-                        <tr>
-                            <td colSpan={14} className="text-center py-8 text-gray-500">
-                                <div className="flex flex-col items-center space-y-2">
-                                    <div className="text-4xl">📚</div>
-                                    <div>No hay inscripciones que coincidan con tu búsqueda</div>
-                                </div>
-                            </td>
-                        </tr>
-                    )}
-                    </tbody>
-                </table>
+                                    <td className="px-6 py-4 text-black font-bold text-lg">#{insc.id}</td>
+                                    <td className="px-6 py-4 text-black font-semibold">{insc.studentName}</td>
+                                    <td className="px-6 py-4 text-black font-semibold">{insc.courseName}</td>
+                                    <td className="px-6 py-4 text-gray-700">{insc.professorName}</td>
+                                    <td className="px-6 py-4 text-gray-700">{formatDate(insc.inicio)}</td>
+                                    <td className="px-6 py-4 text-gray-700">{formatDate(insc.fin)}</td>
+                                    <td className="px-6 py-4 text-gray-700">{insc.vacantes ?? '-'}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${
+                                            insc.paymentType==='Efectivo'?'bg-green-100 text-green-800':
+                                                insc.paymentType==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
+                                        }`}>
+                                            {insc.paymentType}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        {insc.fullPayment ?
+                                            <FiCheck size={20} className="text-green-600 mx-auto"/> :
+                                            <FiX size={20} className="text-red-600 mx-auto"/>
+                                        }
+                                    </td>
+                                    <td className="px-6 py-4 text-black font-bold text-purple-700">
+                                        ${formatNumber(insc.totalFinal || 0)}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {insc.hasBeca ? (
+                                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                                                -${formatNumber(insc.becaMonto || 0)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-500">-</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex space-x-3">
+                                            <motion.button
+                                                onClick={() => setViewing(insc)}
+                                                whileHover={{ scale: 1.2 }}
+                                                whileTap={{ scale: 0.9 }}
+                                                className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-full hover:bg-blue-50"
+                                                title="Ver detalles"
+                                            >
+                                                <FiEye size={20} />
+                                            </motion.button>
+                                            <motion.button
+                                                onClick={() => openForm(insc)}
+                                                whileHover={{ scale: 1.2 }}
+                                                whileTap={{ scale: 0.9 }}
+                                                className="text-green-600 hover:text-green-800 transition-colors p-2 rounded-full hover:bg-green-50"
+                                                title="Editar inscripción"
+                                            >
+                                                <FiEdit size={20} />
+                                            </motion.button>
+                                            <motion.button
+                                                onClick={() => handleDelete(insc)}
+                                                whileHover={{ scale: 1.2 }}
+                                                whileTap={{ scale: 0.9 }}
+                                                className="text-red-600 hover:text-red-800 transition-colors p-2 rounded-full hover:bg-red-50"
+                                                title="Eliminar inscripción"
+                                            >
+                                                <FiTrash2 size={20} />
+                                            </motion.button>
+                                        </div>
+                                    </td>
+                                </motion.tr>
+                            ))}
+                            {filtered.length===0 && (
+                                <tr>
+                                    <td colSpan={12} className="text-center py-12 text-gray-500">
+                                        <div className="flex flex-col items-center space-y-2">
+                                            <div className="text-4xl">📚</div>
+                                            <div className="text-lg">
+                                                {search ? 'No se encontraron inscripciones que coincidan con los filtros.' : 'No hay inscripciones disponibles.'}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            {/* Modal Detalles */}
+            {/* Modal Detalles - Simplificado por brevedad */}
             <AnimatePresence>
                 {viewing && (
-                    <motion.div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-                                initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={() => setViewing(null)}
+                    >
                         <motion.div
-                            className="bg-white p-6 rounded-2xl max-w-5xl w-full max-h-[85vh] overflow-y-auto relative text-black shadow-2xl"
-                            initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.8, opacity:0}}
-                            transition={{type:"spring", damping:20}}
+                            className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border-2 border-blue-400 text-black shadow-md"
+                            initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <button className="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors" onClick={()=>setViewing(null)}>
-                                <FiX size={20}/>
-                            </button>
-
-                            <h2 className="text-2xl font-bold mb-6 text-purple-800">Detalles de la Inscripción</h2>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                <div className="space-y-4">
-                                    <div className="bg-purple-50 p-4 rounded-lg">
-                                        <div className="text-sm text-purple-600 font-semibold mb-1">ALUMNO</div>
-                                        <div className="text-lg font-bold">{viewing.studentName}</div>
-                                    </div>
-                                    <div className="bg-blue-50 p-4 rounded-lg">
-                                        <div className="text-sm text-blue-600 font-semibold mb-1">CURSO</div>
-                                        <div className="text-lg font-bold">{viewing.courseName}</div>
-                                        <div className="text-sm text-blue-700 mt-1">
-                                            Inicio: {formatDate(viewing.inicio)} · Fin: {formatDate(viewing.fin)} · Vacantes: {viewing.vacantes ?? '-'}
-                                        </div>
-                                    </div>
-                                    <div className="bg-green-50 p-4 rounded-lg">
-                                        <div className="text-sm text-green-600 font-semibold mb-1">PROFESOR</div>
-                                        <div className="text-lg font-bold">{viewing.professorName}</div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="bg-orange-50 p-4 rounded-lg">
-                                        <div className="text-sm text-orange-600 font-semibold mb-1">TIPO DE PAGO</div>
-                                        <div className="text-lg font-bold">{viewing.paymentType}</div>
-                                    </div>
-
-                                    <div className="bg-indigo-50 p-4 rounded-lg">
-                                        <div className="text-sm text-indigo-600 font-semibold mb-1">TOTALES</div>
-                                        <div className="text-sm text-indigo-700">
-                                            Curso: ${
-                                            viewing.paymentType==='Efectivo'? viewing.totalEfectivo :
-                                                viewing.paymentType==='Transferencia'? viewing.totalTransferencia :
-                                                    viewing.totalTarjeta
-                                        }
-                                        </div>
-                                        <div className="text-sm text-indigo-700">
-                                            Certificado: {viewing.tipoCertificado || '-'} {viewing.costoCertificado ? `- $${viewing.costoCertificado}` : ''}
-                                        </div>
-                                        {viewing.hasBonus && (
-                                            <div className="text-sm text-indigo-700">Bonificación: -${Number(viewing.bonusAmount).toFixed(2)}</div>
-                                        )}
-                                        <div className="text-xl font-bold text-indigo-900 mt-1">
-                                            Total final: ${calcTotalFinal(viewing.paymentType, viewing.totalEfectivo, viewing.totalTransferencia, viewing.totalTarjeta, viewing.costoCertificado, viewing.hasBonus ? viewing.bonusAmount : 0).toFixed(2)}
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-lg">
+                                <button
+                                    className="absolute top-4 right-4 bg-gray-100 rounded-full p-2 shadow hover:bg-gray-200 transition-colors"
+                                    onClick={() => setViewing(null)}
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                                <h2 className="text-2xl font-bold text-gray-800">Detalles de la Inscripción</h2>
                             </div>
 
-                            {viewing.fullPayment ? (
-                                <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-l-4 border-green-500">
-                                    <div className="flex items-center space-x-3">
-                                        <FiCheck size={28} className="text-green-600"/>
-                                        <div>
-                                            <div className="text-xl font-bold text-green-800">Pago Total Realizado</div>
-                                            <div className="text-green-600">El curso ha sido pagado completamente</div>
+                            <div className="p-6 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div className="bg-purple-50 p-4 rounded-lg">
+                                            <h4 className="font-semibold text-purple-800 mb-2">Información General</h4>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Alumno:</span>
+                                                    <span>{viewing.studentName}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Curso:</span>
+                                                    <span>{viewing.courseName}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Profesor:</span>
+                                                    <span>{viewing.professorName}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Total Final:</span>
+                                                    <span className="font-bold text-purple-600">${formatNumber(viewing.totalFinal || 0)}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <h3 className="text-xl font-semibold text-gray-800">Plan de Cuotas</h3>
-                                    <div className="overflow-auto border-2 border-gray-300 rounded-xl shadow-lg">
-                                        <table className="min-w-full bg-white">
-                                            <thead className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
-                                            <tr>
-                                                {['Cuota','Vencimiento','Estado','Fecha Pago','Monto','Acción'].map(h=>(
-                                                    <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
-                                                ))}
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            {(viewing.installments || []).map((inst, index)=>(
-                                                <tr key={inst.number} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
-                                                    <td className="px-4 py-3 text-black font-bold">#{inst.number}</td>
-                                                    <td className="px-4 py-3 text-black">
-                                                        <div className="flex items-center gap-2">
-                                                            <span>{inst.dueDate}</span>
-                                                            {isOverdue(inst.dueDate) && inst.status === 'Pendiente' && (
-                                                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Vencida</span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${inst.status==='Pagado'?'bg-green-100 text-green-800':'bg-yellow-100 text-yellow-800'}`}>
-                                {inst.status}
-                              </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-black">{inst.paymentDate||'-'}</td>
-                                                    <td className="px-4 py-3 text-black font-bold text-purple-700">
-                                                        ${ getAdjustedAmount(Number(inst.amount), inst.dueDate).toFixed(2) }
-                                                        {inst.status === 'Pagado' && inst.amountPaid != null && (
-                                                            <span className="ml-2 text-xs text-gray-500">(Pagado: ${Number(inst.amountPaid).toFixed(2)})</span>
-                                                        )}
-                                                        {isOverdue(inst.dueDate) && inst.status==='Pendiente' && (
-                                                            <div className="text-xs text-red-600 mt-1">Incluye recargo por pago fuera de término</div>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {inst.status==='Pendiente' && (
-                                                            <button
-                                                                onClick={()=>handlePayInstallment(viewing.id, inst.number)}
-                                                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all font-semibold shadow-md"
-                                                            >
-                                                                Pagar
-                                                            </button>
-                                                        )}
-                                                        {inst.status==='Pagado' && (
-                                                            <div className="flex items-center text-green-600">
-                                                                <FiCheck size={16} className="mr-1"/>
-                                                                <span className="text-sm font-semibold">Pagado</span>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+
+                                <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200">
+                                    <button
+                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow"
+                                        onClick={() => { setViewing(null); openForm(viewing); }}
+                                    >
+                                        <FiEdit className="w-4 h-4"/>
+                                        <span>Editar</span>
+                                    </button>
                                 </div>
-                            )}
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
@@ -629,303 +693,449 @@ export default function Inscripciones() {
             {/* Modal Formulario */}
             <AnimatePresence>
                 {isFormOpen && (
-                    <motion.div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-                                initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
-                        <motion.form
-                            onSubmit={handleSubmit}
-                            className="bg-white p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto space-y-6 text-black relative shadow-2xl"
-                            initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.8, opacity:0}}
-                            transition={{type:"spring", damping:20}}
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    >
+                        <motion.div
+                            className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-hidden relative text-black shadow-md"
+                            initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <button type="button" className="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors" onClick={closeForm}>
-                                <FiX size={20}/>
-                            </button>
-
-                            <div className="mb-6">
-                                <h2 className="text-2xl font-bold text-purple-800">{editing?'Editar':'Nueva'} Inscripción</h2>
-                                <p className="text-gray-600">Complete los datos requeridos para la inscripción</p>
+                            {/* Header fijo morado */}
+                            <div className="bg-purple-600 text-white p-6 flex justify-between items-center shadow-sm">
+                                <h2 className="text-2xl font-bold">{editing ? 'Editar' : 'Nueva'} Inscripción</h2>
+                                <button type="button" className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors" onClick={closeForm}>
+                                    <FiX className="w-6 h-6" />
+                                </button>
                             </div>
 
-                            <div className="grid md:grid-cols-3 gap-6">
-                                {/* Alumno */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Alumno *:</label>
-                                    <SearchableSelect
-                                        options={students}
-                                        value={form.studentId}
-                                        onChange={v=>setForm(prev=>({...prev, studentId:v}))}
-                                        placeholder="Selecciona un alumno..."
-                                        getLabel={s=>`${s.nombre} ${s.apellido} (DNI: ${s.dni})`}
-                                        getValue={s=>s.id.toString()}
-                                    />
-                                </div>
+                            {/* Contenido con scroll */}
+                            <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(95vh-140px)]">
+                                <div className="p-6 space-y-8">
+                                    {/* Información general */}
+                                    <div className="shadow-sm rounded-xl">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            Información General
+                                        </h3>
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Alumno *:</label>
+                                                <SearchableSelect
+                                                    options={students}
+                                                    value={form.studentId}
+                                                    onChange={v => setForm(prev => ({ ...prev, studentId: v }))}
+                                                    placeholder="Selecciona un alumno..."
+                                                    getLabel={s => `${s.nombre} ${s.apellido} (DNI: ${s.dni})`}
+                                                    getValue={s => s.id.toString()}
+                                                />
+                                            </div>
 
-                                {/* Curso */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Curso *:</label>
-                                    <SearchableSelect
-                                        options={courses}
-                                        value={form.courseId}
-                                        onChange={v=>setForm(prev=>({...prev, courseId:v}))}
-                                        placeholder="Selecciona un curso..."
-                                        getLabel={c=>c.nombre}
-                                        getValue={c=>c.id.toString()}
-                                    />
-                                </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Curso *:</label>
+                                                <SearchableSelect
+                                                    options={courses}
+                                                    value={form.courseId}
+                                                    onChange={v => setForm(prev => ({ ...prev, courseId: v }))}
+                                                    placeholder="Selecciona un curso..."
+                                                    getLabel={c => c.nombre}
+                                                    getValue={c => c.id.toString()}
+                                                />
+                                            </div>
 
-                                {/* Profesor */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Profesor *:</label>
-                                    <SearchableSelect
-                                        options={availableCourseProfessors}
-                                        value={form.professorId}
-                                        onChange={v=>setForm(prev=>({...prev, professorId:v}))}
-                                        placeholder="Selecciona un profesor..."
-                                        getLabel={p=>`${p.nombre} ${p.apellido}`}
-                                        getValue={p=>p.id.toString()}
-                                    />
-                                </div>
-
-                                {/* Fechas (solo lectura) */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-gray-500">Fecha Inicio:</label>
-                                    <input type="date" name="customInicio" value={form.customInicio} disabled className="border-2 border-gray-300 rounded-xl p-3 text-black bg-gray-100 cursor-not-allowed" />
-                                    <small className="text-gray-500 mt-1">Se toma del curso</small>
-                                </div>
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-gray-500">Fecha Fin:</label>
-                                    <input type="date" name="customFin" value={form.customFin} disabled className="border-2 border-gray-300 rounded-xl p-3 text-black bg-gray-100 cursor-not-allowed" />
-                                    <small className="text-gray-500 mt-1">Se toma del curso</small>
-                                </div>
-
-                                {/* Vacantes (solo lectura) */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Vacantes:</label>
-                                    <input
-                                        type="number"
-                                        name="customVacantes"
-                                        value={form.customVacantes}
-                                        disabled
-                                        className="border-2 border-gray-300 rounded-xl p-3 text-black bg-gray-100 cursor-not-allowed"
-                                    />
-                                </div>
-
-                                {/* Forma de pago */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Forma de Pago *:</label>
-                                    <select
-                                        name="paymentType"
-                                        value={form.paymentType}
-                                        onChange={handleChange}
-                                        className="border-2 border-purple-300 rounded-xl p-3 text-black focus:border-purple-500 focus:outline-none"
-                                    >
-                                        <option value="Efectivo">Efectivo</option>
-                                        <option value="Transferencia">Transferencia</option>
-                                        <option value="Tarjeta">Tarjeta</option>
-                                    </select>
-                                </div>
-
-                                {/* Totales por forma */}
-                                {form.paymentType==='Efectivo' && (
-                                    <div className="flex flex-col">
-                                        <label className="mb-2 font-semibold text-green-700">Total Curso (Efectivo) $:</label>
-                                        <input
-                                            type="number"
-                                            name="customTotalEfectivo"
-                                            value={form.customTotalEfectivo}
-                                            onChange={handleChange}
-                                            className="border-2 border-green-300 rounded-xl p-3 text-black focus:border-green-500 focus:outline-none"
-                                        />
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Profesor *:</label>
+                                                <SearchableSelect
+                                                    options={availableCourseProfessors}
+                                                    value={form.professorId}
+                                                    onChange={v => setForm(prev => ({ ...prev, professorId: v }))}
+                                                    placeholder="Selecciona un profesor..."
+                                                    getLabel={p => `${p.nombre} ${p.apellido}`}
+                                                    getValue={p => p.id.toString()}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-                                {form.paymentType==='Transferencia' && (
-                                    <div className="flex flex-col">
-                                        <label className="mb-2 font-semibold text-blue-700">Total Curso (Transferencia) $:</label>
-                                        <input
-                                            type="number"
-                                            name="customTotalTransferencia"
-                                            value={form.customTotalTransferencia}
-                                            onChange={handleChange}
-                                            className="border-2 border-blue-300 rounded-xl p-3 text-black focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                )}
-                                {form.paymentType==='Tarjeta' && (
-                                    <div className="flex flex-col">
-                                        <label className="mb-2 font-semibold text-purple-700">Total Curso (Tarjeta) $:</label>
-                                        <input
-                                            type="number"
-                                            name="customTotalTarjeta"
-                                            value={form.customTotalTarjeta}
-                                            onChange={handleChange}
-                                            className="border-2 border-purple-300 rounded-xl p-3 text-black focus:border-purple-500 focus:outline-none"
-                                        />
-                                    </div>
-                                )}
 
-                                {/* Cuotas */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Número de Cuotas:</label>
-                                    <input
-                                        type="number"
-                                        name="customCuotas"
-                                        value={form.customCuotas}
-                                        onChange={handleChange}
-                                        disabled={form.fullPayment}
-                                        className={`border-2 rounded-xl p-3 text-black ${form.fullPayment?'bg-gray-100 cursor-not-allowed border-gray-300':'border-purple-300 focus:border-purple-500 focus:outline-none'}`}
-                                    />
-                                    {form.fullPayment && <small className="text-gray-500 mt-1">Deshabilitado por pago total</small>}
-                                </div>
-
-                                {/* Certificado */}
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Tipo Certificado:</label>
-                                    {selectedCourseCertificates.length > 1 ? (
-                                        <select
-                                            name="customTipoCertificado"
-                                            value={form.customTipoCertificado}
-                                            onChange={handleChange}
-                                            className="border-2 border-purple-300 rounded-xl p-3 text-black focus:border-purple-500 focus:outline-none"
-                                        >
-                                            <option value="">Ninguno</option>
-                                            {selectedCourseCertificates.map(tipo=>
-                                                <option key={tipo} value={tipo}>{tipo}</option>
+                                    {/* Estado de Inscripción */}
+                                    <div className="shadow-sm rounded-xl">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            Estado de Inscripción
+                                        </h3>
+                                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                                            <div className="flex items-center space-x-3 mb-4">
+                                                <input
+                                                    type="checkbox"
+                                                    id="isEnrolled"
+                                                    name="isEnrolled"
+                                                    checked={form.isEnrolled}
+                                                    onChange={handleChange}
+                                                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                                />
+                                                <label htmlFor="isEnrolled" className="font-semibold text-yellow-800">
+                                                    ¿Está inscripto el alumno?
+                                                </label>
+                                            </div>
+                                            {!form.isEnrolled && (
+                                                <div className="flex flex-col">
+                                                    <label className="text-sm font-medium mb-2 text-gray-700">Costo de Inscripción:</label>
+                                                    <input
+                                                        type="number"
+                                                        name="enrollmentCost"
+                                                        value={form.enrollmentCost}
+                                                        onChange={handleChange}
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        min="0"
+                                                        step="0.01"
+                                                    />
+                                                </div>
                                             )}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            name="customTipoCertificado"
-                                            value={form.customTipoCertificado}
-                                            onChange={handleChange}
-                                            className="border-2 border-purple-300 rounded-xl p-3 text-black focus:border-purple-500 focus:outline-none"
-                                        />
-                                    )}
-                                </div>
+                                        </div>
+                                    </div>
 
-                                <div className="flex flex-col">
-                                    <label className="mb-2 font-semibold text-purple-700">Costo Certificado $:</label>
-                                    <input
-                                        type="number"
-                                        name="customCostoCertificado"
-                                        value={form.customCostoCertificado}
-                                        onChange={handleChange}
-                                        className="border-2 border-purple-300 rounded-xl p-3 text-black focus:border-purple-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                {/* Bonificación */}
-                                <div className="md:col-span-3 flex items-center gap-4 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                                    <input
-                                        type="checkbox"
-                                        id="hasBonus"
-                                        name="hasBonus"
-                                        checked={form.hasBonus}
-                                        onChange={handleChange}
-                                        className="w-5 h-5 text-purple-600"
-                                    />
-                                    <label htmlFor="hasBonus" className="font-semibold text-yellow-800">
-                                        Bonificación (descuento sobre el total)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="bonusAmount"
-                                        value={form.bonusAmount}
-                                        onChange={handleChange}
-                                        disabled={!form.hasBonus}
-                                        min="0"
-                                        className={`border-2 rounded-xl p-2 text-black ${form.hasBonus ? 'border-yellow-400 focus:border-yellow-500' : 'bg-gray-100 border-gray-300 cursor-not-allowed'}`}
-                                        placeholder="Monto a descontar"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Resumen */}
-                            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border-l-4 border-purple-500 mt-2">
-                                <h3 className="font-bold text-lg mb-4 text-purple-800">💰 Resumen de Precios</h3>
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        {form.paymentType==='Efectivo' ? (
-                                            <div className="bg-green-100 p-4 rounded-lg">
-                                                <div className="text-green-800 font-bold text-lg">Total Curso (Efectivo)</div>
-                                                <div className="text-2xl font-bold text-green-900">${Number(form.customTotalEfectivo).toFixed(2)}</div>
-                                                {!form.fullPayment && form.customCuotas > 0 && (
-                                                    <div className="text-sm text-green-700 mt-2">
-                                                        ${(Number(form.customTotalEfectivo)/Math.max(1,Number(form.customCuotas))).toFixed(2)} por cuota ({Number(form.customCuotas)} cuotas)
-                                                    </div>
-                                                )}
+                                    {/* Forma de Pago */}
+                                    <div className="shadow-sm rounded-xl">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            Forma de Pago
+                                        </h3>
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            <div className="flex flex-col">
+                                                <label className="text-sm font-medium mb-2 text-gray-700">Tipo de Pago *:</label>
+                                                <select
+                                                    name="paymentType"
+                                                    value={form.paymentType}
+                                                    onChange={handleChange}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    required
+                                                >
+                                                    <option value="Efectivo">Efectivo</option>
+                                                    <option value="Transferencia">Transferencia</option>
+                                                    <option value="Tarjeta">Tarjeta</option>
+                                                </select>
                                             </div>
-                                        ) : form.paymentType==='Transferencia' ? (
-                                            <div className="bg-blue-100 p-4 rounded-lg">
-                                                <div className="text-blue-800 font-bold text-lg">Total Curso (Transferencia)</div>
-                                                <div className="text-2xl font-bold text-blue-900">${Number(form.customTotalTransferencia).toFixed(2)}</div>
-                                                {!form.fullPayment && form.customCuotas > 0 && (
-                                                    <div className="text-sm text-blue-700 mt-2">
-                                                        ${(Number(form.customTotalTransferencia)/Math.max(1,Number(form.customCuotas))).toFixed(2)} por cuota ({Number(form.customCuotas)} cuotas)
-                                                    </div>
-                                                )}
+
+                                            <div className="flex items-center space-x-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="fullPayment"
+                                                    name="fullPayment"
+                                                    checked={form.fullPayment}
+                                                    onChange={handleChange}
+                                                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                                />
+                                                <label htmlFor="fullPayment" className="font-semibold text-gray-700">
+                                                    Pago Total (sin cuotas)
+                                                </label>
                                             </div>
-                                        ) : (
-                                            <div className="bg-purple-100 p-4 rounded-lg">
-                                                <div className="text-purple-800 font-bold text-lg">Total Curso (Tarjeta)</div>
-                                                <div className="text-2xl font-bold text-purple-900">${Number(form.customTotalTarjeta).toFixed(2)}</div>
-                                                {!form.fullPayment && form.customCuotas > 0 && (
-                                                    <div className="text-sm text-purple-700 mt-2">
-                                                        ${(Number(form.customTotalTarjeta)/Math.max(1,Number(form.customCuotas))).toFixed(2)} por cuota ({Number(form.customCuotas)} cuotas)
+                                        </div>
+
+                                        {/* Información de precios del curso */}
+                                        {selectedCourse && (
+                                            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                                <div className="bg-gray-50 p-4 rounded-lg">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Pago en Fecha</h4>
+                                                    <div className="text-lg font-bold text-green-600">
+                                                        ${formatNumber(
+                                                        form.paymentType === 'Efectivo' ? form.customPagoFechaEfectivo :
+                                                            form.paymentType === 'Transferencia' ? form.customPagoFechaTransferencia :
+                                                                'N/A'
+                                                    )}
+                                                    </div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-lg">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Pago Vencido</h4>
+                                                    <div className="text-lg font-bold text-red-600">
+                                                        ${formatNumber(
+                                                        form.paymentType === 'Efectivo' ? form.customPagoVencidoEfectivo :
+                                                            form.paymentType === 'Transferencia' ? form.customPagoVencidoTransferencia :
+                                                                'N/A'
+                                                    )}
+                                                    </div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-lg">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Costo Total</h4>
+                                                    <div className="text-lg font-bold text-purple-600">
+                                                        ${formatNumber(
+                                                        form.paymentType === 'Efectivo' ? form.customTotalEfectivo :
+                                                            form.paymentType === 'Transferencia' ? form.customTotalTransferencia :
+                                                                form.customTotalTarjeta
+                                                    )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Cuotas */}
+                                        {courseHasInstallments() && !form.fullPayment && (
+                                            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                                <div className="flex items-center space-x-3 mb-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="enableInstallments"
+                                                        name="enableInstallments"
+                                                        checked={form.enableInstallments}
+                                                        onChange={handleChange}
+                                                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                                    />
+                                                    <label htmlFor="enableInstallments" className="font-semibold text-blue-800">
+                                                        Habilitar cuotas en esta inscripción
+                                                    </label>
+                                                </div>
+                                                {form.enableInstallments && (
+                                                    <div className="flex flex-col">
+                                                        <label className="text-sm font-medium mb-2 text-gray-700">Número de Cuotas:</label>
+                                                        <input
+                                                            type="number"
+                                                            name="customInstallments"
+                                                            value={form.customInstallments}
+                                                            onChange={handleChange}
+                                                            className="border-2 border-blue-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors w-32"
+                                                            min="1"
+                                                            max={form.customCuotas}
+                                                        />
+                                                        <small className="text-blue-600 mt-1">Máximo: {form.customCuotas} cuotas</small>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <div className="bg-orange-100 p-4 rounded-lg">
-                                            <div className="text-orange-800 font-bold">Certificado: {form.customTipoCertificado||'-'}</div>
-                                            <div className="text-xl font-bold text-orange-900">${Number(form.customCostoCertificado).toFixed(2)}</div>
-                                        </div>
-
-                                        {form.hasBonus && (
-                                            <div className="bg-yellow-100 p-4 rounded-lg">
-                                                <div className="text-yellow-800 font-bold">Bonificación</div>
-                                                <div className="text-xl font-bold text-yellow-900">-${Number(form.bonusAmount||0).toFixed(2)}</div>
+                                    {/* Certificados */}
+                                    <div className="shadow-sm rounded-xl">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            Certificados
+                                        </h3>
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-700">Agregar Certificado:</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Tipo de certificado"
+                                                        value={form.certificadoDraft.tipo}
+                                                        onChange={(e) => setForm(fd => ({
+                                                            ...fd,
+                                                            certificadoDraft: { ...fd.certificadoDraft, tipo: e.target.value }
+                                                        }))}
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none flex-1 transition-colors"
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Costo"
+                                                        value={form.certificadoDraft.costo}
+                                                        onChange={(e) => setForm(fd => ({
+                                                            ...fd,
+                                                            certificadoDraft: { ...fd.certificadoDraft, costo: Number(e.target.value) }
+                                                        }))}
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none w-32 transition-colors"
+                                                        min="0"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAddCertificado}
+                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors shadow-sm"
+                                                    >
+                                                        <FiPlus className="w-4 h-4" /> Agregar
+                                                    </button>
+                                                </div>
                                             </div>
-                                        )}
 
-                                        <div className="bg-purple-100 p-4 rounded-lg border-2 border-purple-300">
-                                            <div className="text-purple-800 font-bold text-lg">TOTAL FINAL</div>
-                                            <div className="text-3xl font-bold text-purple-900">
-                                                ${ calcTotalFinal(form.paymentType, form.customTotalEfectivo, form.customTotalTransferencia, form.customTotalTarjeta, form.customCostoCertificado, form.hasBonus ? form.bonusAmount : 0).toFixed(2) }
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-700">Certificados Agregados:</label>
+                                                <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[60px] shadow-sm">
+                                                    {form.certificados.length === 0 ? (
+                                                        <span className="text-sm text-gray-500">No hay certificados agregados.</span>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            {form.certificados.map((cert, idx) => (
+                                                                <div
+                                                                    key={idx}
+                                                                    className="flex items-center justify-between bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200"
+                                                                >
+                                                                    <div className="text-black">
+                                                                        <span className="font-medium">{cert.tipo}</span>
+                                                                        <span className="ml-2 text-gray-600">${formatNumber(cert.costo)}</span>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeCertificado(idx)}
+                                                                        className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
+                                                                    >
+                                                                        <FiTrash className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Becas */}
+                                    <div className="shadow-sm rounded-xl">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            Becas
+                                        </h3>
+                                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                                            <div className="flex items-center space-x-3 mb-4">
+                                                <input
+                                                    type="checkbox"
+                                                    id="hasBeca"
+                                                    name="hasBeca"
+                                                    checked={form.hasBeca}
+                                                    onChange={handleChange}
+                                                    className="w-5 h-5 text-yellow-600 rounded focus:ring-yellow-500"
+                                                />
+                                                <label htmlFor="hasBeca" className="font-semibold text-yellow-800">
+                                                    ¿Tiene Beca?
+                                                </label>
+                                            </div>
+                                            {form.hasBeca && (
+                                                <div className="flex flex-col">
+                                                    <label className="text-sm font-medium mb-2 text-gray-700">Seleccionar Beca:</label>
+                                                    <SearchableSelect
+                                                        options={availableBecas}
+                                                        value={form.becaId}
+                                                        onChange={v => setForm(prev => ({ ...prev, becaId: v }))}
+                                                        placeholder="Selecciona una beca..."
+                                                        getLabel={b => `Beca ${b.tipo} - $${formatNumber(b.monto)}`}
+                                                        getValue={b => b.id.toString()}
+                                                    />
+                                                    {selectedBeca && (
+                                                        <div className="mt-2 text-sm text-yellow-700">
+                                                            Descuento: $-{formatNumber(selectedBeca.monto)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Bonificación */}
+                                    <div className="shadow-sm rounded-xl">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            Bonificación
+                                        </h3>
+                                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                                            <div className="flex items-center space-x-3 mb-4">
+                                                <input
+                                                    type="checkbox"
+                                                    id="hasBonus"
+                                                    name="hasBonus"
+                                                    checked={form.hasBonus}
+                                                    onChange={handleChange}
+                                                    className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+                                                />
+                                                <label htmlFor="hasBonus" className="font-semibold text-orange-800">
+                                                    Aplicar bonificación (descuento adicional)
+                                                </label>
+                                            </div>
+                                            {form.hasBonus && (
+                                                <div className="flex flex-col">
+                                                    <label className="text-sm font-medium mb-2 text-gray-700">Monto a descontar:</label>
+                                                    <input
+                                                        type="number"
+                                                        name="bonusAmount"
+                                                        value={form.bonusAmount}
+                                                        onChange={handleChange}
+                                                        className="border-2 border-orange-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors w-48"
+                                                        min="0"
+                                                        step="0.01"
+                                                        placeholder="0.00"
+                                                    />
+                                                    <small className="text-orange-600 mt-1">
+                                                        No puede superar el total del curso
+                                                    </small>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Resumen Final */}
+                                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border-l-4 border-purple-500">
+                                        <h3 className="font-bold text-lg mb-4 text-purple-800">💰 Resumen Final</h3>
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            <div className="space-y-3">
+                                                <div className="bg-white p-4 rounded-lg shadow-sm">
+                                                    <div className="text-sm text-gray-600">Costo del Curso</div>
+                                                    <div className="text-xl font-bold text-gray-800">
+                                                        ${formatNumber(
+                                                        form.paymentType === 'Efectivo' ? form.customTotalEfectivo :
+                                                            form.paymentType === 'Transferencia' ? form.customTotalTransferencia :
+                                                                form.customTotalTarjeta
+                                                    )}
+                                                    </div>
+                                                </div>
+                                                {!form.isEnrolled && (
+                                                    <div className="bg-yellow-100 p-4 rounded-lg">
+                                                        <div className="text-sm text-yellow-800">+ Costo Inscripción</div>
+                                                        <div className="text-lg font-bold text-yellow-900">${formatNumber(form.enrollmentCost)}</div>
+                                                    </div>
+                                                )}
+                                                {form.certificados.length > 0 && (
+                                                    <div className="bg-blue-100 p-4 rounded-lg">
+                                                        <div className="text-sm text-blue-800">+ Certificados</div>
+                                                        <div className="text-lg font-bold text-blue-900">
+                                                            ${formatNumber(form.certificados.reduce((sum, cert) => sum + cert.costo, 0))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {form.hasBeca && selectedBeca && (
+                                                    <div className="bg-yellow-100 p-4 rounded-lg">
+                                                        <div className="text-sm text-yellow-800">- Beca {selectedBeca.tipo}</div>
+                                                        <div className="text-lg font-bold text-yellow-900">-${formatNumber(selectedBeca.monto)}</div>
+                                                    </div>
+                                                )}
+                                                {form.hasBonus && (
+                                                    <div className="bg-orange-100 p-4 rounded-lg">
+                                                        <div className="text-sm text-orange-800">- Bonificación</div>
+                                                        <div className="text-lg font-bold text-orange-900">-${formatNumber(form.bonusAmount)}</div>
+                                                    </div>
+                                                )}
+                                                <div className="bg-purple-100 p-4 rounded-lg border-2 border-purple-300">
+                                                    <div className="text-sm text-purple-800">TOTAL FINAL</div>
+                                                    <div className="text-3xl font-bold text-purple-900">
+                                                        ${formatNumber(calcTotalFinal())}
+                                                    </div>
+                                                    {form.enableInstallments && !form.fullPayment && form.customInstallments > 0 && (
+                                                        <div className="text-sm text-purple-700 mt-2">
+                                                            ${formatNumber(calcTotalFinal() / form.customInstallments)} x {form.customInstallments} cuotas
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Pago total */}
-                            <div className="flex items-center space-x-3 mt-4 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                                <input
-                                    type="checkbox"
-                                    id="fullPayment"
-                                    name="fullPayment"
-                                    checked={form.fullPayment}
-                                    onChange={handleChange}
-                                    className="w-5 h-5 text-purple-600"
-                                />
-                                <label htmlFor="fullPayment" className="font-semibold text-yellow-800">
-                                    ✅ Pago Total (sin plan de cuotas)
-                                </label>
-                            </div>
-
-                            {/* Botones */}
-                            <div className="flex justify-between mt-6 pt-6 border-t-2 border-gray-200">
-                                <button type="button" onClick={closeForm} className="px-8 py-3 bg-gray-300 text-gray-700 rounded-xl hover:bg-gray-400 transition-all font-semibold shadow-md">
-                                    ❌ Cancelar
-                                </button>
-                                <button type="submit" className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold shadow-lg">
-                                    {editing ? '✏️ Actualizar' : '➕ Crear'} Inscripción
-                                </button>
-                            </div>
-                        </motion.form>
+                                {/* Footer con botones fijo */}
+                                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex justify-end space-x-4">
+                                    <button
+                                        type="button"
+                                        onClick={closeForm}
+                                        className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 shadow"
+                                    >
+                                        <span>{editing ? 'Guardar Cambios' : 'Crear Inscripción'}</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

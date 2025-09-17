@@ -1,13 +1,26 @@
 // src/pages/Profesores.jsx
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiPlus, FiMinus } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiPlus, FiMinus, FiSearch, FiUserPlus } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 
 // Helpers
 const diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-const resumenHorarios = (horarios=[]) =>
-    horarios.map(h => `${h.dia.slice(0,3)} ${h.desde}-${h.hasta}`).join(', ');
+
+// Función para mostrar horarios en múltiples líneas
+const renderHorarios = (horarios = []) => {
+    if (!horarios || horarios.length === 0) return '-';
+
+    return (
+        <div className="space-y-1">
+            {horarios.map((h, i) => (
+                <div key={i} className="text-xs">
+                    <span className="font-medium">{h.dia.slice(0,3)}</span>: {h.desde}-{h.hasta}
+                </div>
+            ))}
+        </div>
+    );
+};
 
 function Notifications({ notifications, remove }) {
     return (
@@ -191,58 +204,140 @@ export default function Profesores() {
         <div className="p-6 relative">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            {/* Buscador + Nuevo */}
-            <div className="flex mb-4">
-                <input
-                    type="text"
-                    placeholder="Buscar por nombre, DNI o materia..."
-                    className="flex-grow px-4 py-2 border-2 border-purple-500 rounded-l-lg focus:outline-none text-black"
-                    value={search}
-                    onChange={e=>setSearch(e.target.value)}
-                />
-                <button
-                    onClick={()=>openForm(null)}
-                    className="bg-purple-600 text-white px-6 rounded-r-lg hover:bg-purple-700 transition"
-                >
-                    Nuevo Profesor
-                </button>
+            {/* Buscador + Nuevo - Diseño mejorado */}
+            <div className="mb-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <FiSearch className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre, DNI o materia..."
+                            className="w-full pl-10 pr-4 py-3 text-lg border-2 border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black bg-white shadow-sm transition-all duration-200 hover:border-purple-400"
+                            value={search}
+                            onChange={e=>setSearch(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold text-lg flex items-center space-x-2"
+                        onClick={() => openForm(null)}
+                    >
+                        <FiUserPlus className="w-5 h-5" />
+                        <span>Nuevo Profesor</span>
+                    </button>
+                </div>
             </div>
 
-            {/* Tabla */}
-            <div className="overflow-auto border-2 border-purple-500 rounded-lg">
-                <table className="min-w-full bg-white">
-                    <thead className="bg-purple-500 text-white">
-                    <tr>
-                        {['ID','Nombre','Apellido','DNI','Teléfono','Email','Dirección','Localidad','Estado','Materia/s a dictar','Horarios','Acciones']
-                            .map(h=> <th key={h} className="px-4 py-2 whitespace-nowrap">{h}</th>)}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {filtered.map(prof=>(
-                        <motion.tr key={prof.id} className="hover:bg-gray-50" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{duration:0.2}}>
-                            <td className="px-4 py-2 text-black">{prof.id}</td>
-                            <td className="px-4 py-2 text-black">{prof.nombre}</td>
-                            <td className="px-4 py-2 text-black">{prof.apellido}</td>
-                            <td className="px-4 py-2 text-black">{prof.dni}</td>
-                            <td className="px-4 py-2 text-black">{prof.telefono}</td>
-                            <td className="px-4 py-2 text-black">{prof.email.slice(0,18)}{prof.email.length>18?'…':''}</td>
-                            <td className="px-4 py-2 text-black">{prof.direccion}</td>
-                            <td className="px-4 py-2 text-black">{prof.localidad}</td>
-                            <td className="px-4 py-2 text-black">{prof.estado}</td>
-                            <td className="px-4 py-2 text-black">{(prof.materias||[]).join(', ') || '-'}</td>
-                            <td className="px-4 py-2 text-black">{resumenHorarios(prof.horarios)}</td>
-                            <td className="px-4 py-2 space-x-2">
-                                <motion.button onClick={()=>setViewing(prof)} whileHover={{scale:1.2}} className="text-black hover:text-purple-700"><FiEye/></motion.button>
-                                <motion.button onClick={()=>openForm(prof)} whileHover={{scale:1.2}} className="text-black hover:text-purple-700"><FiEdit/></motion.button>
-                                <motion.button onClick={()=>handleDelete(prof)} whileHover={{scale:1.2}} className="text-red-600 hover:text-red-800"><FiTrash2/></motion.button>
-                            </td>
-                        </motion.tr>
-                    ))}
-                    {filtered.length===0 && (
-                        <tr><td colSpan={12} className="text-center py-6 text-gray-500">No hay resultados</td></tr>
-                    )}
-                    </tbody>
-                </table>
+            {/* Tabla - Diseño mejorado */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                        <tr>
+                            {['ID','Nombre','Apellido','DNI','Teléfono','Email','Dirección','Localidad','Estado','Materia/s a dictar','Horarios','Acciones']
+                                .map(h=> (
+                                    <th key={h} className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                                        {h}
+                                    </th>
+                                ))}
+                        </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                        {filtered.map((prof, index) => (
+                            <motion.tr
+                                key={prof.id}
+                                className={`hover:bg-purple-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                initial={{opacity:0,y:10}}
+                                animate={{opacity:1,y:0}}
+                                transition={{duration:0.2, delay: index * 0.05}}
+                            >
+                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{prof.id}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900">{prof.nombre}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900">{prof.apellido}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900">{prof.dni}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900">{prof.telefono}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                    <div className="max-w-32 truncate" title={prof.email}>
+                                        {prof.email}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                    <div className="max-w-32 truncate" title={prof.direccion}>
+                                        {prof.direccion}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900">{prof.localidad}</td>
+                                <td className="px-6 py-4">
+                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                        prof.estado === 'Activo'
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-red-100 text-red-800'
+                                    }`}>
+                                        {prof.estado}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                    <div className="max-w-48">
+                                        {(prof.materias||[]).length > 0 ? (
+                                            <div className="space-y-1">
+                                                {prof.materias.map((materia, i) => (
+                                                    <div key={i} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full inline-block mr-1 mb-1">
+                                                        {materia}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : '-'}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                    <div className="max-w-32">
+                                        {renderHorarios(prof.horarios)}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-sm font-medium">
+                                    <div className="flex space-x-3">
+                                        <motion.button
+                                            onClick={()=>setViewing(prof)}
+                                            whileHover={{scale:1.1}}
+                                            whileTap={{scale:0.95}}
+                                            className="text-purple-600 hover:text-purple-800 p-2 rounded-full hover:bg-purple-100 transition-all"
+                                        >
+                                            <FiEye size={18}/>
+                                        </motion.button>
+                                        <motion.button
+                                            onClick={()=>openForm(prof)}
+                                            whileHover={{scale:1.1}}
+                                            whileTap={{scale:0.95}}
+                                            className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition-all"
+                                        >
+                                            <FiEdit size={18}/>
+                                        </motion.button>
+                                        <motion.button
+                                            onClick={()=>handleDelete(prof)}
+                                            whileHover={{scale:1.1}}
+                                            whileTap={{scale:0.95}}
+                                            className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition-all"
+                                        >
+                                            <FiTrash2 size={18}/>
+                                        </motion.button>
+                                    </div>
+                                </td>
+                            </motion.tr>
+                        ))}
+                        {filtered.length===0 && (
+                            <tr>
+                                <td colSpan={12} className="text-center py-12 text-gray-500 text-lg">
+                                    <div className="flex flex-col items-center space-y-2">
+                                        <FiSearch className="w-12 h-12 text-gray-300" />
+                                        <span>No hay resultados para tu búsqueda</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Modal Detalles - Mejorado con diseño horizontal */}

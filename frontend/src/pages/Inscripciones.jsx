@@ -1,8 +1,9 @@
 // src/pages/Inscripciones.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiCheck, FiChevronDown, FiPlus, FiTrash, FiInfo } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiCheck, FiChevronDown, FiPlus, FiTrash, FiInfo, FiSearch, FiUserPlus, FiClock, FiDollarSign, FiCalendar } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 /* ================== Tooltip Component ================== */
 function Tooltip({ children, content }) {
@@ -191,17 +192,20 @@ const generarCuotas = (cuotas, total) => {
     return installments;
 };
 
-/* ================== Página ================== */
+/* ================== Página Principal ================== */
 export default function Inscripciones() {
     const {
         students = [], courses = [], professors = [], becas = [],
-        inscriptions = [], addInscription, updateInscription
+        inscriptions = [], addInscription, updateInscription, removeInscription,
+        cajaMovimientos = []
     } = useDB();
+    const { user } = useAuth();
 
     const [search, setSearch] = useState('');
     const [viewing, setViewing] = useState(null);
     const [editing, setEditing] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isHistorialOpen, setIsHistorialOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
 
     const showNotification = (type, message) => {
@@ -214,7 +218,8 @@ export default function Inscripciones() {
     const filtered = useMemo(
         () => (inscriptions || []).filter(i =>
             (i.studentName || '').toLowerCase().includes(search.toLowerCase()) ||
-            (i.courseName  || '').toLowerCase().includes(search.toLowerCase())
+            (i.courseName  || '').toLowerCase().includes(search.toLowerCase()) ||
+            (i.professorName || '').toLowerCase().includes(search.toLowerCase())
         ),
         [inscriptions, search]
     );
@@ -323,6 +328,16 @@ export default function Inscripciones() {
     };
 
     const closeForm = () => { setIsFormOpen(false); setEditing(null); };
+
+    // Abrir modal de historial
+    const openHistorial = (insc) => {
+        setViewing(null);
+        setIsHistorialOpen(true);
+    };
+
+    const closeHistorial = () => {
+        setIsHistorialOpen(false);
+    };
 
     const handleChange = e => {
         const {name, type, checked, value} = e.target;
@@ -459,7 +474,9 @@ export default function Inscripciones() {
                 formaPago: form.paymentType,
                 estado: 'Cursando',
                 activo: true,
-                pago: form.fullPayment ? 'Completada' : 'Pendiente'
+                pago: form.fullPayment ? 'Completada' : 'Pendiente',
+                personal: user?.name || 'Usuario Sistema',
+                fechaInscripcion: new Date().toISOString()
             };
 
             if(editing) {
@@ -476,7 +493,10 @@ export default function Inscripciones() {
     };
 
     const handleDelete = insc => {
-        showNotification('success', 'Inscripción eliminada (implementa removeInscription si querés borrarla de la DB).');
+        if (window.confirm(`¿Seguro que querés eliminar la inscripción de ${insc.studentName} al curso ${insc.courseName}?`)) {
+            removeInscription(insc.id);
+            showNotification('success', 'Inscripción eliminada correctamente');
+        }
     };
 
     const handlePayInstallment = (inscId, num) => {
@@ -488,6 +508,32 @@ export default function Inscripciones() {
         updateInscription(inscId, { ...insc, installments: updatedInstallments });
         showNotification('success', `Cuota ${num} pagada.`);
     };
+
+    // Obtener historial de la inscripción
+    const getInscriptionHistory = (inscriptionId) => {
+        const insc = inscriptions.find(i => i.id === inscriptionId);
+        if (!insc) return null;
+
+        const movements = cajaMovimientos.filter(m =>
+            m.studentId === insc.studentId && m.courseId === insc.courseId
+        );
+
+        const totalPagado = movements
+            .filter(m => m.pago === 'Completada')
+            .length * (insc.totalFinal / Math.max(1, insc.customInstallments || 1));
+
+        const totalPendiente = insc.totalFinal - totalPagado;
+
+        return {
+            inscripcion: insc,
+            movimientos: movements,
+            totalPagado,
+            totalPendiente,
+            estadoPago: totalPendiente <= 0 ? 'Completo' : 'Pendiente'
+        };
+    };
+
+    const historial = viewing ? getInscriptionHistory(viewing.id) : null;
 
     /* ================== Render ================== */
     return (
@@ -502,19 +548,25 @@ export default function Inscripciones() {
                         <p className="text-gray-600">Gestiona las inscripciones de cursos de manera eficiente</p>
                     </div>
 
-                    <div className="flex shadow-lg rounded-xl overflow-hidden">
-                        <input
-                            type="text"
-                            placeholder="Buscar por alumno o curso..."
-                            className="flex-grow px-6 py-4 border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-white rounded-l-xl focus:outline-none focus:from-white focus:to-blue-50 focus:border-blue-600 text-black placeholder-blue-600 text-lg"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <FiSearch className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Buscar por alumno, curso o profesor..."
+                                className="w-full pl-10 pr-4 py-3 text-lg border-2 border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black bg-white shadow-sm transition-all duration-200 hover:border-purple-400"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
+                        </div>
                         <button
                             onClick={() => openForm(null)}
-                            className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-4 rounded-r-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 font-semibold text-lg shadow-lg"
+                            className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold text-lg flex items-center space-x-2"
                         >
-                            Nueva Inscripción
+                            <FiUserPlus className="w-5 h-5" />
+                            <span>Nueva Inscripción</span>
                         </button>
                     </div>
                 </div>
@@ -611,7 +663,7 @@ export default function Inscripciones() {
                                 <tr>
                                     <td colSpan={12} className="text-center py-12 text-gray-500">
                                         <div className="flex flex-col items-center space-y-2">
-                                            <div className="text-4xl">📚</div>
+                                            <FiSearch className="w-12 h-12 text-gray-300" />
                                             <div className="text-lg">
                                                 {search ? 'No se encontraron inscripciones que coincidan con los filtros.' : 'No hay inscripciones disponibles.'}
                                             </div>
@@ -625,7 +677,7 @@ export default function Inscripciones() {
                 </div>
             </div>
 
-            {/* Modal Detalles - Simplificado por brevedad */}
+            {/* Modal Detalles - Mejorado como en Alumnos */}
             <AnimatePresence>
                 {viewing && (
                     <motion.div
@@ -634,7 +686,7 @@ export default function Inscripciones() {
                         onClick={() => setViewing(null)}
                     >
                         <motion.div
-                            className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border-2 border-blue-400 text-black shadow-md"
+                            className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto relative border-2 border-blue-400 text-black shadow-md"
                             initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -646,18 +698,40 @@ export default function Inscripciones() {
                                     <FiX className="w-5 h-5" />
                                 </button>
                                 <h2 className="text-2xl font-bold text-gray-800">Detalles de la Inscripción</h2>
+                                <p className="text-gray-600">Información completa del registro</p>
                             </div>
 
                             <div className="p-6 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Información principal en layout horizontal */}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    {/* Datos del Alumno */}
                                     <div className="space-y-4">
-                                        <div className="bg-purple-50 p-4 rounded-lg">
-                                            <h4 className="font-semibold text-purple-800 mb-2">Información General</h4>
+                                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                            <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
+                                                <FiUserPlus className="mr-2" />
+                                                Información del Alumno
+                                            </h4>
                                             <div className="space-y-2">
                                                 <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Alumno:</span>
+                                                    <span className="font-medium text-gray-600">Nombre:</span>
                                                     <span>{viewing.studentName}</span>
                                                 </div>
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">ID Alumno:</span>
+                                                    <span>#{viewing.studentId}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Datos del Curso */}
+                                    <div className="space-y-4">
+                                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                            <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                                                <FiCalendar className="mr-2" />
+                                                Información del Curso
+                                            </h4>
+                                            <div className="space-y-2">
                                                 <div className="flex justify-between">
                                                     <span className="font-medium text-gray-600">Curso:</span>
                                                     <span>{viewing.courseName}</span>
@@ -667,17 +741,111 @@ export default function Inscripciones() {
                                                     <span>{viewing.professorName}</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Total Final:</span>
-                                                    <span className="font-bold text-purple-600">${formatNumber(viewing.totalFinal || 0)}</span>
+                                                    <span className="font-medium text-gray-600">Inicio:</span>
+                                                    <span>{formatDate(viewing.inicio)}</span>
                                                 </div>
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Fin:</span>
+                                                    <span>{formatDate(viewing.fin)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Datos de Pago */}
+                                    <div className="space-y-4">
+                                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                            <h4 className="font-semibold text-green-800 mb-3 flex items-center">
+                                                <FiDollarSign className="mr-2" />
+                                                Información de Pago
+                                            </h4>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Forma de Pago:</span>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                        viewing.paymentType==='Efectivo'?'bg-green-100 text-green-800':
+                                                            viewing.paymentType==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
+                                                    }`}>
+                                                        {viewing.paymentType}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Total Final:</span>
+                                                    <span className="font-bold text-green-600">${formatNumber(viewing.totalFinal || 0)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="font-medium text-gray-600">Pago Total:</span>
+                                                    {viewing.fullPayment ?
+                                                        <FiCheck size={16} className="text-green-600"/> :
+                                                        <FiX size={16} className="text-red-600"/>
+                                                    }
+                                                </div>
+                                                {viewing.hasBeca && (
+                                                    <div className="flex justify-between">
+                                                        <span className="font-medium text-gray-600">Beca:</span>
+                                                        <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                                                            -${formatNumber(viewing.becaMonto || 0)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Certificados */}
+                                {viewing.certificados && viewing.certificados.length > 0 && (
+                                    <div>
+                                        <h4 className="text-lg font-semibold text-gray-700 mb-3">Certificados</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {viewing.certificados.map((cert, idx) => (
+                                                <div key={idx} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                                    <div className="font-medium text-orange-800">{cert.tipo}</div>
+                                                    <div className="text-sm text-orange-600">${formatNumber(cert.costo)}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Cuotas si existen */}
+                                {viewing.installments && viewing.installments.length > 0 && (
+                                    <div>
+                                        <h4 className="text-lg font-semibold text-gray-700 mb-3">Plan de Cuotas</h4>
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {viewing.installments.map((inst, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center p-3 bg-white rounded border">
+                                                        <div>
+                                                            <span className="font-medium">Cuota {inst.number}</span>
+                                                            <div className="text-sm text-gray-600">Vence: {inst.dueDate}</div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="font-bold">${formatNumber(inst.amount)}</div>
+                                                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                                                inst.status === 'Pagado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                                            }`}>
+                                                                {inst.status}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Acciones */}
                                 <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200">
                                     <button
-                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow"
+                                        className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
+                                        onClick={() => openHistorial(viewing)}
+                                    >
+                                        <FiClock className="w-4 h-4"/>
+                                        <span>Ver Historial</span>
+                                    </button>
+                                    <button
+                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
                                         onClick={() => { setViewing(null); openForm(viewing); }}
                                     >
                                         <FiEdit className="w-4 h-4"/>
@@ -690,7 +858,147 @@ export default function Inscripciones() {
                 )}
             </AnimatePresence>
 
-            {/* Modal Formulario */}
+            {/* Modal Historial */}
+            <AnimatePresence>
+                {isHistorialOpen && viewing && (
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={closeHistorial}
+                    >
+                        <motion.div
+                            className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden relative text-black"
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.8 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="bg-orange-600 text-white p-6 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-bold">Historial de Pagos</h2>
+                                    <p className="text-orange-100">Movimientos y estado de cuenta</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors"
+                                    onClick={closeHistorial}
+                                >
+                                    <FiX className="w-6 h-6"/>
+                                </button>
+                            </div>
+
+                            {/* Contenido */}
+                            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                                {historial && (
+                                    <div className="space-y-6">
+                                        {/* Resumen */}
+                                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="text-center">
+                                                    <div className="text-2xl font-bold text-orange-800">${formatNumber(historial.totalPagado)}</div>
+                                                    <div className="text-orange-600">Total Pagado</div>
+                                                </div>
+                                                <div className="text-center">
+                                                    <div className="text-2xl font-bold text-red-800">${formatNumber(historial.totalPendiente)}</div>
+                                                    <div className="text-red-600">Total Pendiente</div>
+                                                </div>
+                                                <div className="text-center">
+                                                    <span className={`inline-flex px-4 py-2 rounded-full text-sm font-medium ${
+                                                        historial.estadoPago === 'Completo'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                        {historial.estadoPago}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Movimientos */}
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                                                <div className="w-1 h-6 bg-orange-600 rounded mr-3"></div>
+                                                Movimientos de Caja
+                                            </h3>
+
+                                            {historial.movimientos.length > 0 ? (
+                                                <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                                                    <table className="min-w-full">
+                                                        <thead className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                                                        <tr>
+                                                            <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                                                                Fecha
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                                                                Forma de Pago
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                                                                Estado
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                                                                Personal
+                                                            </th>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                        {historial.movimientos.map((movimiento, index) => (
+                                                            <motion.tr
+                                                                key={movimiento.id}
+                                                                className={`hover:bg-orange-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                transition={{ duration: 0.2, delay: index * 0.1 }}
+                                                            >
+                                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                                    {new Date(movimiento.fechaHora).toLocaleString()}
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                                        movimiento.formaPago==='Efectivo'?'bg-green-100 text-green-800':
+                                                                            movimiento.formaPago==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
+                                                                    }`}>
+                                                                        {movimiento.formaPago}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                                                                        movimiento.pago === 'Completada' ? 'bg-green-100 text-green-800' :
+                                                                            movimiento.pago === 'Pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                                                                'bg-red-100 text-red-800'
+                                                                    }`}>
+                                                                        {movimiento.pago}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                                    {movimiento.personal}
+                                                                </td>
+                                                            </motion.tr>
+                                                        ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                                                    <div className="text-gray-400 mb-2">
+                                                        <FiDollarSign className="w-16 h-16 mx-auto" />
+                                                    </div>
+                                                    <h3 className="text-lg font-medium text-gray-500 mb-1">No hay movimientos registrados</h3>
+                                                    <p className="text-gray-400">Esta inscripción aún no tiene pagos registrados</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal Formulario - Igual al original pero mejorado */}
             <AnimatePresence>
                 {isFormOpen && (
                     <motion.div

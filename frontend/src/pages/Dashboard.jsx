@@ -42,16 +42,16 @@ export default function Dashboard() {
                 />
                 <AnimatedCard
                     icon={FaClipboardList}
-                    title="Inscripciones"
+                    title="Ver Inscripciones"
                     subtitle="Gestiona las inscripciones de los estudiantes."
                     linkText="Ver inscripciones"
                     to="inscripciones"
                 />
                 <AnimatedCard
                     icon={FaGraduationCap}
-                    title="Becas"
-                    subtitle="Administra las becas disponibles para estudiantes."
-                    linkText="Ver becas"
+                    title="Parametrización"
+                    subtitle="Administra las parametrizaciones del sistema."
+                    linkText="Ver parametros"
                     to="becas"
                 />
                 <AnimatedCard

@@ -1,39 +1,9 @@
-// src/pages/Inscripciones.jsx
+// src/pages/Inscripciones.jsx - VERSIÓN COMPLETA CORREGIDA
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiCheck, FiChevronDown, FiPlus, FiTrash, FiInfo, FiSearch, FiUserPlus, FiClock, FiDollarSign, FiCalendar } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiCheck, FiChevronDown, FiPlus, FiTrash, FiSearch, FiUserPlus, FiClock, FiDollarSign, FiCalendar } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 import { useAuth } from "../contexts/AuthContext.jsx";
-
-/* ================== Tooltip Component ================== */
-function Tooltip({ children, content }) {
-    const [isVisible, setIsVisible] = useState(false);
-
-    return (
-        <div className="relative inline-block">
-            <div
-                onMouseEnter={() => setIsVisible(true)}
-                onMouseLeave={() => setIsVisible(false)}
-                className="cursor-help"
-            >
-                {children}
-            </div>
-            <AnimatePresence>
-                {isVisible && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg max-w-xs"
-                    >
-                        {content}
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
 
 /* ================== Select buscable (robusto) ================== */
 function SearchableSelect({ options, value, onChange, placeholder, getLabel, getValue }) {
@@ -145,7 +115,7 @@ function Notifications({ notifications, remove }) {
 
 /* ================== Helpers ================== */
 const formatNumber = (num) => {
-    if (!num && num !== 0) return '';
+    if (!num && num !== 0) return '0';
     return Number(num).toLocaleString('es-AR');
 };
 
@@ -230,17 +200,14 @@ export default function Inscripciones() {
         professorId: '',
         paymentType: 'Efectivo',
         fullPayment: false,
-        // Nueva funcionalidad
         isEnrolled: true,
         enrollmentCost: 25000,
         enableInstallments: false,
         customInstallments: 0,
         hasBeca: false,
         becaId: '',
-        // Certificados múltiples
         certificados: [],
         certificadoDraft: { tipo: '', costo: 0 },
-        // Del curso
         customInicio: '',
         customFin: '',
         customVacantes: 0,
@@ -252,64 +219,71 @@ export default function Inscripciones() {
         customTotalTransferencia: 0,
         customTotalTarjeta: 0,
         customCuotas: 0,
-        // Bonificación
         hasBonus: false,
         bonusAmount: 0
     });
 
-    /* ===== Autocompletar por curso ===== */
+    /* ===== Autocompletar por curso - MEJORADO ===== */
     useEffect(() => {
         const c = courses.find(c=>c.id === Number(form.courseId));
         if(c) {
+            console.log('Curso seleccionado:', {
+                nombre: c.nombre,
+                totalEfectivo: c.totalEfectivo,
+                totalTransferencia: c.totalTransferencia,
+                totalTarjeta: c.totalTarjeta,
+                pagoFechaEfectivo: c.pagoFechaEfectivo,
+                pagoVencidoEfectivo: c.pagoVencidoEfectivo
+            });
+
             setForm(prev=>({
                 ...prev,
                 customInicio: c.inicio || '',
                 customFin: c.fin || '',
-                customVacantes: c.vacantes ?? 0,
-                customPagoFechaEfectivo: Number(c.pagoFechaEfectivo ?? 0),
-                customPagoVencidoEfectivo: Number(c.pagoVencidoEfectivo ?? 0),
-                customTotalEfectivo: Number(c.totalEfectivo ?? 0),
-                customPagoFechaTransferencia: Number(c.pagoFechaTransferencia ?? 0),
-                customPagoVencidoTransferencia: Number(c.pagoVencidoTransferencia ?? 0),
-                customTotalTransferencia: Number(c.totalTransferencia ?? 0),
-                customTotalTarjeta: Number(c.totalTarjeta ?? 0),
-                customCuotas: Number(c.cuotas ?? 0),
-                // Reset certificados cuando cambia el curso
+                customVacantes: Number(c.vacantes) || 0,
+                customPagoFechaEfectivo: Number(c.pagoFechaEfectivo) || 0,
+                customPagoVencidoEfectivo: Number(c.pagoVencidoEfectivo) || 0,
+                customTotalEfectivo: Number(c.totalEfectivo) || 0,
+                customPagoFechaTransferencia: Number(c.pagoFechaTransferencia) || 0,
+                customPagoVencidoTransferencia: Number(c.pagoVencidoTransferencia) || 0,
+                customTotalTransferencia: Number(c.totalTransferencia) || 0,
+                customTotalTarjeta: Number(c.totalTarjeta) || 0,
+                customCuotas: Number(c.cuotas) || 0,
                 certificados: []
             }));
         }
     }, [form.courseId, courses]);
 
-    const openForm = insc => {
-        if(insc) {
-            setEditing(insc);
+    const openForm = inscripcion => {
+        if(inscripcion) {
+            setEditing(inscripcion);
             setForm({
-                studentId: insc.studentId.toString(),
-                courseId: insc.courseId.toString(),
-                professorId: insc.professorId?.toString() || '',
-                paymentType: insc.paymentType,
-                fullPayment: insc.fullPayment,
-                isEnrolled: insc.isEnrolled ?? true,
-                enrollmentCost: Number(insc.enrollmentCost ?? 25000),
-                enableInstallments: insc.enableInstallments ?? false,
-                customInstallments: Number(insc.customInstallments ?? 0),
-                hasBeca: insc.hasBeca ?? false,
-                becaId: insc.becaId?.toString() || '',
-                certificados: insc.certificados || [],
+                studentId: inscripcion.studentId?.toString() || '',
+                courseId: inscripcion.courseId?.toString() || '',
+                professorId: inscripcion.professorId?.toString() || '',
+                paymentType: inscripcion.paymentType || 'Efectivo',
+                fullPayment: inscripcion.fullPayment || false,
+                isEnrolled: inscripcion.isEnrolled ?? true,
+                enrollmentCost: Number(inscripcion.enrollmentCost) || 25000,
+                enableInstallments: inscripcion.enableInstallments ?? false,
+                customInstallments: Number(inscripcion.customInstallments) || 0,
+                hasBeca: inscripcion.hasBeca ?? false,
+                becaId: inscripcion.becaId?.toString() || '',
+                certificados: inscripcion.certificados || [],
                 certificadoDraft: { tipo: '', costo: 0 },
-                customInicio: insc.inicio || '',
-                customFin: insc.fin || '',
-                customVacantes: Number(insc.vacantes ?? 0),
-                customPagoFechaEfectivo: Number(insc.pagoFechaEfectivo ?? 0),
-                customPagoVencidoEfectivo: Number(insc.pagoVencidoEfectivo ?? 0),
-                customTotalEfectivo: Number(insc.totalEfectivo ?? 0),
-                customPagoFechaTransferencia: Number(insc.pagoFechaTransferencia ?? 0),
-                customPagoVencidoTransferencia: Number(insc.pagoVencidoTransferencia ?? 0),
-                customTotalTransferencia: Number(insc.totalTransferencia ?? 0),
-                customTotalTarjeta: Number(insc.totalTarjeta ?? 0),
-                customCuotas: Number(insc.cuotas ?? 0),
-                hasBonus: !!insc.hasBonus,
-                bonusAmount: Number(insc.bonusAmount || 0)
+                customInicio: inscripcion.inicio || '',
+                customFin: inscripcion.fin || '',
+                customVacantes: Number(inscripcion.vacantes) || 0,
+                customPagoFechaEfectivo: Number(inscripcion.pagoFechaEfectivo) || 0,
+                customPagoVencidoEfectivo: Number(inscripcion.pagoVencidoEfectivo) || 0,
+                customTotalEfectivo: Number(inscripcion.totalEfectivo) || 0,
+                customPagoFechaTransferencia: Number(inscripcion.pagoFechaTransferencia) || 0,
+                customPagoVencidoTransferencia: Number(inscripcion.pagoVencidoTransferencia) || 0,
+                customTotalTransferencia: Number(inscripcion.totalTransferencia) || 0,
+                customTotalTarjeta: Number(inscripcion.totalTarjeta) || 0,
+                customCuotas: Number(inscripcion.cuotas) || 0,
+                hasBonus: !!inscripcion.hasBonus,
+                bonusAmount: Number(inscripcion.bonusAmount) || 0
             });
         } else {
             setEditing(null);
@@ -329,8 +303,7 @@ export default function Inscripciones() {
 
     const closeForm = () => { setIsFormOpen(false); setEditing(null); };
 
-    // Abrir modal de historial
-    const openHistorial = (insc) => {
+    const openHistorial = () => {
         setViewing(null);
         setIsHistorialOpen(true);
     };
@@ -344,19 +317,22 @@ export default function Inscripciones() {
         if (type === 'checkbox') {
             setForm(f=>({ ...f, [name]: checked }));
         } else if (type === 'number') {
-            setForm(f=>({ ...f, [name]: Number(value) }));
+            setForm(f=>({ ...f, [name]: Number(value) || 0 }));
         } else {
             setForm(f=>({ ...f, [name]: value }));
         }
     };
 
-    // Manejar certificados
     const handleAddCertificado = () => {
-        if (!form.certificadoDraft.tipo || form.certificadoDraft.costo <= 0) {
-            showNotification('error', 'Completa tipo y costo del certificado');
+        if (!form.certificadoDraft.tipo?.trim()) {
+            showNotification('error', 'Completa el tipo de certificado');
             return;
         }
-        const exists = form.certificados.some(c => c.tipo.toLowerCase() === form.certificadoDraft.tipo.toLowerCase());
+        if (form.certificadoDraft.costo <= 0) {
+            showNotification('error', 'El costo del certificado debe ser mayor a 0');
+            return;
+        }
+        const exists = form.certificados.some(c => c.tipo?.toLowerCase() === form.certificadoDraft.tipo.toLowerCase());
         if (exists) {
             showNotification('error', 'Ya existe un certificado con ese tipo');
             return;
@@ -380,44 +356,63 @@ export default function Inscripciones() {
     const availableBecas = (becas || []).filter(b => b.activa);
     const selectedBeca = becas.find(b => b.id === Number(form.becaId));
 
-    // Verificar si el curso tiene cuotas habilitadas para la forma de pago seleccionada
     const courseHasInstallments = () => {
         if (!selectedCourse) return false;
         if (form.paymentType === 'Efectivo') return selectedCourse.cuotasEfectivoEnabled;
         if (form.paymentType === 'Transferencia') return selectedCourse.cuotasTransferenciaEnabled;
-        if (form.paymentType === 'Tarjeta') return true; // Las tarjetas siempre tienen cuotas
+        if (form.paymentType === 'Tarjeta') return true;
         return false;
     };
 
+    // FUNCIÓN DE CÁLCULO MEJORADA
     const calcTotalFinal = () => {
         let courseCost = 0;
-        if (form.paymentType === 'Efectivo') courseCost = Number(form.customTotalEfectivo);
-        else if (form.paymentType === 'Transferencia') courseCost = Number(form.customTotalTransferencia);
-        else if (form.paymentType === 'Tarjeta') courseCost = Number(form.customTotalTarjeta);
 
-        const enrollmentCost = form.isEnrolled ? 0 : Number(form.enrollmentCost);
-        const certificadosCost = form.certificados.reduce((sum, cert) => sum + Number(cert.costo), 0);
-        const becaDiscount = form.hasBeca && selectedBeca ? Number(selectedBeca.monto) : 0;
-        const bonusDiscount = form.hasBonus ? Number(form.bonusAmount) : 0;
+        if (form.paymentType === 'Efectivo') {
+            courseCost = Number(form.customTotalEfectivo) || 0;
+        } else if (form.paymentType === 'Transferencia') {
+            courseCost = Number(form.customTotalTransferencia) || 0;
+        } else if (form.paymentType === 'Tarjeta') {
+            courseCost = Number(form.customTotalTarjeta) || 0;
+        }
+
+        const enrollmentCost = form.isEnrolled ? 0 : Number(form.enrollmentCost) || 0;
+        const certificadosCost = form.certificados.reduce((sum, cert) => sum + (Number(cert.costo) || 0), 0);
+        const becaDiscount = form.hasBeca && selectedBeca ? Number(selectedBeca.monto) || 0 : 0;
+        const bonusDiscount = form.hasBonus ? Number(form.bonusAmount) || 0 : 0;
 
         const subtotal = courseCost + enrollmentCost + certificadosCost;
         const totalWithDiscounts = subtotal - becaDiscount - bonusDiscount;
 
+        console.log('Cálculo total:', {
+            courseCost,
+            enrollmentCost,
+            certificadosCost,
+            becaDiscount,
+            bonusDiscount,
+            subtotal,
+            totalWithDiscounts: Math.max(0, totalWithDiscounts)
+        });
+
         return Math.max(0, totalWithDiscounts);
     };
 
+    // SUBMIT MEJORADO CON VALIDACIONES
     const handleSubmit = e => {
         e.preventDefault();
         try {
             if(!form.studentId||!form.courseId||!form.professorId)
-                throw new Error('Completa los campos obligatorios');
+                throw new Error('Completa los campos obligatorios: Alumno, Curso y Profesor');
 
             const student = students.find(s=>s.id===Number(form.studentId));
             const course = courses.find(c=>c.id===Number(form.courseId));
             const professor = professors.find(p => p.id === Number(form.professorId));
-            if (!course || !student || !professor) throw new Error('Curso, alumno o profesor no encontrado.');
 
-            if (!form.isEnrolled && form.enrollmentCost <= 0) {
+            if (!student) throw new Error('Alumno no encontrado');
+            if (!course) throw new Error('Curso no encontrado');
+            if (!professor) throw new Error('Profesor no encontrado');
+
+            if (!form.isEnrolled && (Number(form.enrollmentCost) || 0) <= 0) {
                 throw new Error('El costo de inscripción debe ser mayor a 0');
             }
 
@@ -425,52 +420,73 @@ export default function Inscripciones() {
                 throw new Error('Debe agregar al menos un certificado');
             }
 
+            // Validar que el curso tenga precios definidos
+            let courseCost = 0;
+            if (form.paymentType === 'Efectivo') {
+                courseCost = Number(form.customTotalEfectivo) || 0;
+            } else if (form.paymentType === 'Transferencia') {
+                courseCost = Number(form.customTotalTransferencia) || 0;
+            } else if (form.paymentType === 'Tarjeta') {
+                courseCost = Number(form.customTotalTarjeta) || 0;
+            }
+
+            if (courseCost <= 0) {
+                throw new Error(`El curso no tiene precio definido para ${form.paymentType}. Revisa la configuración del curso.`);
+            }
+
             const totalFinal = calcTotalFinal();
 
-            if (form.hasBonus && form.bonusAmount > totalFinal + form.bonusAmount) {
-                throw new Error('La bonificación no puede superar el total del curso');
+            if (totalFinal <= 0) {
+                throw new Error('El total final debe ser mayor a 0. Revisa los costos del curso y certificados.');
+            }
+
+            if (form.hasBonus && form.bonusAmount >= totalFinal + form.bonusAmount) {
+                throw new Error('La bonificación no puede ser igual o mayor al total del curso');
             }
 
             let installments = [];
             if (!form.fullPayment && form.enableInstallments) {
-                if (Number(form.customInstallments) <= 0) throw new Error('Ingrese número de cuotas válido.');
-                installments = generarCuotas(Number(form.customInstallments), totalFinal);
+                const numCuotas = Number(form.customInstallments) || 0;
+                if (numCuotas <= 0) throw new Error('Ingrese número de cuotas válido.');
+                if (numCuotas > (Number(form.customCuotas) || 0)) {
+                    throw new Error(`El número de cuotas no puede exceder ${form.customCuotas}`);
+                }
+                installments = generarCuotas(numCuotas, totalFinal);
             }
 
-            const newInsc = {
+            const newInscripcion = {
                 studentId: student.id,
                 courseId: course.id,
                 studentName: `${student.nombre} ${student.apellido}`,
                 courseName: course.nombre,
                 professorId: professor.id,
                 professorName: `${professor.nombre} ${professor.apellido}`,
-                inicio: course.inicio,
-                fin: course.fin,
-                vacantes: course.vacantes,
+                inicio: form.customInicio || course.inicio,
+                fin: form.customFin || course.fin,
+                vacantes: Number(form.customVacantes) || Number(course.vacantes) || 0,
                 paymentType: form.paymentType,
                 isEnrolled: form.isEnrolled,
-                enrollmentCost: Number(form.enrollmentCost),
+                enrollmentCost: Number(form.enrollmentCost) || 0,
                 enableInstallments: form.enableInstallments,
-                customInstallments: Number(form.customInstallments),
+                customInstallments: Number(form.customInstallments) || 0,
                 hasBeca: form.hasBeca,
                 becaId: form.hasBeca ? Number(form.becaId) : null,
-                becaMonto: form.hasBeca && selectedBeca ? selectedBeca.monto : 0,
+                becaMonto: form.hasBeca && selectedBeca ? Number(selectedBeca.monto) || 0 : 0,
                 certificados: [...form.certificados],
-                pagoFechaEfectivo: Number(form.customPagoFechaEfectivo),
-                pagoVencidoEfectivo: Number(form.customPagoVencidoEfectivo),
-                totalEfectivo: Number(form.customTotalEfectivo),
-                pagoFechaTransferencia: Number(form.customPagoFechaTransferencia),
-                pagoVencidoTransferencia: Number(form.customPagoVencidoTransferencia),
-                totalTransferencia: Number(form.customTotalTransferencia),
-                totalTarjeta: Number(form.customTotalTarjeta),
-                cuotas: Number(form.customCuotas),
+                pagoFechaEfectivo: Number(form.customPagoFechaEfectivo) || 0,
+                pagoVencidoEfectivo: Number(form.customPagoVencidoEfectivo) || 0,
+                totalEfectivo: Number(form.customTotalEfectivo) || 0,
+                pagoFechaTransferencia: Number(form.customPagoFechaTransferencia) || 0,
+                pagoVencidoTransferencia: Number(form.customPagoVencidoTransferencia) || 0,
+                totalTransferencia: Number(form.customTotalTransferencia) || 0,
+                totalTarjeta: Number(form.customTotalTarjeta) || 0,
+                cuotas: Number(form.customCuotas) || 0,
                 hasBonus: form.hasBonus,
-                bonusAmount: Number(form.bonusAmount || 0),
+                bonusAmount: Number(form.bonusAmount) || 0,
                 fullPayment: form.fullPayment,
                 installments,
                 horariosCurso: course.horarios || [],
                 totalFinal: totalFinal,
-                // Para CajaDiaria
                 formaPago: form.paymentType,
                 estado: 'Cursando',
                 activo: true,
@@ -479,22 +495,25 @@ export default function Inscripciones() {
                 fechaInscripcion: new Date().toISOString()
             };
 
+            console.log('Nueva inscripción creada:', newInscripcion);
+
             if(editing) {
-                updateInscription(editing.id, newInsc);
+                updateInscription(editing.id, newInscripcion);
                 showNotification('success', 'Inscripción actualizada correctamente');
             } else {
-                addInscription(newInsc);
+                addInscription(newInscripcion);
                 showNotification('success', 'Inscripción creada exitosamente');
             }
             closeForm();
         } catch(err) {
+            console.error('Error en inscripción:', err);
             showNotification('error', err.message);
         }
     };
 
-    const handleDelete = insc => {
-        if (window.confirm(`¿Seguro que querés eliminar la inscripción de ${insc.studentName} al curso ${insc.courseName}?`)) {
-            removeInscription(insc.id);
+    const handleDelete = inscripcion => {
+        if (window.confirm(`¿Seguro que querés eliminar la inscripción de ${inscripcion.studentName} al curso ${inscripcion.courseName}?`)) {
+            removeInscription(inscripcion.id);
             showNotification('success', 'Inscripción eliminada correctamente');
         }
     };
@@ -509,23 +528,22 @@ export default function Inscripciones() {
         showNotification('success', `Cuota ${num} pagada.`);
     };
 
-    // Obtener historial de la inscripción
     const getInscriptionHistory = (inscriptionId) => {
-        const insc = inscriptions.find(i => i.id === inscriptionId);
-        if (!insc) return null;
+        const inscripcion = inscriptions.find(i => i.id === inscriptionId);
+        if (!inscripcion) return null;
 
         const movements = cajaMovimientos.filter(m =>
-            m.studentId === insc.studentId && m.courseId === insc.courseId
+            m.studentId === inscripcion.studentId && m.courseId === inscripcion.courseId
         );
 
         const totalPagado = movements
             .filter(m => m.pago === 'Completada')
-            .length * (insc.totalFinal / Math.max(1, insc.customInstallments || 1));
+            .length * ((inscripcion.totalFinal || 0) / Math.max(1, inscripcion.customInstallments || 1));
 
-        const totalPendiente = insc.totalFinal - totalPagado;
+        const totalPendiente = (inscripcion.totalFinal || 0) - totalPagado;
 
         return {
-            inscripcion: insc,
+            inscripcion: inscripcion,
             movimientos: movements,
             totalPagado,
             totalPendiente,
@@ -535,7 +553,6 @@ export default function Inscripciones() {
 
     const historial = viewing ? getInscriptionHistory(viewing.id) : null;
 
-    /* ================== Render ================== */
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
             <div className="p-6 relative max-w-7xl mx-auto">
@@ -573,19 +590,28 @@ export default function Inscripciones() {
 
                 {/* Tabla */}
                 <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
-                    <div className="overflow-auto">
-                        <table className="min-w-full">
+                    <div className="overflow-y-auto">
+                        <table className="w-full table-fixed">
                             <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
                             <tr>
-                                {['ID','Alumno','Curso','Profesor','Inicio','Fin','Vacantes','Forma Pago','Pago Total','Total Final','Beca','Acciones'].map(h=>(
-                                    <th key={h} className="px-6 py-4 text-left font-semibold tracking-wide">{h}</th>
-                                ))}
+                                <th className="px-3 py-4 text-left font-bold text-base w-12">#</th>
+                                <th className="px-3 py-4 text-left font-bold text-base w-36">Alumno</th>
+                                <th className="px-3 py-4 text-left font-bold text-base w-28">Curso</th>
+                                <th className="px-3 py-4 text-left font-bold text-base w-28">Profesor</th>
+                                <th className="px-3 py-4 text-left font-bold text-base w-20">Inicio</th>
+                                <th className="px-3 py-4 text-left font-bold text-base w-20">Fin</th>
+                                <th className="px-3 py-4 text-center font-bold text-base w-16">Vacantes</th>
+                                <th className="px-3 py-4 text-center font-bold text-base w-28">Forma Pago</th>
+                                <th className="px-3 py-4 text-center font-bold text-base w-16">Pago Total</th>
+                                <th className="px-3 py-4 text-right font-bold text-base w-24">Total Final</th>
+                                <th className="px-3 py-4 text-center font-bold text-base w-16">Beca</th>
+                                <th className="px-3 py-4 text-center font-bold text-base w-20">Acciones</th>
                             </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                            {filtered.map((insc, index)=>(
+                            {filtered.map((inscripcion, index)=>(
                                 <motion.tr
-                                    key={insc.id}
+                                    key={inscripcion.id}
                                     className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition-all duration-200 ${
                                         index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                                     }`}
@@ -593,67 +619,87 @@ export default function Inscripciones() {
                                     animate={{opacity:1,y:0}}
                                     transition={{duration:0.2, delay: index * 0.05}}
                                 >
-                                    <td className="px-6 py-4 text-black font-bold text-lg">#{insc.id}</td>
-                                    <td className="px-6 py-4 text-black font-semibold">{insc.studentName}</td>
-                                    <td className="px-6 py-4 text-black font-semibold">{insc.courseName}</td>
-                                    <td className="px-6 py-4 text-gray-700">{insc.professorName}</td>
-                                    <td className="px-6 py-4 text-gray-700">{formatDate(insc.inicio)}</td>
-                                    <td className="px-6 py-4 text-gray-700">{formatDate(insc.fin)}</td>
-                                    <td className="px-6 py-4 text-gray-700">{insc.vacantes ?? '-'}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${
-                                            insc.paymentType==='Efectivo'?'bg-green-100 text-green-800':
-                                                insc.paymentType==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
+                                    <td className="px-3 py-4 text-black font-bold text-lg">{inscripcion.id}</td>
+                                    <td className="px-3 py-4">
+                                        <div className="text-black font-semibold text-base truncate" title={inscripcion.studentName}>
+                                            {inscripcion.studentName}
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-4">
+                                        <div className="text-black font-semibold text-base truncate" title={inscripcion.courseName}>
+                                            {inscripcion.courseName}
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-4">
+                                        <div className="text-gray-700 text-base truncate" title={inscripcion.professorName}>
+                                            {inscripcion.professorName}
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-4 text-gray-700 text-base font-medium">
+                                        {formatDate(inscripcion.inicio)}
+                                    </td>
+                                    <td className="px-3 py-4 text-gray-700 text-base font-medium">
+                                        {formatDate(inscripcion.fin)}
+                                    </td>
+                                    <td className="px-3 py-4 text-gray-700 text-base font-bold text-center">
+                                        {inscripcion.vacantes ?? '-'}
+                                    </td>
+                                    <td className="px-3 py-4 text-center">
+                                        <span className={`px-2 py-1 rounded-full text-sm font-bold whitespace-nowrap ${
+                                            inscripcion.paymentType==='Efectivo'?'bg-green-100 text-green-800':
+                                                inscripcion.paymentType==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
                                         }`}>
-                                            {insc.paymentType}
+                                            {inscripcion.paymentType}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-center">
-                                        {insc.fullPayment ?
+                                    <td className="px-3 py-4 text-center">
+                                        {inscripcion.fullPayment ?
                                             <FiCheck size={20} className="text-green-600 mx-auto"/> :
                                             <FiX size={20} className="text-red-600 mx-auto"/>
                                         }
                                     </td>
-                                    <td className="px-6 py-4 text-black font-bold text-purple-700">
-                                        ${formatNumber(insc.totalFinal || 0)}
+                                    <td className="px-3 py-4 text-right">
+                                        <div className="text-black font-bold text-purple-700 text-lg">
+                                            ${formatNumber(inscripcion.totalFinal || 0)}
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        {insc.hasBeca ? (
-                                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                                                -${formatNumber(insc.becaMonto || 0)}
+                                    <td className="px-3 py-4 text-center">
+                                        {inscripcion.hasBeca ? (
+                                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 whitespace-nowrap">
+                                                -${formatNumber(inscripcion.becaMonto || 0)}
                                             </span>
                                         ) : (
-                                            <span className="text-gray-500">-</span>
+                                            <span className="text-gray-400 text-base">-</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex space-x-3">
+                                    <td className="px-3 py-4">
+                                        <div className="flex space-x-1 justify-center">
                                             <motion.button
-                                                onClick={() => setViewing(insc)}
-                                                whileHover={{ scale: 1.2 }}
+                                                onClick={() => setViewing(inscripcion)}
+                                                whileHover={{ scale: 1.1 }}
                                                 whileTap={{ scale: 0.9 }}
-                                                className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-full hover:bg-blue-50"
+                                                className="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded-full hover:bg-blue-50"
                                                 title="Ver detalles"
                                             >
-                                                <FiEye size={20} />
+                                                <FiEye size={18} />
                                             </motion.button>
                                             <motion.button
-                                                onClick={() => openForm(insc)}
-                                                whileHover={{ scale: 1.2 }}
+                                                onClick={() => openForm(inscripcion)}
+                                                whileHover={{ scale: 1.1 }}
                                                 whileTap={{ scale: 0.9 }}
-                                                className="text-green-600 hover:text-green-800 transition-colors p-2 rounded-full hover:bg-green-50"
+                                                className="text-green-600 hover:text-green-800 transition-colors p-1 rounded-full hover:bg-green-50"
                                                 title="Editar inscripción"
                                             >
-                                                <FiEdit size={20} />
+                                                <FiEdit size={18} />
                                             </motion.button>
                                             <motion.button
-                                                onClick={() => handleDelete(insc)}
-                                                whileHover={{ scale: 1.2 }}
+                                                onClick={() => handleDelete(inscripcion)}
+                                                whileHover={{ scale: 1.1 }}
                                                 whileTap={{ scale: 0.9 }}
-                                                className="text-red-600 hover:text-red-800 transition-colors p-2 rounded-full hover:bg-red-50"
+                                                className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-red-50"
                                                 title="Eliminar inscripción"
                                             >
-                                                <FiTrash2 size={20} />
+                                                <FiTrash2 size={18} />
                                             </motion.button>
                                         </div>
                                     </td>
@@ -664,7 +710,7 @@ export default function Inscripciones() {
                                     <td colSpan={12} className="text-center py-12 text-gray-500">
                                         <div className="flex flex-col items-center space-y-2">
                                             <FiSearch className="w-12 h-12 text-gray-300" />
-                                            <div className="text-lg">
+                                            <div className="text-xl">
                                                 {search ? 'No se encontraron inscripciones que coincidan con los filtros.' : 'No hay inscripciones disponibles.'}
                                             </div>
                                         </div>
@@ -677,7 +723,7 @@ export default function Inscripciones() {
                 </div>
             </div>
 
-            {/* Modal Detalles - Mejorado como en Alumnos */}
+            {/* Modal Detalles - MEJORADO */}
             <AnimatePresence>
                 {viewing && (
                     <motion.div
@@ -686,179 +732,260 @@ export default function Inscripciones() {
                         onClick={() => setViewing(null)}
                     >
                         <motion.div
-                            className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto relative border-2 border-blue-400 text-black shadow-md"
-                            initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
+                            className="bg-white p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto relative text-black shadow-2xl"
+                            initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
+                            transition={{ type: "spring", damping: 20 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-lg">
-                                <button
-                                    className="absolute top-4 right-4 bg-gray-100 rounded-full p-2 shadow hover:bg-gray-200 transition-colors"
-                                    onClick={() => setViewing(null)}
-                                >
-                                    <FiX className="w-5 h-5" />
-                                </button>
-                                <h2 className="text-2xl font-bold text-gray-800">Detalles de la Inscripción</h2>
-                                <p className="text-gray-600">Información completa del registro</p>
-                            </div>
+                            <button
+                                className="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors"
+                                onClick={() => setViewing(null)}
+                            >
+                                <FiX size={20} />
+                            </button>
 
-                            <div className="p-6 space-y-6">
-                                {/* Información principal en layout horizontal */}
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    {/* Datos del Alumno */}
-                                    <div className="space-y-4">
-                                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                                            <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
-                                                <FiUserPlus className="mr-2" />
-                                                Información del Alumno
-                                            </h4>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Nombre:</span>
-                                                    <span>{viewing.studentName}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">ID Alumno:</span>
-                                                    <span>#{viewing.studentId}</span>
-                                                </div>
-                                            </div>
+                            <h2 className="text-3xl font-bold mb-6 text-purple-800">Detalles de la Inscripción</h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="space-y-4">
+                                    {/* Información del Alumno */}
+                                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                        <div className="text-sm text-purple-600 font-semibold mb-1">ALUMNO</div>
+                                        <div className="text-lg font-bold">{viewing.studentName}</div>
+                                        <div className="text-sm text-purple-700 mt-1">
+                                            ID: #{viewing.studentId}
                                         </div>
                                     </div>
 
-                                    {/* Datos del Curso */}
-                                    <div className="space-y-4">
-                                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                            <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                                                <FiCalendar className="mr-2" />
-                                                Información del Curso
-                                            </h4>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Curso:</span>
-                                                    <span>{viewing.courseName}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Profesor:</span>
-                                                    <span>{viewing.professorName}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Inicio:</span>
-                                                    <span>{formatDate(viewing.inicio)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Fin:</span>
-                                                    <span>{formatDate(viewing.fin)}</span>
-                                                </div>
-                                            </div>
+                                    {/* Información del Curso */}
+                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                        <div className="text-sm text-blue-600 font-semibold mb-1">CURSO</div>
+                                        <div className="text-lg font-bold">{viewing.courseName}</div>
+                                        <div className="text-sm text-blue-700 mt-1">
+                                            Inicio: {formatDate(viewing.inicio)} • Fin: {formatDate(viewing.fin)} • Vacantes: {viewing.vacantes ?? '-'}
                                         </div>
                                     </div>
 
-                                    {/* Datos de Pago */}
-                                    <div className="space-y-4">
-                                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                                            <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-                                                <FiDollarSign className="mr-2" />
-                                                Información de Pago
-                                            </h4>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Forma de Pago:</span>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                                        viewing.paymentType==='Efectivo'?'bg-green-100 text-green-800':
-                                                            viewing.paymentType==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
-                                                    }`}>
-                                                        {viewing.paymentType}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Total Final:</span>
-                                                    <span className="font-bold text-green-600">${formatNumber(viewing.totalFinal || 0)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-medium text-gray-600">Pago Total:</span>
-                                                    {viewing.fullPayment ?
-                                                        <FiCheck size={16} className="text-green-600"/> :
-                                                        <FiX size={16} className="text-red-600"/>
-                                                    }
-                                                </div>
-                                                {viewing.hasBeca && (
-                                                    <div className="flex justify-between">
-                                                        <span className="font-medium text-gray-600">Beca:</span>
-                                                        <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                                                            -${formatNumber(viewing.becaMonto || 0)}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                    {/* Información del Profesor */}
+                                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                        <div className="text-sm text-green-600 font-semibold mb-1">PROFESOR</div>
+                                        <div className="text-lg font-bold">{viewing.professorName}</div>
                                     </div>
                                 </div>
 
-                                {/* Certificados */}
-                                {viewing.certificados && viewing.certificados.length > 0 && (
-                                    <div>
-                                        <h4 className="text-lg font-semibold text-gray-700 mb-3">Certificados</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            {viewing.certificados.map((cert, idx) => (
-                                                <div key={idx} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                                                    <div className="font-medium text-orange-800">{cert.tipo}</div>
-                                                    <div className="text-sm text-orange-600">${formatNumber(cert.costo)}</div>
-                                                </div>
-                                            ))}
+                                <div className="space-y-4">
+                                    {/* Forma de Pago */}
+                                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                                        <div className="text-sm text-orange-600 font-semibold mb-1">FORMA DE PAGO</div>
+                                        <div className="text-lg font-bold">
+                                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                                                viewing.paymentType==='Efectivo'?'bg-green-100 text-green-800':
+                                                    viewing.paymentType==='Transferencia'?'bg-blue-100 text-blue-800':'bg-purple-100 text-purple-800'
+                                            }`}>
+                                                {viewing.paymentType}
+                                            </span>
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Cuotas si existen */}
-                                {viewing.installments && viewing.installments.length > 0 && (
-                                    <div>
-                                        <h4 className="text-lg font-semibold text-gray-700 mb-3">Plan de Cuotas</h4>
-                                        <div className="bg-gray-50 rounded-lg p-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {viewing.installments.map((inst, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center p-3 bg-white rounded border">
-                                                        <div>
-                                                            <span className="font-medium">Cuota {inst.number}</span>
-                                                            <div className="text-sm text-gray-600">Vence: {inst.dueDate}</div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className="font-bold">${formatNumber(inst.amount)}</div>
-                                                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                                                inst.status === 'Pagado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                                            }`}>
-                                                                {inst.status}
-                                                            </span>
-                                                        </div>
+                                    {/* Costos Detallados - MEJORADO */}
+                                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                                        <div className="text-sm text-indigo-600 font-semibold mb-2">COSTOS DETALLADOS</div>
+
+                                        {viewing.paymentType === 'Efectivo' && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Pago en Fecha:</span>
+                                                    <span className="font-bold text-green-600">${formatNumber(Number(viewing.pagoFechaEfectivo) || 0)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Pago Vencido:</span>
+                                                    <span className="font-bold text-red-600">${formatNumber(Number(viewing.pagoVencidoEfectivo) || 0)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm border-t border-indigo-300 pt-2">
+                                                    <span className="font-bold">Total Curso:</span>
+                                                    <span className="font-bold text-indigo-900">${formatNumber(Number(viewing.totalEfectivo) || 0)}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {viewing.paymentType === 'Transferencia' && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Pago en Fecha:</span>
+                                                    <span className="font-bold text-green-600">${formatNumber(Number(viewing.pagoFechaTransferencia) || 0)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Pago Vencido:</span>
+                                                    <span className="font-bold text-red-600">${formatNumber(Number(viewing.pagoVencidoTransferencia) || 0)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm border-t border-indigo-300 pt-2">
+                                                    <span className="font-bold">Total Curso:</span>
+                                                    <span className="font-bold text-indigo-900">${formatNumber(Number(viewing.totalTransferencia) || 0)}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {viewing.paymentType === 'Tarjeta' && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm border-t border-indigo-300 pt-2">
+                                                    <span className="font-bold">Total Curso:</span>
+                                                    <span className="font-bold text-indigo-900">${formatNumber(Number(viewing.totalTarjeta) || 0)}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Certificados - MEJORADO */}
+                                        {viewing.certificados && viewing.certificados.length > 0 && (
+                                            <div className="mt-4 pt-3 border-t border-indigo-300">
+                                                <div className="text-xs text-indigo-600 font-semibold mb-2">CERTIFICADOS</div>
+                                                {viewing.certificados.map((cert, idx) => (
+                                                    <div key={idx} className="flex justify-between text-sm">
+                                                        <span>{cert.tipo || 'Sin tipo'}:</span>
+                                                        <span className="font-bold text-orange-600">+${formatNumber(Number(cert.costo) || 0)}</span>
                                                     </div>
                                                 ))}
                                             </div>
+                                        )}
+
+                                        {/* Descuentos - MEJORADO */}
+                                        {(viewing.hasBeca || viewing.hasBonus) && (
+                                            <div className="mt-4 pt-3 border-t border-indigo-300">
+                                                <div className="text-xs text-indigo-600 font-semibold mb-2">DESCUENTOS</div>
+                                                {viewing.hasBeca && (
+                                                    <div className="flex justify-between text-sm">
+                                                        <span>Beca:</span>
+                                                        <span className="font-bold text-yellow-600">-${formatNumber(Number(viewing.becaMonto) || 0)}</span>
+                                                    </div>
+                                                )}
+                                                {viewing.hasBonus && (
+                                                    <div className="flex justify-between text-sm">
+                                                        <span>Bonificación:</span>
+                                                        <span className="font-bold text-yellow-600">-${formatNumber(Number(viewing.bonusAmount) || 0)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Total Final */}
+                                        <div className="mt-4 pt-3 border-t-2 border-indigo-400">
+                                            <div className="flex justify-between">
+                                                <span className="text-lg font-bold text-indigo-800">TOTAL FINAL:</span>
+                                                <span className="text-2xl font-bold text-indigo-900">
+                                                    ${formatNumber(Number(viewing.totalFinal) || 0)}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                )}
-
-                                {/* Acciones */}
-                                <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200">
-                                    <button
-                                        className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
-                                        onClick={() => openHistorial(viewing)}
-                                    >
-                                        <FiClock className="w-4 h-4"/>
-                                        <span>Ver Historial</span>
-                                    </button>
-                                    <button
-                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                                        onClick={() => { setViewing(null); openForm(viewing); }}
-                                    >
-                                        <FiEdit className="w-4 h-4"/>
-                                        <span>Editar</span>
-                                    </button>
                                 </div>
+                            </div>
+
+                            {/* Plan de Cuotas o Pago Completo - MEJORADO */}
+                            {viewing.fullPayment ? (
+                                <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-l-4 border-green-500">
+                                    <div className="flex items-center space-x-3">
+                                        <FiCheck size={28} className="text-green-600"/>
+                                        <div>
+                                            <div className="text-xl font-bold text-green-800">Pago Total Realizado</div>
+                                            <div className="text-green-600">El curso ha sido pagado completamente</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : viewing.installments && viewing.installments.length > 0 ? (
+                                <div className="space-y-4">
+                                    <h3 className="text-2xl font-semibold text-gray-800">Plan de Cuotas</h3>
+                                    <div className="overflow-auto border-2 border-gray-300 rounded-xl shadow-lg">
+                                        <table className="min-w-full bg-white">
+                                            <thead className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                                            <tr>
+                                                {['Cuota','Vencimiento','Estado','Fecha Pago','Monto','Acción'].map(h=>(
+                                                    <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
+                                                ))}
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {viewing.installments.map((inst, index) => (
+                                                <tr key={inst.number} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                                                    <td className="px-4 py-3 text-black font-bold">#{inst.number}</td>
+                                                    <td className="px-4 py-3 text-black">
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{inst.dueDate}</span>
+                                                            {isOverdue(inst.dueDate) && inst.status === 'Pendiente' && (
+                                                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Vencida</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${inst.status==='Pagado'?'bg-green-100 text-green-800':'bg-yellow-100 text-yellow-800'}`}>
+                                                            {inst.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-black">{inst.paymentDate || '-'}</td>
+                                                    <td className="px-4 py-3 text-black font-bold text-purple-700">
+                                                        ${formatNumber(getAdjustedAmount(Number(inst.amount) || 0, inst.dueDate))}
+                                                        {inst.status === 'Pagado' && inst.amountPaid != null && (
+                                                            <span className="ml-2 text-xs text-gray-500">(Pagado: ${formatNumber(inst.amountPaid)})</span>
+                                                        )}
+                                                        {isOverdue(inst.dueDate) && inst.status==='Pendiente' && (
+                                                            <div className="text-xs text-red-600 mt-1">Incluye recargo por pago fuera de término</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {inst.status==='Pendiente' && (
+                                                            <button
+                                                                onClick={() => handlePayInstallment(viewing.id, inst.number)}
+                                                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all font-semibold shadow-md"
+                                                            >
+                                                                Pagar
+                                                            </button>
+                                                        )}
+                                                        {inst.status==='Pagado' && (
+                                                            <div className="flex items-center text-green-600">
+                                                                <FiCheck size={16} className="mr-1"/>
+                                                                <span className="text-sm font-semibold">Pagado</span>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Cuando no hay cuotas */
+                                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6 text-center">
+                                    <div className="text-yellow-800 font-semibold text-lg mb-2">
+                                        No hay plan de cuotas configurado
+                                    </div>
+                                    <div className="text-yellow-600">
+                                        Esta inscripción no tiene cuotas habilitadas o no se configuró un plan de pagos
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Botones de acción */}
+                            <div className="flex justify-center space-x-4 pt-6 mt-6 border-t border-gray-200">
+                                <button
+                                    className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
+                                    onClick={() => { setViewing(viewing); setIsHistorialOpen(true); }}
+                                >
+                                    <FiClock className="w-4 h-4"/>
+                                    <span>Ver Historial</span>
+                                </button>
+                                <button
+                                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                                    onClick={() => { openForm(viewing); setViewing(null); }}
+                                >
+                                    <FiEdit className="w-4 h-4"/>
+                                    <span>Editar Inscripción</span>
+                                </button>
                             </div>
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Modal Historial */}
+            {/* Modal Historial - MEJORADO */}
             <AnimatePresence>
                 {isHistorialOpen && viewing && (
                     <motion.div
@@ -875,7 +1002,6 @@ export default function Inscripciones() {
                             exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Header */}
                             <div className="bg-orange-600 text-white p-6 flex justify-between items-center">
                                 <div>
                                     <h2 className="text-2xl font-bold">Historial de Pagos</h2>
@@ -890,19 +1016,17 @@ export default function Inscripciones() {
                                 </button>
                             </div>
 
-                            {/* Contenido */}
                             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                                 {historial && (
                                     <div className="space-y-6">
-                                        {/* Resumen */}
                                         <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-orange-800">${formatNumber(historial.totalPagado)}</div>
+                                                    <div className="text-2xl font-bold text-orange-800">${formatNumber(Number(historial.totalPagado) || 0)}</div>
                                                     <div className="text-orange-600">Total Pagado</div>
                                                 </div>
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-red-800">${formatNumber(historial.totalPendiente)}</div>
+                                                    <div className="text-2xl font-bold text-red-800">${formatNumber(Number(historial.totalPendiente) || 0)}</div>
                                                     <div className="text-red-600">Total Pendiente</div>
                                                 </div>
                                                 <div className="text-center">
@@ -917,14 +1041,13 @@ export default function Inscripciones() {
                                             </div>
                                         </div>
 
-                                        {/* Movimientos */}
                                         <div>
                                             <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
                                                 <div className="w-1 h-6 bg-orange-600 rounded mr-3"></div>
                                                 Movimientos de Caja
                                             </h3>
 
-                                            {historial.movimientos.length > 0 ? (
+                                            {historial.movimientos && historial.movimientos.length > 0 ? (
                                                 <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
                                                     <table className="min-w-full">
                                                         <thead className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
@@ -998,7 +1121,7 @@ export default function Inscripciones() {
                 )}
             </AnimatePresence>
 
-            {/* Modal Formulario - Igual al original pero mejorado */}
+            {/* Modal Formulario - COMPLETO MEJORADO */}
             <AnimatePresence>
                 {isFormOpen && (
                     <motion.div
@@ -1010,7 +1133,6 @@ export default function Inscripciones() {
                             initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Header fijo morado */}
                             <div className="bg-purple-600 text-white p-6 flex justify-between items-center shadow-sm">
                                 <h2 className="text-2xl font-bold">{editing ? 'Editar' : 'Nueva'} Inscripción</h2>
                                 <button type="button" className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors" onClick={closeForm}>
@@ -1018,7 +1140,6 @@ export default function Inscripciones() {
                                 </button>
                             </div>
 
-                            {/* Contenido con scroll */}
                             <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(95vh-140px)]">
                                 <div className="p-6 space-y-8">
                                     {/* Información general */}
@@ -1066,43 +1187,6 @@ export default function Inscripciones() {
                                         </div>
                                     </div>
 
-                                    {/* Estado de Inscripción */}
-                                    <div className="shadow-sm rounded-xl">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Estado de Inscripción
-                                        </h3>
-                                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                                            <div className="flex items-center space-x-3 mb-4">
-                                                <input
-                                                    type="checkbox"
-                                                    id="isEnrolled"
-                                                    name="isEnrolled"
-                                                    checked={form.isEnrolled}
-                                                    onChange={handleChange}
-                                                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
-                                                />
-                                                <label htmlFor="isEnrolled" className="font-semibold text-yellow-800">
-                                                    ¿Está inscripto el alumno?
-                                                </label>
-                                            </div>
-                                            {!form.isEnrolled && (
-                                                <div className="flex flex-col">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700">Costo de Inscripción:</label>
-                                                    <input
-                                                        type="number"
-                                                        name="enrollmentCost"
-                                                        value={form.enrollmentCost}
-                                                        onChange={handleChange}
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
-                                                        min="0"
-                                                        step="0.01"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
                                     {/* Forma de Pago */}
                                     <div className="shadow-sm rounded-xl">
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
@@ -1139,42 +1223,6 @@ export default function Inscripciones() {
                                                 </label>
                                             </div>
                                         </div>
-
-                                        {/* Información de precios del curso */}
-                                        {selectedCourse && (
-                                            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                                <div className="bg-gray-50 p-4 rounded-lg">
-                                                    <h4 className="font-semibold text-gray-700 mb-2">Pago en Fecha</h4>
-                                                    <div className="text-lg font-bold text-green-600">
-                                                        ${formatNumber(
-                                                        form.paymentType === 'Efectivo' ? form.customPagoFechaEfectivo :
-                                                            form.paymentType === 'Transferencia' ? form.customPagoFechaTransferencia :
-                                                                'N/A'
-                                                    )}
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-50 p-4 rounded-lg">
-                                                    <h4 className="font-semibold text-gray-700 mb-2">Pago Vencido</h4>
-                                                    <div className="text-lg font-bold text-red-600">
-                                                        ${formatNumber(
-                                                        form.paymentType === 'Efectivo' ? form.customPagoVencidoEfectivo :
-                                                            form.paymentType === 'Transferencia' ? form.customPagoVencidoTransferencia :
-                                                                'N/A'
-                                                    )}
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-50 p-4 rounded-lg">
-                                                    <h4 className="font-semibold text-gray-700 mb-2">Costo Total</h4>
-                                                    <div className="text-lg font-bold text-purple-600">
-                                                        ${formatNumber(
-                                                        form.paymentType === 'Efectivo' ? form.customTotalEfectivo :
-                                                            form.paymentType === 'Transferencia' ? form.customTotalTransferencia :
-                                                                form.customTotalTarjeta
-                                                    )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
 
                                         {/* Cuotas */}
                                         {courseHasInstallments() && !form.fullPayment && (
@@ -1237,7 +1285,7 @@ export default function Inscripciones() {
                                                         value={form.certificadoDraft.costo}
                                                         onChange={(e) => setForm(fd => ({
                                                             ...fd,
-                                                            certificadoDraft: { ...fd.certificadoDraft, costo: Number(e.target.value) }
+                                                            certificadoDraft: { ...fd.certificadoDraft, costo: Number(e.target.value) || 0 }
                                                         }))}
                                                         className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none w-32 transition-colors"
                                                         min="0"
@@ -1266,7 +1314,7 @@ export default function Inscripciones() {
                                                                 >
                                                                     <div className="text-black">
                                                                         <span className="font-medium">{cert.tipo}</span>
-                                                                        <span className="ml-2 text-gray-600">${formatNumber(cert.costo)}</span>
+                                                                        <span className="ml-2 text-gray-600">${formatNumber(cert.costo || 0)}</span>
                                                                     </div>
                                                                     <button
                                                                         type="button"
@@ -1284,149 +1332,136 @@ export default function Inscripciones() {
                                         </div>
                                     </div>
 
-                                    {/* Becas */}
+                                    {/* Becas y Bonificaciones */}
                                     <div className="shadow-sm rounded-xl">
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                                             <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Becas
+                                            Becas y Descuentos
                                         </h3>
-                                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                                            <div className="flex items-center space-x-3 mb-4">
-                                                <input
-                                                    type="checkbox"
-                                                    id="hasBeca"
-                                                    name="hasBeca"
-                                                    checked={form.hasBeca}
-                                                    onChange={handleChange}
-                                                    className="w-5 h-5 text-yellow-600 rounded focus:ring-yellow-500"
-                                                />
-                                                <label htmlFor="hasBeca" className="font-semibold text-yellow-800">
-                                                    ¿Tiene Beca?
-                                                </label>
-                                            </div>
-                                            {form.hasBeca && (
-                                                <div className="flex flex-col">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700">Seleccionar Beca:</label>
-                                                    <SearchableSelect
-                                                        options={availableBecas}
-                                                        value={form.becaId}
-                                                        onChange={v => setForm(prev => ({ ...prev, becaId: v }))}
-                                                        placeholder="Selecciona una beca..."
-                                                        getLabel={b => `Beca ${b.tipo} - $${formatNumber(b.monto)}`}
-                                                        getValue={b => b.id.toString()}
-                                                    />
-                                                    {selectedBeca && (
-                                                        <div className="mt-2 text-sm text-yellow-700">
-                                                            Descuento: $-{formatNumber(selectedBeca.monto)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Bonificación */}
-                                    <div className="shadow-sm rounded-xl">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Bonificación
-                                        </h3>
-                                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                                            <div className="flex items-center space-x-3 mb-4">
-                                                <input
-                                                    type="checkbox"
-                                                    id="hasBonus"
-                                                    name="hasBonus"
-                                                    checked={form.hasBonus}
-                                                    onChange={handleChange}
-                                                    className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
-                                                />
-                                                <label htmlFor="hasBonus" className="font-semibold text-orange-800">
-                                                    Aplicar bonificación (descuento adicional)
-                                                </label>
-                                            </div>
-                                            {form.hasBonus && (
-                                                <div className="flex flex-col">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700">Monto a descontar:</label>
+                                        <div className="space-y-4">
+                                            {/* Becas */}
+                                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                                                <div className="flex items-center space-x-3 mb-4">
                                                     <input
-                                                        type="number"
-                                                        name="bonusAmount"
-                                                        value={form.bonusAmount}
+                                                        type="checkbox"
+                                                        id="hasBeca"
+                                                        name="hasBeca"
+                                                        checked={form.hasBeca}
                                                         onChange={handleChange}
-                                                        className="border-2 border-orange-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors w-48"
-                                                        min="0"
-                                                        step="0.01"
-                                                        placeholder="0.00"
+                                                        className="w-5 h-5 text-yellow-600 rounded focus:ring-yellow-500"
                                                     />
-                                                    <small className="text-orange-600 mt-1">
-                                                        No puede superar el total del curso
-                                                    </small>
+                                                    <label htmlFor="hasBeca" className="font-semibold text-yellow-800">
+                                                        ¿Tiene Beca?
+                                                    </label>
                                                 </div>
-                                            )}
+                                                {form.hasBeca && (
+                                                    <div className="flex flex-col">
+                                                        <label className="text-sm font-medium mb-2 text-gray-700">Seleccionar Beca:</label>
+                                                        <SearchableSelect
+                                                            options={availableBecas}
+                                                            value={form.becaId}
+                                                            onChange={v => setForm(prev => ({ ...prev, becaId: v }))}
+                                                            placeholder="Selecciona una beca..."
+                                                            getLabel={b => `Beca ${b.tipo} - $${formatNumber(b.monto)}`}
+                                                            getValue={b => b.id.toString()}
+                                                        />
+                                                        {selectedBeca && (
+                                                            <div className="mt-2 text-sm text-yellow-700">
+                                                                Descuento: $-{formatNumber(selectedBeca.monto)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Bonificaciones */}
+                                            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                                                <div className="flex items-center space-x-3 mb-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="hasBonus"
+                                                        name="hasBonus"
+                                                        checked={form.hasBonus}
+                                                        onChange={handleChange}
+                                                        className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                                                    />
+                                                    <label htmlFor="hasBonus" className="font-semibold text-green-800">
+                                                        ¿Tiene Bonificación?
+                                                    </label>
+                                                </div>
+                                                {form.hasBonus && (
+                                                    <div className="flex flex-col">
+                                                        <label className="text-sm font-medium mb-2 text-gray-700">Monto de Bonificación:</label>
+                                                        <input
+                                                            type="number"
+                                                            name="bonusAmount"
+                                                            value={form.bonusAmount}
+                                                            onChange={handleChange}
+                                                            className="border-2 border-green-300 rounded-lg px-3 py-2 text-black focus:border-green-500 focus:outline-none transition-colors w-48"
+                                                            min="0"
+                                                            placeholder="Ingrese monto"
+                                                        />
+                                                        <small className="text-green-600 mt-1">Descuento adicional por bonificación</small>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Resumen Final */}
+                                    {/* Resumen Final - MEJORADO */}
                                     <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border-l-4 border-purple-500">
-                                        <h3 className="font-bold text-lg mb-4 text-purple-800">💰 Resumen Final</h3>
-                                        <div className="grid md:grid-cols-2 gap-6">
-                                            <div className="space-y-3">
-                                                <div className="bg-white p-4 rounded-lg shadow-sm">
-                                                    <div className="text-sm text-gray-600">Costo del Curso</div>
-                                                    <div className="text-xl font-bold text-gray-800">
-                                                        ${formatNumber(
-                                                        form.paymentType === 'Efectivo' ? form.customTotalEfectivo :
-                                                            form.paymentType === 'Transferencia' ? form.customTotalTransferencia :
-                                                                form.customTotalTarjeta
-                                                    )}
-                                                    </div>
-                                                </div>
-                                                {!form.isEnrolled && (
-                                                    <div className="bg-yellow-100 p-4 rounded-lg">
-                                                        <div className="text-sm text-yellow-800">+ Costo Inscripción</div>
-                                                        <div className="text-lg font-bold text-yellow-900">${formatNumber(form.enrollmentCost)}</div>
-                                                    </div>
-                                                )}
-                                                {form.certificados.length > 0 && (
-                                                    <div className="bg-blue-100 p-4 rounded-lg">
-                                                        <div className="text-sm text-blue-800">+ Certificados</div>
-                                                        <div className="text-lg font-bold text-blue-900">
-                                                            ${formatNumber(form.certificados.reduce((sum, cert) => sum + cert.costo, 0))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                        <h3 className="font-bold text-lg mb-4 text-purple-800">Resumen Final</h3>
 
-                                            <div className="space-y-3">
-                                                {form.hasBeca && selectedBeca && (
-                                                    <div className="bg-yellow-100 p-4 rounded-lg">
-                                                        <div className="text-sm text-yellow-800">- Beca {selectedBeca.tipo}</div>
-                                                        <div className="text-lg font-bold text-yellow-900">-${formatNumber(selectedBeca.monto)}</div>
-                                                    </div>
-                                                )}
-                                                {form.hasBonus && (
-                                                    <div className="bg-orange-100 p-4 rounded-lg">
-                                                        <div className="text-sm text-orange-800">- Bonificación</div>
-                                                        <div className="text-lg font-bold text-orange-900">-${formatNumber(form.bonusAmount)}</div>
-                                                    </div>
-                                                )}
-                                                <div className="bg-purple-100 p-4 rounded-lg border-2 border-purple-300">
-                                                    <div className="text-sm text-purple-800">TOTAL FINAL</div>
-                                                    <div className="text-3xl font-bold text-purple-900">
-                                                        ${formatNumber(calcTotalFinal())}
-                                                    </div>
-                                                    {form.enableInstallments && !form.fullPayment && form.customInstallments > 0 && (
-                                                        <div className="text-sm text-purple-700 mt-2">
-                                                            ${formatNumber(calcTotalFinal() / form.customInstallments)} x {form.customInstallments} cuotas
-                                                        </div>
-                                                    )}
-                                                </div>
+                                        {/* Desglose */}
+                                        <div className="space-y-2 mb-4 text-sm">
+                                            <div className="flex justify-between">
+                                                <span>Costo del curso ({form.paymentType}):</span>
+                                                <span>${formatNumber(
+                                                    form.paymentType === 'Efectivo' ? form.customTotalEfectivo :
+                                                        form.paymentType === 'Transferencia' ? form.customTotalTransferencia :
+                                                            form.customTotalTarjeta
+                                                )}</span>
                                             </div>
+                                            {!form.isEnrolled && (
+                                                <div className="flex justify-between">
+                                                    <span>Costo inscripción:</span>
+                                                    <span>+${formatNumber(form.enrollmentCost)}</span>
+                                                </div>
+                                            )}
+                                            {form.certificados.length > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span>Certificados ({form.certificados.length}):</span>
+                                                    <span>+${formatNumber(form.certificados.reduce((sum, cert) => sum + (Number(cert.costo) || 0), 0))}</span>
+                                                </div>
+                                            )}
+                                            {form.hasBeca && selectedBeca && (
+                                                <div className="flex justify-between text-yellow-700">
+                                                    <span>Beca ({selectedBeca.tipo}):</span>
+                                                    <span>-${formatNumber(selectedBeca.monto)}</span>
+                                                </div>
+                                            )}
+                                            {form.hasBonus && form.bonusAmount > 0 && (
+                                                <div className="flex justify-between text-green-700">
+                                                    <span>Bonificación:</span>
+                                                    <span>-${formatNumber(form.bonusAmount)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-purple-100 p-4 rounded-lg border-2 border-purple-300">
+                                            <div className="text-sm text-purple-800">TOTAL FINAL</div>
+                                            <div className="text-3xl font-bold text-purple-900">
+                                                ${formatNumber(calcTotalFinal())}
+                                            </div>
+                                            {form.enableInstallments && form.customInstallments > 0 && !form.fullPayment && (
+                                                <div className="text-sm text-purple-700 mt-2">
+                                                    En {form.customInstallments} cuotas de ${formatNumber(calcTotalFinal() / form.customInstallments)}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Footer con botones fijo */}
                                 <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex justify-end space-x-4">
                                     <button
                                         type="button"

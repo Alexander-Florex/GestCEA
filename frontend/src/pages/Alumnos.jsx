@@ -156,10 +156,10 @@ export default function Alumnos() {
     );
 
     // Abrir form (nuevo o editar)
-    const openForm = (alumno) => {
-        if (alumno) {
-            setEditing(alumno);
-            setFormData({ ...alumno });
+    const openForm = (student) => {
+        if (student) {
+            setEditing(student);
+            setFormData({ ...student });
         } else {
             setEditing(null);
             setFormData({
@@ -185,10 +185,10 @@ export default function Alumnos() {
     };
 
     // Abrir modal de inscripción
-    const openInscription = (alumno) => {
+    const openInscription = (student) => {
         setViewing(null);
         setInscriptionData({
-            studentId: alumno.id,
+            studentId: student.id,
             courseId: '',
             professorId: '',
             paymentType: 'Efectivo',
@@ -230,7 +230,7 @@ export default function Alumnos() {
     };
 
     // Abrir modal de historial
-    const openHistorial = (alumno) => {
+    const openHistorial = () => {
         setViewing(null);
         setIsHistorialOpen(true);
     };
@@ -308,17 +308,22 @@ export default function Alumnos() {
 
         // Calcular total base según forma de pago
         switch (inscriptionData.paymentType) {
-            case 'Efectivo':
+            case 'Efectivo': {
                 baseTotal = Number(inscriptionData.efectivoTotal) || 0;
                 break;
-            case 'Transferencia':
+            }
+            case 'Transferencia': {
                 baseTotal = Number(inscriptionData.transferenciasTotal) || 0;
                 break;
-            case 'Tarjeta':
+            }
+            case 'Tarjeta': {
                 baseTotal = Number(inscriptionData.tarjetasCursoTotal) || 0;
                 break;
-            default:
+            }
+            default: {
                 baseTotal = 0;
+                break;
+            }
         }
 
         // Calcular costo total de certificados seleccionados
@@ -361,23 +366,6 @@ export default function Alumnos() {
         }
     };
 
-    // Obtener pago por cuota según forma de pago
-    const getPagoEnFecha = () => {
-        switch (inscriptionData.paymentType) {
-            case 'Efectivo':
-                return Number(inscriptionData.efectivoPagoEnFecha) || 0;
-            case 'Transferencia':
-                return Number(inscriptionData.transferenciasPagoEnFecha) || 0;
-            case 'Tarjeta':
-                // Para tarjetas, calculamos basado en el total y cuotas
-                const totalTarjeta = Number(inscriptionData.tarjetasCursoTotal) || 0;
-                const cuotasTarjeta = Number(inscriptionData.tarjetasCuotas) || 1;
-                return totalTarjeta / cuotasTarjeta;
-            default:
-                return 0;
-        }
-    };
-
     // Manejar inscripción con nueva estructura
     const handleInscriptionSubmit = (e) => {
         e.preventDefault();
@@ -396,6 +384,29 @@ export default function Alumnos() {
 
             const totalNeto = calcTotalFinal();
 
+            // Generar cuotas si es necesario
+            let installments = [];
+            if (!inscriptionData.fullPayment) {
+                const numCuotas = getCuotasForPaymentType();
+                if (numCuotas > 0) {
+                    // Aquí puedes implementar la generación de cuotas si la tienes
+                    // installments = generarCuotas(numCuotas, totalNeto, getPaymentTypeData());
+                }
+            }
+
+            // Obtener certificados seleccionados con la estructura correcta
+            const certificadosSeleccionados = [];
+            if (inscriptionData.selectedCertificados && inscriptionData.selectedCertificados.length > 0) {
+                inscriptionData.selectedCertificados.forEach(certTipo => {
+                    const costo = Number(course.costosCertificado?.[certTipo] || 0);
+                    certificadosSeleccionados.push({
+                        tipo: certTipo,
+                        costo: costo,
+                        selected: true
+                    });
+                });
+            }
+
             const inscriptionPayload = {
                 studentId: student.id,
                 courseId: course.id,
@@ -407,93 +418,76 @@ export default function Alumnos() {
                 fin: inscriptionData.customFin,
                 vacantes: inscriptionData.customVacantes,
                 paymentType: inscriptionData.paymentType,
-                // Datos de efectivo
-                efectivo: {
-                    pagoEnFecha: Number(inscriptionData.efectivoPagoEnFecha),
-                    pagoVencido: Number(inscriptionData.efectivoPagoVencido),
-                    total: Number(inscriptionData.efectivoTotal),
-                    cuotas: Number(inscriptionData.efectivoCuotas)
-                },
-                // Datos de transferencias
-                transferencias: {
-                    pagoEnFecha: Number(inscriptionData.transferenciasPagoEnFecha),
-                    pagoVencido: Number(inscriptionData.transferenciasPagoVencido),
-                    total: Number(inscriptionData.transferenciasTotal),
-                    cuotas: Number(inscriptionData.transferenciasCuotas)
-                },
-                // Datos de tarjetas
-                tarjetas: {
-                    porcentaje: Number(inscriptionData.tarjetasPorcentaje),
-                    cursoTotal: Number(inscriptionData.tarjetasCursoTotal),
-                    cuotas: Number(inscriptionData.tarjetasCuotas)
-                },
-                // Certificados múltiples
-                certificados: inscriptionData.selectedCertificados || [],
+                fullPayment: inscriptionData.fullPayment,
+
+                // *** ESTRUCTURA CORREGIDA - Campos directos como espera Inscripciones.jsx ***
+                // Efectivo
+                pagoFechaEfectivo: Number(inscriptionData.efectivoPagoEnFecha || 0),
+                pagoVencidoEfectivo: Number(inscriptionData.efectivoPagoVencido || 0),
+                totalEfectivo: Number(inscriptionData.efectivoTotal || 0),
+                cuotasEfectivo: Number(inscriptionData.efectivoCuotas || 0),
+
+                // Transferencia
+                pagoFechaTransferencia: Number(inscriptionData.transferenciasPagoEnFecha || 0),
+                pagoVencidoTransferencia: Number(inscriptionData.transferenciasPagoVencido || 0),
+                totalTransferencia: Number(inscriptionData.transferenciasTotal || 0),
+                cuotasTransferencia: Number(inscriptionData.transferenciasCuotas || 0),
+
+                // Tarjeta
+                porcentajeTarjeta: Number(inscriptionData.tarjetasPorcentaje || 0),
+                totalTarjeta: Number(inscriptionData.tarjetasCursoTotal || 0),
+                cuotasTarjeta: Number(inscriptionData.tarjetasCuotas || 0),
+
+                // Certificados con estructura correcta
+                certificados: certificadosSeleccionados,
+
                 // Bonificación
                 hasBonus: inscriptionData.hasBonus,
                 bonusAmount: Number(inscriptionData.bonusAmount || 0),
-                // Otros datos
-                fullPayment: inscriptionData.fullPayment,
+
+                // Becas
+                hasBeca: inscriptionData.hasBeca,
+                becaId: inscriptionData.hasBeca ? Number(inscriptionData.selectedBecaId) : null,
+                becaMonto: (() => {
+                    if (inscriptionData.hasBeca && inscriptionData.selectedBecaId) {
+                        const selectedBeca = becas.find(b => b.id === Number(inscriptionData.selectedBecaId));
+                        return Number(selectedBeca?.monto || 0);
+                    }
+                    return 0;
+                })(),
+
+                // Otros campos
+                fechaInicio: inscriptionData.customInicio,
+                fechaFin: inscriptionData.customFin,
                 totalFinal: totalNeto,
+                installments: installments,
                 fechaInscripcion: new Date().toISOString(),
                 estado: 'Cursando',
                 activo: true,
                 personal: user?.name || 'Usuario Sistema',
-                pago: 'Pendiente',
-                observaciones: inscriptionData.observaciones,
-                installments: inscriptionData.fullPayment ? [] : [], // Se puede generar después si es necesario
+                pago: inscriptionData.fullPayment ? 'Completada' : 'Pendiente',
+                observaciones: inscriptionData.observaciones || '',
+                formaPago: inscriptionData.paymentType
             };
+
+            console.log('Inscripción creada desde Alumnos.jsx:', inscriptionPayload);
 
             addInscription(inscriptionPayload);
             showNotification('success', 'Inscripción realizada correctamente');
             closeInscription();
         } catch (err) {
+            console.error('Error en inscripción desde Alumnos:', err);
             showNotification('error', err.message);
         }
     };
 
+
     // Eliminar alumno
-    const handleDelete = (alumno) => {
-        if (window.confirm(`¿Seguro que querés eliminar a ${alumno.nombre}?`)) {
-            removeStudent(alumno.id);
+    const handleDelete = (student) => {
+        if (window.confirm(`¿Seguro que querés eliminar a ${student.nombre}?`)) {
+            removeStudent(student.id);
             showNotification('success', 'Alumno eliminado correctamente');
         }
-    };
-
-    // Calcular resumen de inscripción
-    const calculateInscriptionSummary = () => {
-        if (!inscriptionData.courseId) return null;
-
-        const course = findCourse(inscriptionData.courseId);
-        if (!course) return null;
-
-        let costoTotal = course.costo || 0;
-        let bonificacion = parseFloat(inscriptionData.bonificacion) || 0;
-        let costoCertificados = 0;
-        let descuentoBeca = 0;
-
-        // Calcular costo certificados
-        inscriptionData.certificados?.forEach(certTipo => {
-            costoCertificados += course.costosCertificado?.[certTipo] || 0;
-        });
-
-        // Calcular descuento beca
-        if (inscriptionData.becaHabilitada) {
-            const beca = becas.find(b => b.tipo === inscriptionData.tipoBeca && b.activa);
-            if (beca) {
-                descuentoBeca = inscriptionData.tipoBeca === 'completa' ? costoTotal : costoTotal * 0.5;
-            }
-        }
-
-        const montoFinal = costoTotal + costoCertificados - bonificacion - descuentoBeca;
-
-        return {
-            costoTotal,
-            costoCertificados,
-            bonificacion,
-            descuentoBeca,
-            montoFinal: Math.max(0, montoFinal)
-        };
     };
 
     // Obtener historial del alumno mejorado
@@ -541,7 +535,6 @@ export default function Alumnos() {
         closeHistorial();
     };
 
-    const summary = calculateInscriptionSummary();
     const historial = viewing ? getStudentHistory(viewing.id) : null;
 
     return (

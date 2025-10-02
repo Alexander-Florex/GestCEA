@@ -47,7 +47,7 @@ function TablaMovimientos({ data, tipo, icon: Icon, color, onClose }) {
                     <tr>
                         {[
                             'ID', 'Estudiante', 'Curso', 'Forma de Pago', 'Estado Curso',
-                            'Activo', 'Pago', 'Personal', 'Fecha y Hora'
+                            'Activo', 'Pago', 'Monto', 'Personal', 'Fecha y Hora'
                         ].map(header => (
                             <th key={header} className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                 {header}
@@ -58,7 +58,7 @@ function TablaMovimientos({ data, tipo, icon: Icon, color, onClose }) {
                     <tbody className="divide-y divide-gray-100">
                     {data.length === 0 ? (
                         <tr>
-                            <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                            <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
                                 <div className="flex flex-col items-center space-y-2">
                                     <Icon className="w-12 h-12 text-gray-300" />
                                     <div>No hay movimientos registrados para esta fecha</div>
@@ -84,34 +84,40 @@ function TablaMovimientos({ data, tipo, icon: Icon, color, onClose }) {
                                     {registro.cursoNombre}
                                 </td>
                                 <td className="px-4 py-3 text-sm">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            registro.formaPago === 'Efectivo' ? 'bg-green-100 text-green-800' :
-                                                registro.formaPago === 'Transferencia' ? 'bg-blue-100 text-blue-800' :
-                                                    'bg-purple-100 text-purple-800'
-                                        }`}>
-                                            {registro.formaPago}
-                                        </span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        registro.formaPago === 'Efectivo' ? 'bg-green-100 text-green-800' :
+                                            registro.formaPago === 'Transferencia' ? 'bg-blue-100 text-blue-800' :
+                                                'bg-purple-100 text-purple-800'
+                                    }`}>
+                                        {registro.formaPago}
+                                    </span>
                                 </td>
                                 <td className="px-4 py-3 text-sm">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            registro.estado === 'Cursando' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {registro.estado}
-                                        </span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        registro.estado === 'Cursando' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
+                                    }`}>
+                                        {registro.estado}
+                                    </span>
                                 </td>
                                 <td className="px-4 py-3 text-sm">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                            registro.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                        }`}>
-                                            {registro.activo ? 'Activo' : 'Inactivo'}
-                                        </span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                        registro.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                    }`}>
+                                        {registro.activo ? 'Activo' : 'Inactivo'}
+                                    </span>
                                 </td>
                                 <td className="px-4 py-3 text-sm">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            registro.pago === 'Completada' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                                        }`}>
-                                            {registro.pago}
-                                        </span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        registro.pago === 'Completada' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                                    }`}>
+                                        {registro.pago}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm font-bold text-green-700">
+                                    ${Number(registro.monto || 0).toLocaleString('es-AR', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-700 font-medium">
                                     {registro.personal}

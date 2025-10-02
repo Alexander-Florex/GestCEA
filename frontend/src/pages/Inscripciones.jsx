@@ -139,7 +139,6 @@ const isOverdue = (dueStr) => {
     return now > due && now.getDate() > 10;
 };
 
-// Función para calcular valor de cuota según la fecha
 const getCuotaAmount = (baseAmount, dueDate, paymentData) => {
     if (!dueDate || !paymentData) return baseAmount;
 
@@ -149,12 +148,10 @@ const getCuotaAmount = (baseAmount, dueDate, paymentData) => {
     const now = new Date();
     const dayOfMonth = due.getDate();
 
-    // Si es después del día 10 del mes o si ya venció y estamos después del día 10
     if (dayOfMonth > 10 || (now > due && now.getDate() > 10)) {
         return paymentData.pagoVencido || baseAmount;
     }
 
-    // Si es antes del día 10, usar pago en fecha
     return paymentData.pagoFecha || baseAmount;
 };
 
@@ -167,7 +164,6 @@ const generarCuotas = (numCuotas, totalFinal, paymentData) => {
         dueDate.setMonth(start.getMonth() + i);
         const dueDateStr = formatDate(dueDate);
 
-        // Usar el valor específico del tipo de pago para cada cuota
         const cuotaAmount = getCuotaAmount(totalFinal / numCuotas, dueDateStr, paymentData);
 
         installments.push({
@@ -186,7 +182,8 @@ export default function Inscripciones() {
     const {
         students = [], courses = [], professors = [], becas = [],
         inscriptions = [], addInscription, updateInscription, removeInscription,
-        findStudent, findCourse, findProfessor, findBeca
+        findStudent, findCourse, findProfessor, findBeca,
+        depositToInstallment, getInstallmentPendingAmount
     } = useDB();
 
     const [search, setSearch] = useState('');
@@ -194,6 +191,10 @@ export default function Inscripciones() {
     const [editing, setEditing] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
+
+    // Estados para el modal de depósito
+    const [depositModal, setDepositModal] = useState(null);
+    const [depositForm, setDepositForm] = useState({ monto: '', formaPago: 'Efectivo', nota: '' });
 
     const showNotification = (type, message) => {
         const id = Date.now();
@@ -211,49 +212,71 @@ export default function Inscripciones() {
         [inscriptions, search]
     );
 
-    // Estado del formulario completo según las imágenes
     const [form, setForm] = useState({
         studentId: '',
         courseId: '',
         professorId: '',
         paymentType: 'Efectivo',
         fullPayment: false,
-        // Campos dinámicos según tipo de pago
-        // Efectivo
         pagoFechaEfectivo: 0,
         pagoVencidoEfectivo: 0,
         totalEfectivo: 0,
         cuotasEfectivo: 0,
-        // Transferencia
         pagoFechaTransferencia: 0,
         pagoVencidoTransferencia: 0,
         totalTransferencia: 0,
         cuotasTransferencia: 0,
-        // Tarjeta
         porcentajeTarjeta: 30,
         totalTarjeta: 0,
         cuotasTarjeta: 0,
-        // Certificados múltiples
         certificados: [],
-        // Bonificación
         hasBonus: false,
         bonusAmount: 0,
-        // Becas
         hasBeca: false,
         becaId: '',
-        // Fechas y datos del curso
         fechaInicio: '',
         fechaFin: '',
         vacantes: 0,
-        // Observaciones
         observaciones: ''
     });
+
+    /* ===== Funciones para Depositar ===== */
+    const openDepositModal = (inscId, cuotaNum) => {
+        const pendiente = getInstallmentPendingAmount(inscId, cuotaNum);
+        setDepositModal({ inscId, cuotaNum, pendiente });
+        setDepositForm({ monto: '', formaPago: 'Efectivo', nota: '' });
+    };
+
+    const closeDepositModal = () => {
+        setDepositModal(null);
+        setDepositForm({ monto: '', formaPago: 'Efectivo', nota: '' });
+    };
+
+    const handleDeposit = () => {
+        try {
+            const monto = Number(depositForm.monto);
+            if (!monto || monto <= 0) throw new Error('Ingresá un monto válido mayor a 0');
+            if (monto > depositModal.pendiente) {
+                throw new Error(`El monto no puede superar lo pendiente ($${depositModal.pendiente.toLocaleString('es-AR')})`);
+            }
+
+            depositToInstallment(depositModal.inscId, depositModal.cuotaNum, {
+                monto,
+                formaPago: depositForm.formaPago,
+                nota: depositForm.nota || undefined
+            });
+
+            showNotification('success', `Depósito de $${monto.toLocaleString('es-AR')} realizado correctamente`);
+            closeDepositModal();
+        } catch (err) {
+            showNotification('error', err.message);
+        }
+    };
 
     /* ===== Autocompletar datos del curso ===== */
     useEffect(() => {
         const course = courses.find(c => c.id === Number(form.courseId));
         if (course) {
-            // Obtener certificados disponibles del curso
             const certificadosDisponibles = [];
             if (course.costosCertificado) {
                 Object.entries(course.costosCertificado).forEach(([tipo, costo]) => {
@@ -266,17 +289,14 @@ export default function Inscripciones() {
                 fechaInicio: course.inicio || '',
                 fechaFin: course.fin || '',
                 vacantes: Number(course.vacantes) || 0,
-                // Efectivo
                 pagoFechaEfectivo: Number(course.pagoFechaEfectivo) || 0,
                 pagoVencidoEfectivo: Number(course.pagoVencidoEfectivo) || 0,
                 totalEfectivo: Number(course.totalEfectivo) || 0,
                 cuotasEfectivo: Number(course.cuotasEfectivo) || 0,
-                // Transferencia
                 pagoFechaTransferencia: Number(course.pagoFechaTransferencia) || 0,
                 pagoVencidoTransferencia: Number(course.pagoVencidoTransferencia) || 0,
                 totalTransferencia: Number(course.totalTransferencia) || 0,
                 cuotasTransferencia: Number(course.cuotasTransferencia) || 0,
-                // Tarjeta
                 totalTarjeta: Number(course.totalTarjeta) || 0,
                 cuotasTarjeta: Number(course.cuotasTarjeta) || 0,
                 certificados: certificadosDisponibles
@@ -284,7 +304,6 @@ export default function Inscripciones() {
         }
     }, [form.courseId, courses]);
 
-    // Cálculo automático del total de tarjeta con porcentaje
     useEffect(() => {
         if (form.paymentType === 'Tarjeta' && form.totalTarjeta > 0) {
             const course = courses.find(c => c.id === Number(form.courseId));
@@ -366,11 +385,9 @@ export default function Inscripciones() {
         }));
     };
 
-    // Cálculo del total final
     const calcularTotalFinal = () => {
         let costoBase = 0;
 
-        // Determinar costo base según tipo de pago
         switch (form.paymentType) {
             case 'Efectivo':
                 costoBase = Number(form.totalEfectivo) || 0;
@@ -385,12 +402,10 @@ export default function Inscripciones() {
                 costoBase = 0;
         }
 
-        // Agregar certificados seleccionados
         const costoCertificados = form.certificados
             .filter(cert => cert.selected)
             .reduce((sum, cert) => sum + (Number(cert.costo) || 0), 0);
 
-        // Aplicar descuentos
         const descuentoBeca = form.hasBeca && form.becaId ?
             Number(findBeca(form.becaId)?.monto) || 0 : 0;
         const descuentoBonificacion = form.hasBonus ? Number(form.bonusAmount) || 0 : 0;
@@ -434,7 +449,6 @@ export default function Inscripciones() {
         }
     };
 
-    // Función para obtener datos completos de la inscripción
     const getInscriptionDetails = (inscription) => {
         if (!inscription) return null;
 
@@ -443,7 +457,6 @@ export default function Inscripciones() {
         const professor = findProfessor(inscription.professorId);
         const beca = inscription.hasBeca && inscription.becaId ? findBeca(inscription.becaId) : null;
 
-        // Obtener valores específicos del tipo de pago
         let paymentData = {
             pagoFecha: 0,
             pagoVencido: 0,
@@ -523,7 +536,6 @@ export default function Inscripciones() {
                 professorName: `${professor.nombre} ${professor.apellido}`,
                 paymentType: form.paymentType,
                 fullPayment: form.fullPayment,
-                // Datos específicos del tipo de pago
                 pagoFechaEfectivo: form.pagoFechaEfectivo,
                 pagoVencidoEfectivo: form.pagoVencidoEfectivo,
                 totalEfectivo: form.totalEfectivo,
@@ -535,19 +547,16 @@ export default function Inscripciones() {
                 porcentajeTarjeta: form.porcentajeTarjeta,
                 totalTarjeta: form.totalTarjeta,
                 cuotasTarjeta: form.cuotasTarjeta,
-                // Certificados, becas y bonificaciones
                 certificados: certificadosSeleccionados,
                 hasBonus: form.hasBonus,
                 bonusAmount: form.bonusAmount,
                 hasBeca: form.hasBeca,
                 becaId: form.hasBeca ? Number(form.becaId) : null,
                 becaMonto: form.hasBeca && selectedBeca ? Number(selectedBeca.monto) : 0,
-                // Fechas y datos del curso
                 fechaInicio: form.fechaInicio,
                 fechaFin: form.fechaFin,
                 vacantes: form.vacantes,
                 observaciones: form.observaciones,
-                // Cuotas e información calculada
                 installments,
                 totalFinal,
                 fechaCreacion: new Date().toISOString()
@@ -599,13 +608,11 @@ export default function Inscripciones() {
             <div className="p-6 relative max-w-7xl mx-auto">
                 <Notifications notifications={notifications} remove={removeNotification} />
 
-                {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-green-800 mb-2">Inscribir Alumno a Curso</h1>
                     <p className="text-gray-600">Complete los datos requeridos para la inscripción</p>
                 </div>
 
-                {/* Buscador y botón Nueva Inscripción */}
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <div className="flex-1">
                         <input
@@ -624,7 +631,6 @@ export default function Inscripciones() {
                     </button>
                 </div>
 
-                {/* Tabla */}
                 <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -722,7 +728,7 @@ export default function Inscripciones() {
                 </div>
             </div>
 
-            {/* Modal Detalles - COMPLETO CON TODA LA INFORMACIÓN DEL CURSO */}
+            {/* Modal Detalles */}
             <AnimatePresence>
                 {viewing && (
                     <motion.div
@@ -761,11 +767,8 @@ export default function Inscripciones() {
 
                                     return (
                                         <div className="space-y-6">
-                                            {/* Información principal */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {/* Columna izquierda */}
                                                 <div className="space-y-4">
-                                                    {/* Alumno */}
                                                     <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                                                         <div className="text-sm text-purple-600 font-semibold mb-1">ALUMNO</div>
                                                         <div className="text-lg font-bold">{inscription.studentName}</div>
@@ -776,7 +779,6 @@ export default function Inscripciones() {
                                                         )}
                                                     </div>
 
-                                                    {/* Curso */}
                                                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                                                         <div className="text-sm text-blue-600 font-semibold mb-1">CURSO</div>
                                                         <div className="text-lg font-bold">{inscription.courseName}</div>
@@ -788,7 +790,6 @@ export default function Inscripciones() {
                                                         )}
                                                     </div>
 
-                                                    {/* Profesor */}
                                                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                                                         <div className="text-sm text-green-600 font-semibold mb-1">PROFESOR</div>
                                                         <div className="text-lg font-bold">{inscription.professorName}</div>
@@ -800,15 +801,12 @@ export default function Inscripciones() {
                                                     </div>
                                                 </div>
 
-                                                {/* Columna derecha */}
                                                 <div className="space-y-4">
-                                                    {/* Tipo de Pago */}
                                                     <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
                                                         <div className="text-sm text-orange-600 font-semibold mb-1">TIPO DE PAGO</div>
                                                         <div className="text-lg font-bold">{inscription.paymentType}</div>
                                                     </div>
 
-                                                    {/* Totales específicos por tipo de pago */}
                                                     <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                                                         <div className="text-sm text-indigo-600 font-semibold mb-2">TOTALES</div>
 
@@ -871,7 +869,6 @@ export default function Inscripciones() {
                                                             </div>
                                                         )}
 
-                                                        {/* Certificados */}
                                                         {inscription.certificados && inscription.certificados.length > 0 && (
                                                             <div className="mt-4 pt-3 border-t">
                                                                 <div className="text-xs font-semibold mb-2">CERTIFICADOS SELECCIONADOS</div>
@@ -884,7 +881,6 @@ export default function Inscripciones() {
                                                             </div>
                                                         )}
 
-                                                        {/* Descuentos */}
                                                         {(inscription.hasBeca || inscription.hasBonus) && (
                                                             <div className="mt-4 pt-3 border-t">
                                                                 <div className="text-xs font-semibold mb-2">DESCUENTOS</div>
@@ -903,7 +899,6 @@ export default function Inscripciones() {
                                                             </div>
                                                         )}
 
-                                                        {/* Total Final */}
                                                         <div className="mt-4 pt-3 border-t-2 border-indigo-400">
                                                             <div className="flex justify-between">
                                                                 <span className="text-lg font-bold text-indigo-800">TOTAL FINAL:</span>
@@ -916,7 +911,6 @@ export default function Inscripciones() {
                                                 </div>
                                             </div>
 
-                                            {/* Plan de Cuotas o Pago Completo */}
                                             {inscription.fullPayment ? (
                                                 <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-l-4 border-green-500">
                                                     <div className="flex items-center space-x-3">
@@ -956,7 +950,8 @@ export default function Inscripciones() {
                                                                     </td>
                                                                     <td className="px-4 py-3">
                                                                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                                                                            inst.status==='Pagado'?'bg-green-100 text-green-800':'bg-yellow-100 text-yellow-800'
+                                                                            inst.status==='Pagado'?'bg-green-100 text-green-800':
+                                                                                inst.status==='Parcial'?'bg-yellow-100 text-yellow-800':'bg-red-100 text-red-800'
                                                                         }`}>
                                                                             {inst.status}
                                                                         </span>
@@ -964,7 +959,7 @@ export default function Inscripciones() {
                                                                     <td className="px-4 py-3 text-black">{inst.paymentDate || '-'}</td>
                                                                     <td className="px-4 py-3 text-black font-bold text-purple-700">
                                                                         ${formatNumber(inst.amount || 0)}
-                                                                        {inst.status === 'Pagado' && inst.amountPaid && (
+                                                                        {inst.amountPaid > 0 && inst.status !== 'Pagado' && (
                                                                             <span className="ml-2 text-xs text-gray-500">(Pagado: ${formatNumber(inst.amountPaid)})</span>
                                                                         )}
                                                                         {isOverdue(inst.dueDate) && inst.status==='Pendiente' && (
@@ -972,20 +967,42 @@ export default function Inscripciones() {
                                                                         )}
                                                                     </td>
                                                                     <td className="px-4 py-3">
-                                                                        {inst.status==='Pendiente' && (
-                                                                            <button
-                                                                                onClick={() => handlePayInstallment(inscription.id, inst.number)}
-                                                                                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all font-semibold shadow-md"
-                                                                            >
-                                                                                Pagar
-                                                                            </button>
-                                                                        )}
-                                                                        {inst.status==='Pagado' && (
+                                                                        {inst.status === 'Pendiente' ? (
+                                                                            <div className="flex space-x-2">
+                                                                                <button
+                                                                                    onClick={() => openDepositModal(inscription.id, inst.number)}
+                                                                                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all font-semibold shadow-md"
+                                                                                >
+                                                                                    Depositar
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handlePayInstallment(inscription.id, inst.number)}
+                                                                                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all font-semibold shadow-md"
+                                                                                >
+                                                                                    Pagar
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : inst.status === 'Pagado' ? (
                                                                             <div className="flex items-center text-green-600">
                                                                                 <FiCheck size={16} className="mr-1"/>
                                                                                 <span className="text-sm font-semibold">Pagado</span>
                                                                             </div>
-                                                                        )}
+                                                                        ) : inst.status === 'Parcial' ? (
+                                                                            <div className="flex space-x-2">
+                                                                                <button
+                                                                                    onClick={() => openDepositModal(inscription.id, inst.number)}
+                                                                                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all font-semibold shadow-md"
+                                                                                >
+                                                                                    Depositar
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handlePayInstallment(inscription.id, inst.number)}
+                                                                                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all font-semibold shadow-md"
+                                                                                >
+                                                                                    Completar
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : null}
                                                                     </td>
                                                                 </tr>
                                                             ))}
@@ -1004,7 +1021,6 @@ export default function Inscripciones() {
                                                 </div>
                                             )}
 
-                                            {/* Observaciones */}
                                             {inscription.observaciones && (
                                                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                                                     <div className="text-sm text-gray-600 font-semibold mb-2">OBSERVACIONES</div>
@@ -1019,8 +1035,6 @@ export default function Inscripciones() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* Modal Formulario - COMPLETO SEGÚN LAS IMÁGENES */}
             <AnimatePresence>
                 {isFormOpen && (
                     <motion.div
@@ -1532,6 +1546,103 @@ export default function Inscripciones() {
                                     </button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {depositModal && (
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={closeDepositModal}
+                    >
+                        <motion.div
+                            className="bg-white rounded-2xl max-w-md w-full relative text-black shadow-2xl"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            transition={{ type: "spring", damping: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="bg-blue-600 text-white p-6 rounded-t-2xl flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-bold">Depositar a Cuota #{depositModal.cuotaNum}</h2>
+                                    <p className="text-blue-100">Pendiente: ${formatNumber(depositModal.pendiente)}</p>
+                                </div>
+                                <button
+                                    className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors"
+                                    onClick={closeDepositModal}
+                                >
+                                    <FiX size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-2 text-gray-700 block">
+                                        Monto a Depositar *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={depositForm.monto}
+                                        onChange={(e) => setDepositForm(f => ({ ...f, monto: e.target.value }))}
+                                        placeholder="0.00"
+                                        className="w-full border-2 border-blue-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none"
+                                        autoFocus
+                                    />
+                                    <small className="text-gray-500">Máximo: ${formatNumber(depositModal.pendiente)}</small>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-medium mb-2 text-gray-700 block">
+                                        Forma de Pago *
+                                    </label>
+                                    <select
+                                        value={depositForm.formaPago}
+                                        onChange={(e) => setDepositForm(f => ({ ...f, formaPago: e.target.value }))}
+                                        className="w-full border-2 border-blue-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none"
+                                    >
+                                        <option value="Efectivo">Efectivo</option>
+                                        <option value="Transferencia">Transferencia</option>
+                                        <option value="Tarjeta">Tarjeta</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-medium mb-2 text-gray-700 block">
+                                        Nota (opcional)
+                                    </label>
+                                    <textarea
+                                        value={depositForm.nota}
+                                        onChange={(e) => setDepositForm(f => ({ ...f, nota: e.target.value }))}
+                                        placeholder="Observaciones del depósito..."
+                                        rows={3}
+                                        className="w-full border-2 border-blue-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none resize-none"
+                                    />
+                                </div>
+
+                                <div className="flex space-x-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={closeDepositModal}
+                                        className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDeposit}
+                                        className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg"
+                                    >
+                                        Confirmar Depósito
+                                    </button>
+                                </div>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}

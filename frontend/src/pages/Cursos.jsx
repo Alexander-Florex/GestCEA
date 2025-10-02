@@ -51,15 +51,6 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
         }
     };
 
-    const getSelectedTeachersText = () => {
-        if (selectedTeachers.length === 0) return 'Buscar y seleccionar profesores...';
-        const names = selectedTeachers.map(id => {
-            const teacher = availableTeachers.find(t => t.id === id);
-            return teacher ? `${teacher.nombre} ${teacher.apellido}` : '';
-        }).filter(Boolean);
-        return names.join(', ');
-    };
-
     return (
         <div className="relative">
             <div className="w-full border-2 border-gray-300 rounded-xl bg-white focus-within:border-purple-500 shadow-sm">
@@ -82,7 +73,6 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                         transition={{ duration: 0.2 }}
                         className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-xl shadow-md max-h-60 overflow-hidden"
                     >
-                        {/* Lista filtrada */}
                         <div className="max-h-40 overflow-y-auto">
                             {filteredTeachers.length === 0 ? (
                                 <div className="p-3 text-gray-500 text-center">
@@ -114,7 +104,6 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                             )}
                         </div>
 
-                        {/* Profesores seleccionados */}
                         {selectedTeachers.length > 0 && (
                             <div className="border-t border-gray-200 p-3 bg-gray-50">
                                 <div className="text-sm font-medium text-gray-700 mb-2">Seleccionados:</div>
@@ -141,7 +130,6 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                             </div>
                         )}
 
-                        {/* Acciones */}
                         <div className="p-3 border-t border-gray-200 flex justify-between">
                             <button
                                 type="button"
@@ -265,8 +253,8 @@ export default function Cursos() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [isTeacherSelectorOpen, setIsTeacherSelectorOpen] = useState(false);
+    const [nombreError, setNombreError] = useState('');
 
-    // Lista global de tipos disponibles
     const availableCertTypes = useMemo(() => {
         const base = new Set(['UTN', 'CEA']);
         for (const c of courses) {
@@ -275,47 +263,38 @@ export default function Cursos() {
         return Array.from(base).sort();
     }, [courses]);
 
-    // Form state actualizado
     const [formData, setFormData] = useState({
         nombre: '',
         profesores: [],
-        // Efectivo
         pagoFechaEfectivo: '',
         pagoVencidoEfectivo: '',
         totalEfectivo: '',
         cuotasEfectivoEnabled: false,
         cuotasEfectivo: '',
-        // Transferencias
         pagoFechaTransferencia: '',
         pagoVencidoTransferencia: '',
         totalTransferencia: '',
         cuotasTransferenciaEnabled: false,
         cuotasTransferencia: '',
-        // Tarjetas
         porcentajeTarjeta: 30,
         totalTarjeta: '',
         cuotas: '',
-        // certificados múltiples
         tiposCertificado: [],
         costosCertificado: {},
-        // horarios
         horarios: [],
         horarioDraft: { dia: 'Lunes', desde: '', hasta: '' },
         certDraft: '',
-        // fechas y vacantes
         inicio: '',
         fin: '',
         vacantes: '',
     });
 
-    // Función para calcular automáticamente el total de tarjeta
     const calcularTotalTarjeta = (totalEfectivo, porcentaje) => {
         const total = Number(totalEfectivo) || 0;
         const pct = Number(porcentaje) || 0;
         return total + (total * pct / 100);
     };
 
-    // Effect para actualizar automáticamente el total de tarjeta
     useEffect(() => {
         if (formData.totalEfectivo && formData.porcentajeTarjeta) {
             const nuevoTotal = calcularTotalTarjeta(formData.totalEfectivo, formData.porcentajeTarjeta);
@@ -323,7 +302,29 @@ export default function Cursos() {
         }
     }, [formData.totalEfectivo, formData.porcentajeTarjeta]);
 
-    // Manejar tecla Esc para cerrar modal
+    // Validación en tiempo real del nombre del curso
+    useEffect(() => {
+        if (!formData.nombre || formData.nombre.trim().length < 3) {
+            setNombreError('');
+            return;
+        }
+
+        const nombreNormalizado = formData.nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+        const duplicado = courses.find(c => {
+            if (editing && c.id === editing.id) return false;
+
+            const nombreCursoNormalizado = (c.nombre || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            return nombreCursoNormalizado === nombreNormalizado;
+        });
+
+        if (duplicado) {
+            setNombreError(`El curso "${formData.nombre}" ya existe. Usá un sufijo numérico (ej: "${formData.nombre} 2")`);
+        } else {
+            setNombreError('');
+        }
+    }, [formData.nombre, courses, editing]);
+
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.key === 'Escape' && isFormOpen) {
@@ -364,9 +365,8 @@ export default function Cursos() {
         });
     }, [courses, search, filterEstado, filterCod, professors]);
 
-    /* ============ Abrir/Cerrar Form ============ */
-
     const openForm = (course) => {
+        setNombreError('');
         if (course) {
             setEditing(course);
             setFormData({
@@ -429,9 +429,8 @@ export default function Cursos() {
         setIsFormOpen(false);
         setEditing(null);
         setIsTeacherSelectorOpen(false);
+        setNombreError('');
     };
-
-    /* ============ Handlers Form ============ */
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -502,10 +501,14 @@ export default function Cursos() {
         }));
     };
 
-    /* ============ Submit ============ */
-
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        if (nombreError) {
+            showNotification('error', nombreError);
+            return;
+        }
+
         try {
             if (!formData.nombre || formData.profesores.length === 0) {
                 throw new Error('Nombre y al menos un profesor son obligatorios');
@@ -523,7 +526,6 @@ export default function Cursos() {
                 }
             }
 
-            // Validar cuotas opcionales
             if (formData.cuotasEfectivoEnabled && (formData.cuotasEfectivo === '' || isNaN(Number(formData.cuotasEfectivo)))) {
                 throw new Error('Si habilitas cuotas en efectivo, debes especificar un número válido');
             }
@@ -596,16 +598,12 @@ export default function Cursos() {
         }
     };
 
-    /* ==================== Render ==================== */
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
             <div className="p-6 relative max-w-7xl mx-auto">
                 <Notifications notifications={notifications} remove={removeNotification} />
 
-                {/* Filtros y Nuevo */}
                 <div className="mb-6 space-y-4">
-                    {/* Buscador principal con estilo distintivo */}
                     <div className="flex shadow-lg rounded-xl overflow-hidden">
                         <input
                             type="text"
@@ -622,7 +620,6 @@ export default function Cursos() {
                         </button>
                     </div>
 
-                    {/* Filtros adicionales */}
                     <div className="flex gap-4 bg-white p-4 rounded-xl shadow-md">
                         <div className="flex items-center gap-2">
                             <label className="text-sm font-medium text-gray-700">Estado:</label>
@@ -664,7 +661,6 @@ export default function Cursos() {
                     </div>
                 </div>
 
-                {/* Tabla mejorada */}
                 <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
                     <div className="overflow-auto">
                         <table className="min-w-full">
@@ -769,7 +765,7 @@ export default function Cursos() {
                 </div>
             </div>
 
-            {/* Modal Detalles - NO MODIFICADO */}
+            {/* Modal Detalles */}
             <AnimatePresence>
                 {viewing && (
                     <motion.div
@@ -793,9 +789,7 @@ export default function Cursos() {
                             </div>
 
                             <div className="p-6 space-y-6">
-                                {/* Información principal */}
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    {/* Datos básicos */}
                                     <div className="space-y-3">
                                         <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Datos del curso</h4>
                                         <div className="space-y-2">
@@ -824,7 +818,6 @@ export default function Cursos() {
                                         </div>
                                     </div>
 
-                                    {/* Datos económicos - Efectivo */}
                                     <div className="space-y-3">
                                         <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Efectivo</h4>
                                         <div className="space-y-2">
@@ -837,7 +830,6 @@ export default function Cursos() {
                                         </div>
                                     </div>
 
-                                    {/* Datos económicos - Transferencias */}
                                     <div className="space-y-3">
                                         <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Transferencias</h4>
                                         <div className="space-y-2">
@@ -851,7 +843,6 @@ export default function Cursos() {
                                     </div>
                                 </div>
 
-                                {/* Tarjetas */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     <div className="space-y-3">
                                         <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Tarjetas</h4>
@@ -862,7 +853,6 @@ export default function Cursos() {
                                         </div>
                                     </div>
 
-                                    {/* Fechas */}
                                     <div className="space-y-3">
                                         <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Fechas</h4>
                                         <div className="space-y-2">
@@ -878,7 +868,6 @@ export default function Cursos() {
                                     </div>
                                 </div>
 
-                                {/* Horarios */}
                                 <div>
                                     <h4 className="text-lg font-semibold text-gray-700 mb-3">Días y horarios</h4>
                                     <div className="border-2 border-gray-300 rounded-xl p-4 bg-gray-50 min-h-[100px] shadow-sm">
@@ -897,7 +886,6 @@ export default function Cursos() {
                                     </div>
                                 </div>
 
-                                {/* Certificados */}
                                 <div>
                                     <h4 className="text-lg font-semibold text-gray-700 mb-3">Certificados</h4>
                                     <div className="border-2 border-gray-300 rounded-xl p-4 bg-gray-50 min-h-[80px] shadow-sm">
@@ -915,7 +903,6 @@ export default function Cursos() {
                                     </div>
                                 </div>
 
-                                {/* Acciones */}
                                 <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200">
                                     <button
                                         className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow"
@@ -931,20 +918,18 @@ export default function Cursos() {
                 )}
             </AnimatePresence>
 
-            {/* Modal Formulario - No se cierra al hacer click afuera */}
+            {/* Modal Formulario */}
             <AnimatePresence>
                 {isFormOpen && (
                     <motion.div
                         className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        // ❌ Removido el onClick para que no se cierre al hacer click afuera
                     >
                         <motion.div
                             className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-hidden relative text-black shadow-md"
                             initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Header fijo morado */}
                             <div className="bg-purple-600 text-white p-6 flex justify-between items-center shadow-sm">
                                 <h2 className="text-2xl font-bold">{editing ? 'Editar Curso' : 'Nuevo Curso'}</h2>
                                 <button type="button" className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors" onClick={closeForm}>
@@ -952,7 +937,6 @@ export default function Cursos() {
                                 </button>
                             </div>
 
-                            {/* Contenido con scroll */}
                             <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(95vh-140px)]">
                                 <div className="p-6 space-y-8">
                                     {/* Información general */}
@@ -969,9 +953,21 @@ export default function Cursos() {
                                                     type="text"
                                                     value={formData.nombre}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className={`border-2 rounded-lg px-3 py-2 text-black focus:outline-none transition-colors ${
+                                                        nombreError
+                                                            ? 'border-red-500 focus:border-red-600 bg-red-50'
+                                                            : 'border-gray-300 focus:border-purple-500'
+                                                    }`}
                                                     required
                                                 />
+                                                {nombreError && (
+                                                    <div className="mt-2 flex items-start space-x-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
+                                                        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                                                        </svg>
+                                                        <span>{nombreError}</span>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="flex flex-col lg:col-span-2">
@@ -1267,9 +1263,9 @@ export default function Cursos() {
                                                         <div className="flex flex-wrap gap-2">
                                                             {formData.tiposCertificado.map(t => (
                                                                 <span key={t} className="inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm shadow-sm">
-                                                                    {t}
+                                                                                                        {t}
                                                                     <button type="button" onClick={() => removeCert(t)} className="hover:text-red-600 transition-colors">✕</button>
-                                                                </span>
+                                                                                                    </span>
                                                             ))}
                                                         </div>
                                                     )}
@@ -1424,7 +1420,7 @@ export default function Cursos() {
                                     </div>
                                 </div>
 
-                                {/* Footer con botones fijo */}
+                                {/* Footer con botones */}
                                 <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex justify-end space-x-4">
                                     <button
                                         type="button"
@@ -1435,7 +1431,12 @@ export default function Cursos() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 shadow"
+                                        disabled={nombreError !== ''}
+                                        className={`px-6 py-3 rounded-lg transition-colors flex items-center space-x-2 shadow ${
+                                            nombreError
+                                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                                        }`}
                                     >
                                         <span>{editing ? 'Guardar Cambios' : 'Crear Curso'}</span>
                                     </button>

@@ -11,6 +11,7 @@ import CajaDiaria from './pages/CajaDiaria';
 import Informes from './pages/Informes';
 import Usuarios from './pages/Usuarios';
 import { useAuth } from './contexts/AuthContext';
+import Deudores from "./pages/Deudores.jsx";
 
 function ProtectedRoute({ children }) {
     const { user } = useAuth();
@@ -36,7 +37,7 @@ export default function App() {
                 <Route path="becas" element={<Becas />} />
                 <Route path="caja-diaria" element={<CajaDiaria />} />
                 <Route path="informes" element={<Informes />} />
-                <Route path="deudores" element={<Navigate to="/dashboard/inscripciones" />} />
+                <Route path="deudores" element={<Deudores />} />
                 <Route path="usuarios" element={<Usuarios />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" />} />

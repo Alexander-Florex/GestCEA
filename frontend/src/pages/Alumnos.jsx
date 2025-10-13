@@ -367,8 +367,39 @@ export default function Alumnos() {
     };
 
     // Manejar inscripción con nueva estructura
+    // Generar cuotas localmente
+    const generarCuotasLocal = (totalFinal, numCuotas, fechaInicio) => {
+        if (!numCuotas || numCuotas <= 0 || !totalFinal || totalFinal <= 0) {
+            return [];
+        }
+
+        const montoPorCuota = Math.round((totalFinal / numCuotas) * 100) / 100;
+        const primerVencimiento = fechaInicio ? new Date(fechaInicio) : new Date();
+
+        const cuotas = [];
+        for (let i = 0; i < numCuotas; i++) {
+            const fechaVenc = new Date(primerVencimiento);
+            fechaVenc.setMonth(primerVencimiento.getMonth() + i);
+
+            cuotas.push({
+                number: i + 1,
+                amount: montoPorCuota,
+                amountPaid: 0,
+                dueDate: fechaVenc.toISOString(),
+                status: 'Pendiente',
+                paymentDate: null,
+                payments: []
+            });
+        }
+
+        return cuotas;
+    };
+
     const handleInscriptionSubmit = (e) => {
         e.preventDefault();
+
+        console.log('INICIANDO INSCRIPCION');
+
         try {
             if (!inscriptionData.courseId || !inscriptionData.professorId) {
                 throw new Error('Debe seleccionar curso y profesor');
@@ -383,18 +414,17 @@ export default function Alumnos() {
             }
 
             const totalNeto = calcTotalFinal();
+            const numCuotas = getCuotasForPaymentType();
 
-            // Generar cuotas si es necesario
+            console.log('Total:', totalNeto, 'Cuotas:', numCuotas, 'FullPayment:', inscriptionData.fullPayment);
+
+            // Generar cuotas
             let installments = [];
-            if (!inscriptionData.fullPayment) {
-                const numCuotas = getCuotasForPaymentType();
-                if (numCuotas > 0) {
-                    // Aquí puedes implementar la generación de cuotas si la tienes
-                    // installments = generarCuotas(numCuotas, totalNeto, getPaymentTypeData());
-                }
+            if (!inscriptionData.fullPayment && numCuotas > 0 && totalNeto > 0) {
+                installments = generarCuotasLocal(totalNeto, numCuotas, inscriptionData.customInicio);
+                console.log('CUOTAS GENERADAS:', installments.length);
             }
 
-            // Obtener certificados seleccionados con la estructura correcta
             const certificadosSeleccionados = [];
             if (inscriptionData.selectedCertificados && inscriptionData.selectedCertificados.length > 0) {
                 inscriptionData.selectedCertificados.forEach(certTipo => {
@@ -419,33 +449,20 @@ export default function Alumnos() {
                 vacantes: inscriptionData.customVacantes,
                 paymentType: inscriptionData.paymentType,
                 fullPayment: inscriptionData.fullPayment,
-
-                // *** ESTRUCTURA CORREGIDA - Campos directos como espera Inscripciones.jsx ***
-                // Efectivo
                 pagoFechaEfectivo: Number(inscriptionData.efectivoPagoEnFecha || 0),
                 pagoVencidoEfectivo: Number(inscriptionData.efectivoPagoVencido || 0),
                 totalEfectivo: Number(inscriptionData.efectivoTotal || 0),
                 cuotasEfectivo: Number(inscriptionData.efectivoCuotas || 0),
-
-                // Transferencia
                 pagoFechaTransferencia: Number(inscriptionData.transferenciasPagoEnFecha || 0),
                 pagoVencidoTransferencia: Number(inscriptionData.transferenciasPagoVencido || 0),
                 totalTransferencia: Number(inscriptionData.transferenciasTotal || 0),
                 cuotasTransferencia: Number(inscriptionData.transferenciasCuotas || 0),
-
-                // Tarjeta
                 porcentajeTarjeta: Number(inscriptionData.tarjetasPorcentaje || 0),
                 totalTarjeta: Number(inscriptionData.tarjetasCursoTotal || 0),
                 cuotasTarjeta: Number(inscriptionData.tarjetasCuotas || 0),
-
-                // Certificados con estructura correcta
                 certificados: certificadosSeleccionados,
-
-                // Bonificación
                 hasBonus: inscriptionData.hasBonus,
                 bonusAmount: Number(inscriptionData.bonusAmount || 0),
-
-                // Becas
                 hasBeca: inscriptionData.hasBeca,
                 becaId: inscriptionData.hasBeca ? Number(inscriptionData.selectedBecaId) : null,
                 becaMonto: (() => {
@@ -455,8 +472,6 @@ export default function Alumnos() {
                     }
                     return 0;
                 })(),
-
-                // Otros campos
                 fechaInicio: inscriptionData.customInicio,
                 fechaFin: inscriptionData.customFin,
                 totalFinal: totalNeto,
@@ -467,16 +482,17 @@ export default function Alumnos() {
                 personal: user?.name || 'Usuario Sistema',
                 pago: inscriptionData.fullPayment ? 'Completada' : 'Pendiente',
                 observaciones: inscriptionData.observaciones || '',
-                formaPago: inscriptionData.paymentType
+                formaPago: inscriptionData.paymentType,
+                monto: inscriptionData.fullPayment ? totalNeto : 0
             };
 
-            console.log('Inscripción creada desde Alumnos.jsx:', inscriptionPayload);
+            console.log('ENVIANDO CON', installments.length, 'CUOTAS');
 
             addInscription(inscriptionPayload);
             showNotification('success', 'Inscripción realizada correctamente');
             closeInscription();
         } catch (err) {
-            console.error('Error en inscripción desde Alumnos:', err);
+            console.error('ERROR:', err);
             showNotification('error', err.message);
         }
     };
@@ -492,38 +508,70 @@ export default function Alumnos() {
 
     // Obtener historial del alumno mejorado
     const getStudentHistory = (studentId) => {
+        console.log('📚 getStudentHistory llamado con ID:', studentId);
+        console.log('📚 Inscripciones totales:', inscriptions.length);
+        console.log('📚 Movimientos caja totales:', cajaMovimientos.length);
+
         const studentInscriptions = inscriptions.filter(i => i.studentId === studentId);
+        console.log('📚 Inscripciones del alumno:', studentInscriptions);
+
         const studentMovements = cajaMovimientos.filter(m => m.studentId === studentId);
 
         // Determinar estado de cada curso
         const coursesWithStatus = studentInscriptions.map(inscription => {
             const course = findCourse(inscription.courseId);
             const today = new Date();
-            const startDate = new Date(inscription.inicio || course?.inicio);
-            const endDate = new Date(inscription.fin || course?.fin);
+            const startDate = new Date(inscription.fechaInicio || inscription.inicio || course?.inicio);
+            const endDate = new Date(inscription.fechaFin || inscription.fin || course?.fin);
 
-            let estado = 'Cursando';
-            if (today < startDate) {
-                estado = 'Próximamente';
-            } else if (today > endDate) {
-                estado = 'Finalizado';
+            // Usar el estado de la inscripción si existe, sino calcularlo
+            let estado = inscription.status || 'Cursando';
+
+            // Si no tiene status definido, calcularlo por fechas
+            if (!inscription.status || inscription.status === 'Cursando') {
+                if (today < startDate) {
+                    estado = 'Próximamente';
+                } else if (today > endDate) {
+                    estado = 'Finalizado';
+                } else {
+                    estado = 'Cursando';
+                }
             }
+
+            // Verificar si tiene cuotas pendientes
+            const tieneCuotasPendientes = inscription.installments?.some(
+                inst => inst.status === 'Pendiente' || inst.status === 'Parcial'
+            );
 
             return {
                 ...inscription,
-                courseName: course?.nombre || 'Curso no encontrado',
+                courseName: course?.nombre || inscription.courseName || 'Curso no encontrado',
+                professorName: inscription.professorName || 'Profesor no asignado',
                 estado,
+                estadoOriginal: inscription.status,
                 startDate,
-                endDate
+                endDate,
+                tieneCuotasPendientes,
+                totalPagado: inscription.installments?.reduce((sum, inst) => sum + (Number(inst.amountPaid) || 0), 0) || 0,
+                totalDeuda: inscription.totalFinal || 0
             };
         });
 
-        return {
+        // Verificar si es deudor (tiene cuotas pendientes en cualquier inscripción)
+        const esDeudor = coursesWithStatus.some(c => c.tieneCuotasPendientes);
+
+        const result = {
             inscripciones: studentInscriptions,
             cursos: coursesWithStatus,
             movimientos: studentMovements,
-            esDeudor: studentMovements.some(m => m.estado === 'Pendiente' || m.pago === 'Pendiente')
+            esDeudor,
+            totalCursos: coursesWithStatus.length,
+            cursosActivos: coursesWithStatus.filter(c => c.estado === 'Cursando').length,
+            cursosFinalizados: coursesWithStatus.filter(c => c.estado === 'Finalizado').length
         };
+
+        console.log('✅ Historial construido:', result);
+        return result;
     };
 
     // Función para navegar a inscripciones filtradas

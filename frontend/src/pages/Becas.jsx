@@ -1,7 +1,7 @@
 // src/pages/Becas.jsx
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiPercent, FiDollarSign, FiSettings } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB";
 
 /* ==================== Notificaciones ==================== */
@@ -30,16 +30,23 @@ function Notifications({ notifications, remove }) {
     );
 }
 
-/* ==================== Página Becas ==================== */
+/* ==================== Página Parametrización ==================== */
 
 export default function Becas() {
-    const { becas, addBeca, updateBeca, removeBeca } = useDB();
+    const { becas, addBeca, updateBeca, removeBeca, settings, updateSettings } = useDB();
 
     const [search, setSearch] = useState('');
     const [viewing, setViewing] = useState(null);
     const [editing, setEditing] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
+    const [activeTab, setActiveTab] = useState('becas'); // 'becas', 'transferencia', 'tarjeta'
+
+    // Estados para editar porcentajes
+    const [isEditingTransfer, setIsEditingTransfer] = useState(false);
+    const [isEditingCard, setIsEditingCard] = useState(false);
+    const [transferPercentage, setTransferPercentage] = useState(settings?.porcentajeTransferencia || 5);
+    const [cardPercentage, setCardPercentage] = useState(settings?.porcentajeTarjeta || 15);
 
     const [formData, setFormData] = useState({
         tipo: 'Media',
@@ -60,7 +67,7 @@ export default function Becas() {
         );
     }, [becas, search]);
 
-    /* ============ Abrir/Cerrar Form ============ */
+    /* ============ Handlers Becas ============ */
 
     const openForm = (beca) => {
         if (beca) {
@@ -85,8 +92,6 @@ export default function Becas() {
         setIsFormOpen(false);
         setEditing(null);
     };
-
-    /* ============ Handlers Form ============ */
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -134,6 +139,46 @@ export default function Becas() {
         showNotification('success', `Beca ${beca.activa ? 'desactivada' : 'activada'}`);
     };
 
+    /* ============ Handlers Porcentajes ============ */
+
+    const handleSaveTransferPercentage = () => {
+        try {
+            const percentage = Number(transferPercentage);
+            if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                throw new Error('El porcentaje debe estar entre 0 y 100');
+            }
+            updateSettings({ porcentajeTransferencia: percentage });
+            setIsEditingTransfer(false);
+            showNotification('success', 'Porcentaje de Transferencia actualizado correctamente');
+        } catch (err) {
+            showNotification('error', err.message);
+        }
+    };
+
+    const handleSaveCardPercentage = () => {
+        try {
+            const percentage = Number(cardPercentage);
+            if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                throw new Error('El porcentaje debe estar entre 0 y 100');
+            }
+            updateSettings({ porcentajeTarjeta: percentage });
+            setIsEditingCard(false);
+            showNotification('success', 'Porcentaje de Tarjeta actualizado correctamente');
+        } catch (err) {
+            showNotification('error', err.message);
+        }
+    };
+
+    const handleCancelTransfer = () => {
+        setTransferPercentage(settings?.porcentajeTransferencia || 5);
+        setIsEditingTransfer(false);
+    };
+
+    const handleCancelCard = () => {
+        setCardPercentage(settings?.porcentajeTarjeta || 15);
+        setIsEditingCard(false);
+    };
+
     /* ==================== Render ==================== */
 
     return (
@@ -141,116 +186,399 @@ export default function Becas() {
             <div className="p-6 relative max-w-7xl mx-auto">
                 <Notifications notifications={notifications} remove={removeNotification} />
 
-                {/* Header y Buscador */}
+                {/* Header */}
                 <div className="mb-6 space-y-4">
                     <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold text-gray-800 mb-2">Gestión de Becas</h1>
-                        <p className="text-gray-600">Administra las becas disponibles para estudiantes</p>
+                        <h1 className="text-4xl font-bold text-gray-800 mb-2">Parametrización del Sistema</h1>
+                        <p className="text-gray-600">Configura becas y porcentajes de cobro</p>
                     </div>
 
-                    <div className="flex shadow-lg rounded-xl overflow-hidden">
-                        <input
-                            type="text"
-                            placeholder="Buscar por tipo de beca..."
-                            className="flex-grow px-6 py-4 border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-white rounded-l-xl focus:outline-none focus:from-white focus:to-blue-50 focus:border-blue-600 text-black placeholder-blue-600 text-lg"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
+                    {/* Tabs */}
+                    <div className="flex space-x-2 bg-white rounded-xl p-2 shadow-lg border border-gray-200">
                         <button
-                            onClick={() => openForm(null)}
-                            className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-4 rounded-r-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 font-semibold text-lg shadow-lg"
+                            onClick={() => setActiveTab('becas')}
+                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                                activeTab === 'becas'
+                                    ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-md'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
                         >
-                            Nueva Beca
+                            <div className="flex items-center justify-center space-x-2">
+                                <FiDollarSign className="w-5 h-5" />
+                                <span>Becas</span>
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('transferencia')}
+                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                                activeTab === 'transferencia'
+                                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <div className="flex items-center justify-center space-x-2">
+                                <FiPercent className="w-5 h-5" />
+                                <span>Transferencia</span>
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('tarjeta')}
+                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                                activeTab === 'tarjeta'
+                                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <div className="flex items-center justify-center space-x-2">
+                                <FiSettings className="w-5 h-5" />
+                                <span>Tarjeta</span>
+                            </div>
                         </button>
                     </div>
                 </div>
 
-                {/* Tabla */}
-                <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
-                    <div className="overflow-auto">
-                        <table className="min-w-full">
-                            <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
-                            <tr>
-                                {['ID', 'Tipo de Beca', 'Monto', 'Estado', 'Acciones'].map(h => (
-                                    <th key={h} className="px-6 py-4 text-left font-semibold tracking-wide">{h}</th>
-                                ))}
-                            </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                            {filtered.map((beca, index) => (
-                                <motion.tr
-                                    key={beca.id}
-                                    className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition-all duration-200 ${
-                                        index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                                    }`}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.2, delay: index * 0.05 }}
+                {/* Contenido según tab activo */}
+                <AnimatePresence mode="wait">
+                    {activeTab === 'becas' && (
+                        <motion.div
+                            key="becas"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {/* Buscador y botón */}
+                            <div className="flex shadow-lg rounded-xl overflow-hidden mb-6">
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por tipo de beca..."
+                                    className="flex-grow px-6 py-4 border-2 border-purple-500 bg-gradient-to-r from-purple-50 to-white rounded-l-xl focus:outline-none focus:from-white focus:to-purple-50 focus:border-purple-600 text-black placeholder-purple-600 text-lg"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                />
+                                <button
+                                    onClick={() => openForm(null)}
+                                    className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-4 rounded-r-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 font-semibold text-lg shadow-lg"
                                 >
-                                    <td className="px-6 py-4 text-black font-bold text-lg">#{beca.id}</td>
-                                    <td className="px-6 py-4 text-black font-semibold">Beca {beca.tipo}</td>
-                                    <td className="px-6 py-4 text-gray-700 font-medium">${beca.monto.toLocaleString()}</td>
-                                    <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => toggleActive(beca)}
-                                            className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm transition-colors ${
-                                                beca.activa
-                                                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                    : 'bg-red-100 text-red-800 hover:bg-red-200'
-                                            }`}
-                                        >
-                                            {beca.activa ? 'Activa' : 'Inactiva'}
-                                        </button>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex space-x-3">
-                                            <motion.button
-                                                onClick={() => setViewing(beca)}
-                                                whileHover={{ scale: 1.2 }}
-                                                whileTap={{ scale: 0.9 }}
-                                                className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-full hover:bg-blue-50"
-                                                title="Ver detalles"
+                                    Nueva Beca
+                                </button>
+                            </div>
+
+                            {/* Tabla de Becas */}
+                            <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
+                                <div className="overflow-auto">
+                                    <table className="min-w-full">
+                                        <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                                        <tr>
+                                            {['ID', 'Tipo de Beca', 'Monto', 'Estado', 'Acciones'].map(h => (
+                                                <th key={h} className="px-6 py-4 text-left font-semibold tracking-wide">{h}</th>
+                                            ))}
+                                        </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                        {filtered.map((beca, index) => (
+                                            <motion.tr
+                                                key={beca.id}
+                                                className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition-all duration-200 ${
+                                                    index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                                                }`}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.2, delay: index * 0.05 }}
                                             >
-                                                <FiEye size={20} />
-                                            </motion.button>
-                                            <motion.button
-                                                onClick={() => openForm(beca)}
-                                                whileHover={{ scale: 1.2 }}
-                                                whileTap={{ scale: 0.9 }}
-                                                className="text-green-600 hover:text-green-800 transition-colors p-2 rounded-full hover:bg-green-50"
-                                                title="Editar beca"
-                                            >
-                                                <FiEdit size={20} />
-                                            </motion.button>
-                                            <motion.button
-                                                onClick={() => handleDelete(beca)}
-                                                whileHover={{ scale: 1.2 }}
-                                                whileTap={{ scale: 0.9 }}
-                                                className="text-red-600 hover:text-red-800 transition-colors p-2 rounded-full hover:bg-red-50"
-                                                title="Eliminar beca"
-                                            >
-                                                <FiTrash2 size={20} />
-                                            </motion.button>
+                                                <td className="px-6 py-4 text-black font-bold text-lg">#{beca.id}</td>
+                                                <td className="px-6 py-4 text-black font-semibold">Beca {beca.tipo}</td>
+                                                <td className="px-6 py-4 text-gray-700 font-medium">${beca.monto.toLocaleString()}</td>
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        onClick={() => toggleActive(beca)}
+                                                        className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm transition-colors ${
+                                                            beca.activa
+                                                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                                        }`}
+                                                    >
+                                                        {beca.activa ? 'Activa' : 'Inactiva'}
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex space-x-3">
+                                                        <motion.button
+                                                            onClick={() => setViewing(beca)}
+                                                            whileHover={{ scale: 1.2 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-full hover:bg-blue-50"
+                                                            title="Ver detalles"
+                                                        >
+                                                            <FiEye size={20} />
+                                                        </motion.button>
+                                                        <motion.button
+                                                            onClick={() => openForm(beca)}
+                                                            whileHover={{ scale: 1.2 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="text-green-600 hover:text-green-800 transition-colors p-2 rounded-full hover:bg-green-50"
+                                                            title="Editar beca"
+                                                        >
+                                                            <FiEdit size={20} />
+                                                        </motion.button>
+                                                        <motion.button
+                                                            onClick={() => handleDelete(beca)}
+                                                            whileHover={{ scale: 1.2 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="text-red-600 hover:text-red-800 transition-colors p-2 rounded-full hover:bg-red-50"
+                                                            title="Eliminar beca"
+                                                        >
+                                                            <FiTrash2 size={20} />
+                                                        </motion.button>
+                                                    </div>
+                                                </td>
+                                            </motion.tr>
+                                        ))}
+                                        {filtered.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="text-center py-12 text-gray-500">
+                                                    <div className="flex flex-col items-center space-y-2">
+                                                        <div className="text-4xl">🎓</div>
+                                                        <div className="text-lg">
+                                                            {search ? 'No se encontraron becas que coincidan con la búsqueda.' : 'No hay becas disponibles.'}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'transferencia' && (
+                        <motion.div
+                            key="transferencia"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+                                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+                                    <h2 className="text-2xl font-bold mb-2">Configuración de Transferencia</h2>
+                                    <p className="text-blue-100">Establece el porcentaje adicional para pagos por transferencia</p>
+                                </div>
+
+                                <div className="p-8">
+                                    <div className="max-w-2xl mx-auto space-y-6">
+                                        {/* Card de configuración */}
+                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-blue-900 mb-2">Porcentaje de Recargo</h3>
+                                                    <p className="text-blue-700 text-sm">
+                                                        Este porcentaje se suma al monto base cuando el pago es por transferencia
+                                                    </p>
+                                                </div>
+                                                <FiPercent className="w-12 h-12 text-blue-600" />
+                                            </div>
+
+                                            {!isEditingTransfer ? (
+                                                <div className="flex items-center justify-between bg-white rounded-lg p-6 shadow-md">
+                                                    <div>
+                                                        <div className="text-5xl font-bold text-blue-900">
+                                                            {settings?.porcentajeTransferencia || 5}%
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 mt-2">
+                                                            Recargo actual por transferencia
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setIsEditingTransfer(true)}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold shadow-md"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white rounded-lg p-6 shadow-md space-y-4">
+                                                    <div>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                            Nuevo Porcentaje (%)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.01"
+                                                            value={transferPercentage}
+                                                            onChange={(e) => setTransferPercentage(e.target.value)}
+                                                            className="w-full border-2 border-blue-300 rounded-lg px-4 py-3 text-black text-2xl font-bold focus:border-blue-500 focus:outline-none"
+                                                            autoFocus
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-2">
+                                                            Ejemplo: Si el curso cuesta $1000 y el porcentaje es 5%, el total será $1050
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex space-x-3">
+                                                        <button
+                                                            onClick={handleCancelTransfer}
+                                                            className="flex-1 border-2 border-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                        <button
+                                                            onClick={handleSaveTransferPercentage}
+                                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors font-semibold shadow-md"
+                                                        >
+                                                            Guardar Cambios
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </td>
-                                </motion.tr>
-                            ))}
-                            {filtered.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="text-center py-12 text-gray-500">
-                                        <div className="flex flex-col items-center space-y-2">
-                                            <div className="text-4xl">🎓</div>
-                                            <div className="text-lg">
-                                                {search ? 'No se encontraron becas que coincidan con la búsqueda.' : 'No hay becas disponibles.'}
+
+                                        {/* Ejemplos */}
+                                        <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                                            <h4 className="font-bold text-blue-900 mb-4">💡 Ejemplos de aplicación</h4>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $10,000</span>
+                                                    <span className="font-bold text-blue-900">
+                                                        ${(10000 * (1 + (settings?.porcentajeTransferencia || 5) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $25,000</span>
+                                                    <span className="font-bold text-blue-900">
+                                                        ${(25000 * (1 + (settings?.porcentajeTransferencia || 5) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $50,000</span>
+                                                    <span className="font-bold text-blue-900">
+                                                        ${(50000 * (1 + (settings?.porcentajeTransferencia || 5) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </td>
-                                </tr>
-                            )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'tarjeta' && (
+                        <motion.div
+                            key="tarjeta"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+                                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6">
+                                    <h2 className="text-2xl font-bold mb-2">Configuración de Tarjeta</h2>
+                                    <p className="text-green-100">Establece el porcentaje adicional para pagos con tarjeta</p>
+                                </div>
+
+                                <div className="p-8">
+                                    <div className="max-w-2xl mx-auto space-y-6">
+                                        {/* Card de configuración */}
+                                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-green-900 mb-2">Porcentaje de Recargo</h3>
+                                                    <p className="text-green-700 text-sm">
+                                                        Este porcentaje se suma al monto base cuando el pago es con tarjeta
+                                                    </p>
+                                                </div>
+                                                <FiSettings className="w-12 h-12 text-green-600" />
+                                            </div>
+
+                                            {!isEditingCard ? (
+                                                <div className="flex items-center justify-between bg-white rounded-lg p-6 shadow-md">
+                                                    <div>
+                                                        <div className="text-5xl font-bold text-green-900">
+                                                            {settings?.porcentajeTarjeta || 15}%
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 mt-2">
+                                                            Recargo actual por tarjeta
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setIsEditingCard(true)}
+                                                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold shadow-md"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white rounded-lg p-6 shadow-md space-y-4">
+                                                    <div>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                            Nuevo Porcentaje (%)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.01"
+                                                            value={cardPercentage}
+                                                            onChange={(e) => setCardPercentage(e.target.value)}
+                                                            className="w-full border-2 border-green-300 rounded-lg px-4 py-3 text-black text-2xl font-bold focus:border-green-500 focus:outline-none"
+                                                            autoFocus
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-2">
+                                                            Ejemplo: Si el curso cuesta $1000 y el porcentaje es 15%, el total será $1150
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex space-x-3">
+                                                        <button
+                                                            onClick={handleCancelCard}
+                                                            className="flex-1 border-2 border-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                        <button
+                                                            onClick={handleSaveCardPercentage}
+                                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition-colors font-semibold shadow-md"
+                                                        >
+                                                            Guardar Cambios
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Ejemplos */}
+                                        <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                                            <h4 className="font-bold text-green-900 mb-4">💡 Ejemplos de aplicación</h4>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $10,000</span>
+                                                    <span className="font-bold text-green-900">
+                                                        ${(10000 * (1 + (settings?.porcentajeTarjeta || 15) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $25,000</span>
+                                                    <span className="font-bold text-green-900">
+                                                        ${(25000 * (1 + (settings?.porcentajeTarjeta || 15) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $50,000</span>
+                                                    <span className="font-bold text-green-900">
+                                                        ${(50000 * (1 + (settings?.porcentajeTarjeta || 15) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Modal Detalles */}

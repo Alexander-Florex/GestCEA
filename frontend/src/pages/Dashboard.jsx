@@ -11,7 +11,8 @@ import {
     FaDollarSign,
     FaGraduationCap,
     FaCashRegister,
-    FaChartBar
+    FaChartBar,
+    FaMoneyBillWave
 } from 'react-icons/fa';
 
 export default function Dashboard() {
@@ -81,6 +82,13 @@ export default function Dashboard() {
                     subtitle="Visualiza a los usuarios con acceso al sistema."
                     linkText="Ver usuarios"
                     to="usuarios"
+                />
+                <AnimatedCard
+                    icon={FaMoneyBillWave}
+                    title="Cobros"
+                    subtitle="Registrar y consultar cobros de alumnos."
+                    linkText="Ver cobros"
+                    to="cobros"
                 />
             </div>
             <div className="flex-1">

@@ -306,20 +306,25 @@ export function AppDBProvider({ children, seed }) {
 
     const addInscription = (data) => {
         const newId = getNextId(db.inscriptions);
+
         const base = {
-            installments: [],
             porcentajeTarjeta: 0,
             totalEfectivo: 0, totalTarjeta: 0, totalTransferencia: 0,
             cuotasEfectivo: 1, cuotasTarjeta: 1, cuotasTransferencia: 1,
             pagoFechaEfectivo: "Al día", pagoVencidoEfectivo: "N/A",
             pagoFechaTransferencia: "Al día", pagoVencidoTransferencia: "N/A",
         };
+
         const ins = {
             ...base,
             ...data,
             id: newId,
-            status: data?.status || INSCRIPTION_STATUS.CURSANDO // estado inicial
+            status: data?.status || INSCRIPTION_STATUS.CURSANDO,
+            installments: data?.installments || []
         };
+
+        console.log('🔍 addInscription recibió installments:', data?.installments);
+        console.log('🔍 ins.installments después de merge:', ins.installments);
 
         ensureInscriptionRules(db, ins);
         if (ins.fullPayment && Number(ins.totalFinal) <= 0) throw new Error("El total final debe ser mayor a 0 para pago total.");

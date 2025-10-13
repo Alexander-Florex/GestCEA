@@ -97,18 +97,77 @@ export const INSCRIPTION_STATUS = {
 
 const defaultDB = {
     __schema: SCHEMA_VERSION,
-    settings: { graceDays: 0, currency: "ARS" }, // configurable en el tiempo
-    students: [],
-    professors: [],
+    settings: { graceDays: 0, currency: "ARS" },
+
+    students: [
+        { id: 1, nombre: "Juan", apellido: "Pérez", dni: "12345678", email: "juan.perez@example.com", telefono: "1234567890" },
+        { id: 2, nombre: "María", apellido: "Gómez", dni: "87654321", email: "maria.gomez@example.com", telefono: "0987654321" }
+    ],
+
+    professors: [
+        { id: 1, nombre: "Laura", apellido: "Ramírez", email: "laura.ramirez@example.com", telefono: "1122334455" },
+        { id: 2, nombre: "Carlos", apellido: "López", email: "carlos.lopez@example.com", telefono: "5566778899" }
+    ],
+
     users: [
         { id: 1, nombre: "Admin", apellido: "", dni: "00000000", correo: "admin@gestcea.local", "contraseña": "admin", rol: "Administrador", activo: true }
     ],
-    courses: [],
+
+    courses: [
+        {
+            id: 1,
+            nombre: "Programación Web",
+            descripcion: "Curso de desarrollo web con HTML, CSS y JavaScript.",
+            vacantes: 30,
+            inicio: new Date().toISOString(),
+            fin: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
+            profesores: [1],
+            horarios: [],
+            porcentajeTarjeta: 0,
+            totalEfectivo: 0,
+            totalTarjeta: 0,
+            totalTransferencia: 0,
+            cuotasEfectivo: 1,
+            cuotasTarjeta: 1,
+            cuotasTransferencia: 1,
+            pagoFechaEfectivo: "Al día",
+            pagoVencidoEfectivo: "N/A",
+            pagoFechaTransferencia: "Al día",
+            pagoVencidoTransferencia: "N/A",
+            tiposCertificado: [],
+            costosCertificado: {}
+        },
+        {
+            id: 2,
+            nombre: "Diseño Gráfico",
+            descripcion: "Curso introductorio a herramientas de diseño como Photoshop e Illustrator.",
+            vacantes: 20,
+            inicio: new Date().toISOString(),
+            fin: new Date(new Date().setMonth(new Date().getMonth() + 2)).toISOString(),
+            profesores: [2],
+            horarios: [],
+            porcentajeTarjeta: 0,
+            totalEfectivo: 0,
+            totalTarjeta: 0,
+            totalTransferencia: 0,
+            cuotasEfectivo: 1,
+            cuotasTarjeta: 1,
+            cuotasTransferencia: 1,
+            pagoFechaEfectivo: "Al día",
+            pagoVencidoEfectivo: "N/A",
+            pagoFechaTransferencia: "Al día",
+            pagoVencidoTransferencia: "N/A",
+            tiposCertificado: [],
+            costosCertificado: {}
+        }
+    ],
+
     becas: [],
     inscriptions: [],
     cajaMovimientos: [],
-    debts: [] // “tabla” denormalizada para reportes de deudores
+    debts: []
 };
+
 
 /** ======================= REGLAS DE CUOTAS/DEUDA ======================= */
 const recalcInstallment = (cuota, { justPaid = false } = {}) => {

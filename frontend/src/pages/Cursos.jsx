@@ -1,7 +1,7 @@
 // src/pages/Cursos.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiPlus, FiTrash, FiInfo } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiPlus, FiTrash, FiInfo, FiCopy } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB";
 
 /* ==================== Componentes UI ==================== */
@@ -121,7 +121,7 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                                                     }}
                                                     className="hover:text-red-600"
                                                 >
-                                                    ×
+                                                    <FiX className="w-3 h-3" />
                                                 </button>
                                             </span>
                                         ) : null;
@@ -130,14 +130,10 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                             </div>
                         )}
 
-                        <div className="p-3 border-t border-gray-200 flex justify-between">
-                            <button
-                                type="button"
-                                onClick={() => onTeachersChange([])}
-                                className="text-sm text-red-600 hover:text-red-800 transition-colors"
-                            >
-                                Limpiar todo
-                            </button>
+                        <div className="border-t border-gray-200 p-3 bg-gray-50 flex justify-between items-center">
+                            <div className="text-sm text-gray-600">
+                                {selectedTeachers.length} profesor{selectedTeachers.length !== 1 ? 'es' : ''} seleccionado{selectedTeachers.length !== 1 ? 's' : ''}
+                            </div>
                             <button
                                 type="button"
                                 onClick={onToggle}
@@ -197,7 +193,16 @@ const sortHorarios = (horarios = []) => {
 
 const resumenHorarios = (horarios = []) => {
     if (!horarios || horarios.length === 0) return '-';
-    return sortHorarios(horarios).map(h => `${h.dia.slice(0,3)} ${h.desde}-${h.hasta}`);
+
+    // Filtrar horarios que tengan desde Y hasta definidos
+    const horariosValidos = sortHorarios(horarios).filter(h =>
+        h.desde && h.desde.trim() !== '' &&
+        h.hasta && h.hasta.trim() !== ''
+    );
+
+    if (horariosValidos.length === 0) return ['-'];
+
+    return horariosValidos.map(h => `${h.dia.slice(0,3)} ${h.desde}-${h.hasta}`);
 };
 
 const formatDate = (iso) => {
@@ -226,6 +231,30 @@ const getEstadoCurso = (inicio, fin) => {
     return { text: 'Finalizado', color: 'bg-gray-100 text-gray-800' };
 };
 
+/* ==================== Función para calcular vacantes ==================== */
+const getVacantesInfo = (course, inscriptions) => {
+    const totalVacantes = Number(course.vacantes) || 0;
+    if (totalVacantes === 0) return { disponibles: 0, ocupadas: 0, porcentaje: 0, color: 'bg-gray-100 text-gray-800', emoji: '⚪' };
+
+    const ocupadas = inscriptions.filter(i => i.courseId === course.id).length;
+    const disponibles = Math.max(0, totalVacantes - ocupadas);
+    const porcentaje = (disponibles / totalVacantes) * 100;
+
+    let color, emoji;
+    if (porcentaje > 50) {
+        color = 'bg-green-100 text-green-800';
+        emoji = '🟢';
+    } else if (porcentaje >= 10) {
+        color = 'bg-yellow-100 text-yellow-800';
+        emoji = '🟡';
+    } else {
+        color = 'bg-red-100 text-red-800';
+        emoji = '🔴';
+    }
+
+    return { disponibles, ocupadas, porcentaje, color, emoji };
+};
+
 /* ==================== Tooltips Content ==================== */
 const tooltipContent = {
     pagoFechaEfectivo: "Precio que el estudiante abona antes del 10 de cada mes con un descuento del 5%",
@@ -234,17 +263,15 @@ const tooltipContent = {
     pagoFechaTransferencia: "Precio que el estudiante abona antes del 10 de cada mes mediante transferencia bancaria",
     pagoVencidoTransferencia: "Precio que el estudiante abona después del 10 del mes mediante transferencia",
     totalTransferencia: "Costo total del curso al pagarlo por transferencia",
-    totalTarjeta: "Costo total del curso al pagarlo con tarjeta de crédito o débito",
-    cuotas: "Número máximo de cuotas disponibles para el pago con tarjeta",
-    cuotasEfectivo: "Número de cuotas aplicadas sobre el costo total en efectivo",
-    cuotasTransferencia: "Número de cuotas aplicadas sobre el costo total por transferencia",
-    porcentajeTarjeta: "Porcentaje de aumento aplicado sobre el costo total de efectivo para calcular el precio con tarjeta"
+    totalTarjeta: "Costo total del curso al pagarlo con tarjeta de crédito o débito (calculado automáticamente como costo en efectivo + 15%)",
+    cuotasCompartidas: "Número de cuotas compartido para pagos en efectivo y transferencias",
+    porcentajeTarjeta: "Porcentaje de aumento aplicado sobre el costo total de efectivo para calcular el precio con tarjeta (fijo en 15%)"
 };
 
 /* ==================== Página Cursos ==================== */
 
 export default function Cursos() {
-    const { courses, addCourse, updateCourse, removeCourse, professors } = useDB();
+    const { courses, addCourse, updateCourse, removeCourse, professors, inscriptions } = useDB();
     const [search, setSearch] = useState('');
     const [filterEstado, setFilterEstado] = useState('');
     const [filterCod, setFilterCod] = useState('');
@@ -253,7 +280,6 @@ export default function Cursos() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [isTeacherSelectorOpen, setIsTeacherSelectorOpen] = useState(false);
-    const [nombreError, setNombreError] = useState('');
 
     const availableCertTypes = useMemo(() => {
         const base = new Set(['UTN', 'CEA']);
@@ -269,16 +295,13 @@ export default function Cursos() {
         pagoFechaEfectivo: '',
         pagoVencidoEfectivo: '',
         totalEfectivo: '',
-        cuotasEfectivoEnabled: false,
-        cuotasEfectivo: '',
         pagoFechaTransferencia: '',
         pagoVencidoTransferencia: '',
         totalTransferencia: '',
-        cuotasTransferenciaEnabled: false,
-        cuotasTransferencia: '',
-        porcentajeTarjeta: 30,
+        cuotasEnabled: false,
+        cuotasCompartidas: '',
+        porcentajeTarjeta: 15,
         totalTarjeta: '',
-        cuotas: '',
         tiposCertificado: [],
         costosCertificado: {},
         horarios: [],
@@ -301,29 +324,6 @@ export default function Cursos() {
             setFormData(prev => ({ ...prev, totalTarjeta: nuevoTotal.toFixed(2) }));
         }
     }, [formData.totalEfectivo, formData.porcentajeTarjeta]);
-
-    // Validación en tiempo real del nombre del curso
-    useEffect(() => {
-        if (!formData.nombre || formData.nombre.trim().length < 3) {
-            setNombreError('');
-            return;
-        }
-
-        const nombreNormalizado = formData.nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-
-        const duplicado = courses.find(c => {
-            if (editing && c.id === editing.id) return false;
-
-            const nombreCursoNormalizado = (c.nombre || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-            return nombreCursoNormalizado === nombreNormalizado;
-        });
-
-        if (duplicado) {
-            setNombreError(`El curso "${formData.nombre}" ya existe. Usá un sufijo numérico (ej: "${formData.nombre} 2")`);
-        } else {
-            setNombreError('');
-        }
-    }, [formData.nombre, courses, editing]);
 
     useEffect(() => {
         const handleKeyDown = (event) => {
@@ -366,7 +366,6 @@ export default function Cursos() {
     }, [courses, search, filterEstado, filterCod, professors]);
 
     const openForm = (course) => {
-        setNombreError('');
         if (course) {
             setEditing(course);
             setFormData({
@@ -375,16 +374,13 @@ export default function Cursos() {
                 pagoFechaEfectivo: String(course.pagoFechaEfectivo ?? ''),
                 pagoVencidoEfectivo: String(course.pagoVencidoEfectivo ?? ''),
                 totalEfectivo: String(course.totalEfectivo ?? ''),
-                cuotasEfectivoEnabled: course.cuotasEfectivoEnabled ?? false,
-                cuotasEfectivo: String(course.cuotasEfectivo ?? ''),
                 pagoFechaTransferencia: String(course.pagoFechaTransferencia ?? ''),
                 pagoVencidoTransferencia: String(course.pagoVencidoTransferencia ?? ''),
                 totalTransferencia: String(course.totalTransferencia ?? ''),
-                cuotasTransferenciaEnabled: course.cuotasTransferenciaEnabled ?? false,
-                cuotasTransferencia: String(course.cuotasTransferencia ?? ''),
-                porcentajeTarjeta: course.porcentajeTarjeta ?? 30,
+                cuotasEnabled: course.cuotasEnabled ?? false,
+                cuotasCompartidas: String(course.cuotasCompartidas ?? ''),
+                porcentajeTarjeta: course.porcentajeTarjeta ?? 15,
                 totalTarjeta: String(course.totalTarjeta ?? ''),
-                cuotas: String(course.cuotas ?? ''),
                 tiposCertificado: course.tiposCertificado || [],
                 costosCertificado: { ...(course.costosCertificado || {}) },
                 horarios: course.horarios || [],
@@ -402,16 +398,13 @@ export default function Cursos() {
                 pagoFechaEfectivo: '',
                 pagoVencidoEfectivo: '',
                 totalEfectivo: '',
-                cuotasEfectivoEnabled: false,
-                cuotasEfectivo: '',
                 pagoFechaTransferencia: '',
                 pagoVencidoTransferencia: '',
                 totalTransferencia: '',
-                cuotasTransferenciaEnabled: false,
-                cuotasTransferencia: '',
-                porcentajeTarjeta: 30,
+                cuotasEnabled: false,
+                cuotasCompartidas: '',
+                porcentajeTarjeta: 15,
                 totalTarjeta: '',
-                cuotas: '',
                 tiposCertificado: [],
                 costosCertificado: {},
                 horarios: [],
@@ -429,7 +422,6 @@ export default function Cursos() {
         setIsFormOpen(false);
         setEditing(null);
         setIsTeacherSelectorOpen(false);
-        setNombreError('');
     };
 
     const handleChange = (e) => {
@@ -504,11 +496,6 @@ export default function Cursos() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (nombreError) {
-            showNotification('error', nombreError);
-            return;
-        }
-
         try {
             if (!formData.nombre || formData.profesores.length === 0) {
                 throw new Error('Nombre y al menos un profesor son obligatorios');
@@ -517,7 +504,7 @@ export default function Cursos() {
             const numericFields = [
                 'pagoFechaEfectivo', 'pagoVencidoEfectivo', 'totalEfectivo',
                 'pagoFechaTransferencia', 'pagoVencidoTransferencia', 'totalTransferencia',
-                'totalTarjeta', 'cuotas', 'vacantes', 'porcentajeTarjeta'
+                'totalTarjeta', 'vacantes', 'porcentajeTarjeta'
             ];
             for (const field of numericFields) {
                 const value = formData[field];
@@ -526,11 +513,8 @@ export default function Cursos() {
                 }
             }
 
-            if (formData.cuotasEfectivoEnabled && (formData.cuotasEfectivo === '' || isNaN(Number(formData.cuotasEfectivo)))) {
-                throw new Error('Si habilitas cuotas en efectivo, debes especificar un número válido');
-            }
-            if (formData.cuotasTransferenciaEnabled && (formData.cuotasTransferencia === '' || isNaN(Number(formData.cuotasTransferencia)))) {
-                throw new Error('Si habilitas cuotas en transferencias, debes especificar un número válido');
+            if (formData.cuotasEnabled && (formData.cuotasCompartidas === '' || isNaN(Number(formData.cuotasCompartidas)))) {
+                throw new Error('Si habilitas cuotas, debes especificar un número válido');
             }
 
             if (!formData.inicio) throw new Error('Fecha de inicio obligatoria');
@@ -560,16 +544,13 @@ export default function Cursos() {
                 pagoFechaEfectivo: Number(formData.pagoFechaEfectivo),
                 pagoVencidoEfectivo: Number(formData.pagoVencidoEfectivo),
                 totalEfectivo: Number(formData.totalEfectivo),
-                cuotasEfectivoEnabled: formData.cuotasEfectivoEnabled,
-                cuotasEfectivo: formData.cuotasEfectivoEnabled ? Number(formData.cuotasEfectivo) : null,
                 pagoFechaTransferencia: Number(formData.pagoFechaTransferencia),
                 pagoVencidoTransferencia: Number(formData.pagoVencidoTransferencia),
                 totalTransferencia: Number(formData.totalTransferencia),
-                cuotasTransferenciaEnabled: formData.cuotasTransferenciaEnabled,
-                cuotasTransferencia: formData.cuotasTransferenciaEnabled ? Number(formData.cuotasTransferencia) : null,
+                cuotasEnabled: formData.cuotasEnabled,
+                cuotasCompartidas: formData.cuotasEnabled ? Number(formData.cuotasCompartidas) : null,
                 porcentajeTarjeta: Number(formData.porcentajeTarjeta),
                 totalTarjeta: Number(formData.totalTarjeta),
-                cuotas: Number(formData.cuotas),
                 tiposCertificado: [...formData.tiposCertificado],
                 costosCertificado: costos,
                 horarios: [...formData.horarios],
@@ -598,9 +579,40 @@ export default function Cursos() {
         }
     };
 
+    // Nueva función: Duplicar curso
+    const handleDuplicate = (course) => {
+        const courseData = {
+            nombre: course.nombre,
+            profesores: course.profesores || [],
+            pagoFechaEfectivo: Number(course.pagoFechaEfectivo ?? 0),
+            pagoVencidoEfectivo: Number(course.pagoVencidoEfectivo ?? 0),
+            totalEfectivo: Number(course.totalEfectivo ?? 0),
+            pagoFechaTransferencia: Number(course.pagoFechaTransferencia ?? 0),
+            pagoVencidoTransferencia: Number(course.pagoVencidoTransferencia ?? 0),
+            totalTransferencia: Number(course.totalTransferencia ?? 0),
+            cuotasEnabled: course.cuotasEnabled ?? false,
+            cuotasCompartidas: course.cuotasCompartidas ?? null,
+            porcentajeTarjeta: Number(course.porcentajeTarjeta ?? 15),
+            totalTarjeta: Number(course.totalTarjeta ?? 0),
+            tiposCertificado: [...(course.tiposCertificado || [])],
+            costosCertificado: { ...(course.costosCertificado || {}) },
+            horarios: [...(course.horarios || [])],
+            inicio: course.inicio || '',
+            fin: course.fin || '',
+            vacantes: Number(course.vacantes ?? 0),
+        };
+
+        try {
+            addCourse(courseData);
+            showNotification('success', `Curso "${course.nombre}" duplicado correctamente`);
+        } catch (err) {
+            showNotification('error', err.message);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-            <div className="p-6 relative max-w-7xl mx-auto">
+            <div className="p-6 relative max-w-[1800px] mx-auto">
                 <Notifications notifications={notifications} remove={removeNotification} />
 
                 <div className="mb-6 space-y-4">
@@ -668,7 +680,7 @@ export default function Cursos() {
                             <tr>
                                 {[
                                     'COD', 'Nombre del Curso', 'Fecha Inicio', 'Fecha Fin',
-                                    'Día y Horario', 'Profesor/es', 'Estado', 'Acciones'
+                                    'Día y Horario', 'Profesor/es', 'Vacantes', 'Estado', 'Acciones'
                                 ].map(h => (
                                     <th key={h} className="px-6 py-4 text-left font-semibold tracking-wide">{h}</th>
                                 ))}
@@ -678,6 +690,7 @@ export default function Cursos() {
                             {filtered.map((course, index) => {
                                 const estado = getEstadoCurso(course.inicio, course.fin);
                                 const horarios = resumenHorarios(course.horarios || []);
+                                const vacantesInfo = getVacantesInfo(course, inscriptions);
                                 return (
                                     <motion.tr
                                         key={course.id}
@@ -707,6 +720,14 @@ export default function Cursos() {
                                         </td>
                                         <td className="px-6 py-4 text-gray-700">{getTeacherNames(course.profesores || [], professors)}</td>
                                         <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${vacantesInfo.color} flex items-center gap-1`}>
+                                                    <span className="text-base">{vacantesInfo.emoji}</span>
+                                                    <span>{vacantesInfo.disponibles}/{Number(course.vacantes)}</span>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
                                             <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${estado.color}`}>
                                                 {estado.text}
                                             </span>
@@ -732,6 +753,15 @@ export default function Cursos() {
                                                     <FiEdit size={20} />
                                                 </motion.button>
                                                 <motion.button
+                                                    onClick={() => handleDuplicate(course)}
+                                                    whileHover={{ scale: 1.2 }}
+                                                    whileTap={{ scale: 0.9 }}
+                                                    className="text-purple-600 hover:text-purple-800 transition-colors p-2 rounded-full hover:bg-purple-50"
+                                                    title="Duplicar curso"
+                                                >
+                                                    <FiCopy size={20} />
+                                                </motion.button>
+                                                <motion.button
                                                     onClick={() => handleDelete(course)}
                                                     whileHover={{ scale: 1.2 }}
                                                     whileTap={{ scale: 0.9 }}
@@ -747,7 +777,7 @@ export default function Cursos() {
                             })}
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={8} className="text-center py-12 text-gray-500">
+                                    <td colSpan={9} className="text-center py-12 text-gray-500">
                                         <div className="flex flex-col items-center space-y-2">
                                             <div className="text-4xl">📚</div>
                                             <div className="text-lg">
@@ -802,16 +832,20 @@ export default function Cursos() {
                                                 <span className="text-right">{viewing.nombre}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="font-medium text-gray-600">Profesor/es:</span>
-                                                <span className="text-right">{getTeacherNames(viewing.profesores || [], professors)}</span>
+                                                <span className="font-medium text-gray-600">Vacantes:</span>
+                                                <span className="text-right">{viewing.vacantes}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="font-medium text-gray-600">Vacantes:</span>
-                                                <span>{(viewing.vacantes ?? '-')}</span>
+                                                <span className="font-medium text-gray-600">Inicio:</span>
+                                                <span className="text-right">{formatDate(viewing.inicio)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-medium text-gray-600">Fin:</span>
+                                                <span className="text-right">{formatDate(viewing.fin)}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-medium text-gray-600">Estado:</span>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoCurso(viewing.inicio, viewing.fin).color}`}>
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${getEstadoCurso(viewing.inicio, viewing.fin).color}`}>
                                                     {getEstadoCurso(viewing.inicio, viewing.fin).text}
                                                 </span>
                                             </div>
@@ -819,87 +853,141 @@ export default function Cursos() {
                                     </div>
 
                                     <div className="space-y-3">
-                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Efectivo</h4>
+                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Datos Económicos</h4>
                                         <div className="space-y-2">
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Pago en Fecha:</span><span>${viewing.pagoFechaEfectivo || '-'}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Pago Vencido:</span><span>${viewing.pagoVencidoEfectivo || '-'}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Total:</span><span>${viewing.totalEfectivo || '-'}</span></div>
-                                            {viewing.cuotasEfectivoEnabled && (
-                                                <div className="flex justify-between"><span className="font-medium text-gray-600">Cuotas:</span><span>{viewing.cuotasEfectivo || '-'}</span></div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Transferencias</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Pago en Fecha:</span><span>${viewing.pagoFechaTransferencia || '-'}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Pago Vencido:</span><span>${viewing.pagoVencidoTransferencia || '-'}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Total:</span><span>${viewing.totalTransferencia || '-'}</span></div>
-                                            {viewing.cuotasTransferenciaEnabled && (
-                                                <div className="flex justify-between"><span className="font-medium text-gray-600">Cuotas:</span><span>{viewing.cuotasTransferencia || '-'}</span></div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Tarjetas</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Porcentaje:</span><span>{viewing.porcentajeTarjeta || '-'}%</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Curso Total:</span><span>${viewing.totalTarjeta || '-'}</span></div>
-                                            <div className="flex justify-between"><span className="font-medium text-gray-600">Cuotas:</span><span>{viewing.cuotas || '-'}</span></div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Fechas</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="font-medium text-gray-600">Inicio:</span>
-                                                <span>{formatDate(viewing.inicio)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-medium text-gray-600">Fin:</span>
-                                                <span>{formatDate(viewing.fin)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <h4 className="text-lg font-semibold text-gray-700 mb-3">Días y horarios</h4>
-                                    <div className="border-2 border-gray-300 rounded-xl p-4 bg-gray-50 min-h-[100px] shadow-sm">
-                                        {viewing.horarios?.length > 0 ? (
-                                            <div className="space-y-2">
-                                                {sortHorarios(viewing.horarios).map((h,i)=>(
-                                                    <div key={i} className="flex justify-between items-center bg-white px-3 py-2 rounded-lg shadow-sm">
-                                                        <span className="font-medium text-gray-700">{h.dia}</span>
-                                                        <span className="text-gray-600">{h.desde} - {h.hasta}</span>
+                                            <div className="bg-green-50 p-3 rounded">
+                                                <div className="font-medium text-green-800 mb-2">Efectivo</div>
+                                                <div className="space-y-1 text-sm">
+                                                    <div className="flex justify-between">
+                                                        <span>Pago en Fecha:</span>
+                                                        <span className="font-semibold">${Number(viewing.pagoFechaEfectivo || 0).toFixed(2)}</span>
                                                     </div>
-                                                ))}
+                                                    <div className="flex justify-between">
+                                                        <span>Pago Vencidos:</span>
+                                                        <span className="font-semibold">${Number(viewing.pagoVencidoEfectivo || 0).toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between border-t border-green-200 pt-1">
+                                                        <span>Total:</span>
+                                                        <span className="font-bold">${Number(viewing.totalEfectivo || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        ) : (
-                                            <p className="text-gray-500 italic">Sin horarios definidos</p>
-                                        )}
-                                    </div>
-                                </div>
 
-                                <div>
-                                    <h4 className="text-lg font-semibold text-gray-700 mb-3">Certificados</h4>
-                                    <div className="border-2 border-gray-300 rounded-xl p-4 bg-gray-50 min-h-[80px] shadow-sm">
-                                        {viewing.tiposCertificado?.length ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                {viewing.tiposCertificado.map((t,i)=>(
-                                                    <span key={i} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm shadow-sm">
-                                                        {t}: ${viewing.costosCertificado?.[t] ?? '-'}
-                                                    </span>
-                                                ))}
+                                            <div className="bg-blue-50 p-3 rounded">
+                                                <div className="font-medium text-blue-800 mb-2">Transferencia</div>
+                                                <div className="space-y-1 text-sm">
+                                                    <div className="flex justify-between">
+                                                        <span>Pago en Fecha:</span>
+                                                        <span className="font-semibold">${Number(viewing.pagoFechaTransferencia || 0).toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Pago Vencidos:</span>
+                                                        <span className="font-semibold">${Number(viewing.pagoVencidoTransferencia || 0).toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between border-t border-blue-200 pt-1">
+                                                        <span>Total:</span>
+                                                        <span className="font-bold">${Number(viewing.totalTransferencia || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        ) : (
-                                            <p className="text-gray-500 italic">No hay tipos de certificado</p>
-                                        )}
+
+                                            <div className="bg-purple-50 p-3 rounded">
+                                                <div className="font-medium text-purple-800 mb-2">Tarjeta</div>
+                                                <div className="space-y-1 text-sm">
+                                                    <div className="flex justify-between">
+                                                        <span>Porcentaje:</span>
+                                                        <span className="font-semibold">{Number(viewing.porcentajeTarjeta || 0)}%</span>
+                                                    </div>
+                                                    <div className="flex justify-between border-t border-purple-200 pt-1">
+                                                        <span>Total:</span>
+                                                        <span className="font-bold">${Number(viewing.totalTarjeta || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {viewing.cuotasEnabled && (
+                                                <div className="bg-gray-50 p-3 rounded">
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="font-medium text-gray-700">Cuotas disponibles:</span>
+                                                        <span className="font-bold">{viewing.cuotasCompartidas || 0}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2 flex items-center">
+                                            <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Horarios del curso
+                                        </h4>
+                                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                                            {viewing.horarios && viewing.horarios.length > 0 ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    {sortHorarios(viewing.horarios).map((horario, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="bg-white p-3 rounded-lg shadow-sm border border-blue-200 hover:shadow-md transition-shadow"
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                    {horario.dia.slice(0, 3)}
+                                </span>
+                                                                    <div>
+                                                                        <div className="text-xs text-gray-500 font-medium">{horario.dia}</div>
+                                                                        <div className="text-sm font-bold text-gray-800">
+                                                                            {horario.desde && horario.hasta ? (
+                                                                                <>{horario.desde} - {horario.hasta}</>
+                                                                            ) : (
+                                                                                <span className="text-red-500">Sin horario definido</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-6">
+                                                    <svg className="w-12 h-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <p className="text-gray-500 font-medium">No hay horarios definidos</p>
+                                                    <p className="text-gray-400 text-sm">Edita el curso para agregar horarios</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Profesores y Certificados</h4>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <div className="font-medium text-gray-600 mb-1">Profesor/es:</div>
+                                                <div className="text-sm bg-gray-50 p-2 rounded">
+                                                    {getTeacherNames(viewing.profesores || [], professors) || 'Sin asignar'}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-gray-600 mb-1">Certificados:</div>
+                                                {viewing.tiposCertificado && viewing.tiposCertificado.length > 0 ? (
+                                                    <div className="space-y-1">
+                                                        {viewing.tiposCertificado.map(tipo => (
+                                                            <div key={tipo} className="flex justify-between text-sm bg-gray-50 p-2 rounded">
+                                                                <span>{tipo}</span>
+                                                                <span className="font-semibold">${Number(viewing.costosCertificado?.[tipo] || 0).toFixed(2)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-gray-500 italic">No hay tipos de certificado</p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -953,21 +1041,9 @@ export default function Cursos() {
                                                     type="text"
                                                     value={formData.nombre}
                                                     onChange={handleChange}
-                                                    className={`border-2 rounded-lg px-3 py-2 text-black focus:outline-none transition-colors ${
-                                                        nombreError
-                                                            ? 'border-red-500 focus:border-red-600 bg-red-50'
-                                                            : 'border-gray-300 focus:border-purple-500'
-                                                    }`}
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
                                                     required
                                                 />
-                                                {nombreError && (
-                                                    <div className="mt-2 flex items-start space-x-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
-                                                        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-                                                        </svg>
-                                                        <span>{nombreError}</span>
-                                                    </div>
-                                                )}
                                             </div>
 
                                             <div className="flex flex-col lg:col-span-2">
@@ -1040,42 +1116,6 @@ export default function Cursos() {
                                                             required min="0" step="0.01"
                                                         />
                                                     </div>
-
-                                                    {/* Checkbox para cuotas en efectivo */}
-                                                    <div className="flex items-center space-x-2 pt-2 border-t border-gray-300">
-                                                        <input
-                                                            type="checkbox"
-                                                            id="cuotasEfectivoEnabled"
-                                                            checked={formData.cuotasEfectivoEnabled}
-                                                            onChange={(e) => setFormData(fd => ({
-                                                                ...fd,
-                                                                cuotasEfectivoEnabled: e.target.checked,
-                                                                cuotasEfectivo: e.target.checked ? fd.cuotasEfectivo : ''
-                                                            }))}
-                                                            className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-                                                        />
-                                                        <label htmlFor="cuotasEfectivoEnabled" className="text-sm text-gray-700 font-medium">
-                                                            Habilitar cuotas
-                                                        </label>
-                                                    </div>
-
-                                                    {formData.cuotasEfectivoEnabled && (
-                                                        <div className="flex flex-col">
-                                                            <Tooltip content={tooltipContent.cuotasEfectivo}>
-                                                                <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                    Nº Cuotas <FiInfo className="w-3 h-3 text-gray-400" />
-                                                                </label>
-                                                            </Tooltip>
-                                                            <input
-                                                                name="cuotasEfectivo"
-                                                                type="number"
-                                                                value={formData.cuotasEfectivo}
-                                                                onChange={handleChange}
-                                                                className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
-                                                                min="1" step="1"
-                                                            />
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
 
@@ -1128,42 +1168,6 @@ export default function Cursos() {
                                                             required min="0" step="0.01"
                                                         />
                                                     </div>
-
-                                                    {/* Checkbox para cuotas en transferencias */}
-                                                    <div className="flex items-center space-x-2 pt-2 border-t border-gray-300">
-                                                        <input
-                                                            type="checkbox"
-                                                            id="cuotasTransferenciaEnabled"
-                                                            checked={formData.cuotasTransferenciaEnabled}
-                                                            onChange={(e) => setFormData(fd => ({
-                                                                ...fd,
-                                                                cuotasTransferenciaEnabled: e.target.checked,
-                                                                cuotasTransferencia: e.target.checked ? fd.cuotasTransferencia : ''
-                                                            }))}
-                                                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                                                        />
-                                                        <label htmlFor="cuotasTransferenciaEnabled" className="text-sm text-gray-700 font-medium">
-                                                            Habilitar cuotas
-                                                        </label>
-                                                    </div>
-
-                                                    {formData.cuotasTransferenciaEnabled && (
-                                                        <div className="flex flex-col">
-                                                            <Tooltip content={tooltipContent.cuotasTransferencia}>
-                                                                <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                    Nº Cuotas <FiInfo className="w-3 h-3 text-gray-400" />
-                                                                </label>
-                                                            </Tooltip>
-                                                            <input
-                                                                name="cuotasTransferencia"
-                                                                type="number"
-                                                                value={formData.cuotasTransferencia}
-                                                                onChange={handleChange}
-                                                                className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
-                                                                min="1" step="1"
-                                                            />
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
 
@@ -1182,8 +1186,9 @@ export default function Cursos() {
                                                             type="number"
                                                             value={formData.porcentajeTarjeta}
                                                             onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors bg-gray-100"
                                                             required min="0" step="0.01"
+                                                            readOnly
                                                         />
                                                     </div>
                                                     <div className="flex flex-col">
@@ -1196,31 +1201,57 @@ export default function Cursos() {
                                                             name="totalTarjeta"
                                                             type="number"
                                                             value={formData.totalTarjeta}
-                                                            onChange={handleChange}
                                                             className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors bg-yellow-50"
                                                             required min="0" step="0.01"
+                                                            readOnly
                                                         />
                                                         <small className="text-xs text-gray-500 mt-1">
                                                             Calculado automáticamente: ${calcularTotalTarjeta(formData.totalEfectivo, formData.porcentajeTarjeta).toFixed(2)}
                                                         </small>
                                                     </div>
-                                                    <div className="flex flex-col">
-                                                        <Tooltip content={tooltipContent.cuotas}>
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                Cuotas <FiInfo className="w-3 h-3 text-gray-400" />
-                                                            </label>
-                                                        </Tooltip>
-                                                        <input
-                                                            name="cuotas"
-                                                            type="number"
-                                                            value={formData.cuotas}
-                                                            onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
-                                                            required min="1" step="1"
-                                                        />
+                                                    <div className="bg-purple-50 border border-purple-200 rounded p-3 text-xs text-purple-800">
+                                                        <strong>Nota:</strong> El pago con tarjeta es un solo pago, sin cuotas.
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        {/* Cuotas compartidas (fuera de las tres columnas) */}
+                                        <div className="mt-6 border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
+                                            <div className="flex items-center space-x-2 mb-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="cuotasEnabled"
+                                                    checked={formData.cuotasEnabled}
+                                                    onChange={(e) => setFormData(fd => ({
+                                                        ...fd,
+                                                        cuotasEnabled: e.target.checked,
+                                                        cuotasCompartidas: e.target.checked ? fd.cuotasCompartidas : ''
+                                                    }))}
+                                                    className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                                                />
+                                                <label htmlFor="cuotasEnabled" className="text-sm text-gray-700 font-medium">
+                                                    Habilitar cuotas para Efectivo y Transferencias
+                                                </label>
+                                            </div>
+
+                                            {formData.cuotasEnabled && (
+                                                <div className="flex flex-col max-w-xs">
+                                                    <Tooltip content={tooltipContent.cuotasCompartidas}>
+                                                        <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
+                                                            Nº Cuotas (compartidas) <FiInfo className="w-3 h-3 text-gray-400" />
+                                                        </label>
+                                                    </Tooltip>
+                                                    <input
+                                                        name="cuotasCompartidas"
+                                                        type="number"
+                                                        value={formData.cuotasCompartidas}
+                                                        onChange={handleChange}
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        min="1" step="1"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -1248,75 +1279,76 @@ export default function Cursos() {
                                                     <button
                                                         type="button"
                                                         onClick={handleAddCert}
-                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors shadow-sm"
+                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors whitespace-nowrap shadow-sm"
                                                         title="Agregar certificado"
                                                     >
                                                         <FiPlus className="w-4 h-4" /> Agregar
                                                     </button>
                                                 </div>
+                                            </div>
 
-                                                {/* Chips */}
-                                                <div className="mt-2 min-h-[40px]">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-700">Certificados agregados:</label>
+                                                <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[100px] shadow-sm">
                                                     {formData.tiposCertificado.length === 0 ? (
-                                                        <span className="text-sm text-gray-500">Escribe un tipo y presiona "Agregar".</span>
+                                                        <div className="text-gray-500 italic">Agrega al menos un tipo de certificado.</div>
                                                     ) : (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {formData.tiposCertificado.map(t => (
-                                                                <span key={t} className="inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm shadow-sm">
-                                                                                                        {t}
-                                                                    <button type="button" onClick={() => removeCert(t)} className="hover:text-red-600 transition-colors">✕</button>
-                                                                                                    </span>
+                                                        <div className="space-y-2">
+                                                            {formData.tiposCertificado.map(tipo => (
+                                                                <div key={tipo} className="flex items-center gap-2 bg-white rounded-lg px-4 py-3 shadow-sm border border-gray-200">
+                                                                    <div className="flex-1">
+                                                                        <div className="font-medium text-sm text-black">{tipo}</div>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <input
+                                                                                type="number"
+                                                                                placeholder="Costo"
+                                                                                value={formData.costosCertificado?.[tipo] ?? ''}
+                                                                                onChange={(e) => handleCertCostChange(tipo, e.target.value)}
+                                                                                className="w-32 border border-gray-300 rounded px-2 py-1 text-xs focus:border-purple-500 focus:outline-none"
+                                                                                min="0"
+                                                                                step="0.01"
+                                                                                required
+                                                                            />
+                                                                            <span className="text-xs text-gray-500">ARS</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeCert(tipo)}
+                                                                        className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
+                                                                        title="Eliminar"
+                                                                    >
+                                                                        <FiTrash className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
                                                             ))}
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
-
-                                            {/* Costos por tipo */}
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-700">Costo por tipo:</label>
-                                                <div className="grid grid-cols-1 gap-2">
-                                                    {formData.tiposCertificado.length === 0 && (
-                                                        <div className="text-sm text-gray-500">Agrega tipos para definir sus costos.</div>
-                                                    )}
-                                                    {formData.tiposCertificado.map(t => (
-                                                        <div key={t} className="flex items-center gap-2">
-                                                            <span className="min-w-[48px] text-gray-600">{t}:</span>
-                                                            <input
-                                                                type="number"
-                                                                value={formData.costosCertificado?.[t] ?? ''}
-                                                                onChange={(e) => handleCertCostChange(t, e.target.value)}
-                                                                className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none flex-1 transition-colors"
-                                                                min="0" step="0.01" placeholder="0.00"
-                                                            />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Días y horarios */}
+                                    {/* Horarios */}
                                     <div className="shadow-sm rounded-xl">
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                                             <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Días y Horarios
+                                            Horarios
                                         </h3>
                                         <div className="space-y-4">
-                                            {/* Draft */}
-                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                                                <div className="md:col-span-2">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700 block">Día:</label>
+                                            <div className="flex flex-wrap gap-4 items-end">
+                                                <div className="flex flex-col">
+                                                    <label className="text-sm font-medium mb-2 text-gray-700">Día:</label>
                                                     <select
                                                         value={formData.horarioDraft.dia}
                                                         onChange={(e) => setFormData(fd => ({ ...fd, horarioDraft: { ...fd.horarioDraft, dia: e.target.value } }))}
-                                                        className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
                                                     >
                                                         {diasSemana.map(d => <option key={d} value={d}>{d}</option>)}
                                                     </select>
                                                 </div>
-                                                <div>
-                                                    <label className="text-sm font-medium mb-2 text-gray-700 block">Desde:</label>
+                                                <div className="flex flex-col">
+                                                    <label className="text-sm font-medium mb-2 text-gray-700">Desde:</label>
                                                     <input
                                                         type="time"
                                                         value={formData.horarioDraft.desde}
@@ -1324,8 +1356,8 @@ export default function Cursos() {
                                                         className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
                                                     />
                                                 </div>
-                                                <div>
-                                                    <label className="text-sm font-medium mb-2 text-gray-700 block">Hasta:</label>
+                                                <div className="flex flex-col">
+                                                    <label className="text-sm font-medium mb-2 text-gray-700">Hasta:</label>
                                                     <input
                                                         type="time"
                                                         value={formData.horarioDraft.hasta}
@@ -1431,12 +1463,7 @@ export default function Cursos() {
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={nombreError !== ''}
-                                        className={`px-6 py-3 rounded-lg transition-colors flex items-center space-x-2 shadow ${
-                                            nombreError
-                                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                                                : 'bg-purple-600 text-white hover:bg-purple-700'
-                                        }`}
+                                        className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 shadow"
                                     >
                                         <span>{editing ? 'Guardar Cambios' : 'Crear Curso'}</span>
                                     </button>

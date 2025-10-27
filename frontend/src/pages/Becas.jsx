@@ -1,7 +1,7 @@
 // src/pages/Becas.jsx
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiPercent, FiDollarSign, FiSettings } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiPercent, FiDollarSign, FiSettings, FiFileText } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB";
 
 /* ==================== Notificaciones ==================== */
@@ -40,13 +40,15 @@ export default function Becas() {
     const [editing, setEditing] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
-    const [activeTab, setActiveTab] = useState('becas'); // 'becas', 'transferencia', 'tarjeta'
+    const [activeTab, setActiveTab] = useState('becas'); // 'becas', 'transferencia', 'tarjeta', 'facturaA'
 
     // Estados para editar porcentajes
     const [isEditingTransfer, setIsEditingTransfer] = useState(false);
     const [isEditingCard, setIsEditingCard] = useState(false);
+    const [isEditingFacturaA, setIsEditingFacturaA] = useState(false);
     const [transferPercentage, setTransferPercentage] = useState(settings?.porcentajeTransferencia || 5);
     const [cardPercentage, setCardPercentage] = useState(settings?.porcentajeTarjeta || 15);
+    const [facturaAPercentage, setFacturaAPercentage] = useState(settings?.porcentajeIVAFacturaA || 21);
 
     const [formData, setFormData] = useState({
         tipo: 'Media',
@@ -169,6 +171,20 @@ export default function Becas() {
         }
     };
 
+    const handleSaveFacturaAPercentage = () => {
+        try {
+            const percentage = Number(facturaAPercentage);
+            if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                throw new Error('El porcentaje debe estar entre 0 y 100');
+            }
+            updateSettings({ porcentajeIVAFacturaA: percentage });
+            setIsEditingFacturaA(false);
+            showNotification('success', 'Porcentaje de IVA (Factura A) actualizado correctamente');
+        } catch (err) {
+            showNotification('error', err.message);
+        }
+    };
+
     const handleCancelTransfer = () => {
         setTransferPercentage(settings?.porcentajeTransferencia || 5);
         setIsEditingTransfer(false);
@@ -177,6 +193,11 @@ export default function Becas() {
     const handleCancelCard = () => {
         setCardPercentage(settings?.porcentajeTarjeta || 15);
         setIsEditingCard(false);
+    };
+
+    const handleCancelFacturaA = () => {
+        setFacturaAPercentage(settings?.porcentajeIVAFacturaA || 21);
+        setIsEditingFacturaA(false);
     };
 
     /* ==================== Render ==================== */
@@ -234,6 +255,19 @@ export default function Becas() {
                                 <span>Tarjeta</span>
                             </div>
                         </button>
+                        <button
+                            onClick={() => setActiveTab('facturaA')}
+                            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                                activeTab === 'facturaA'
+                                    ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <div className="flex items-center justify-center space-x-2">
+                                <FiFileText className="w-5 h-5" />
+                                <span>Factura A</span>
+                            </div>
+                        </button>
                     </div>
                 </div>
 
@@ -275,60 +309,62 @@ export default function Becas() {
                                             ))}
                                         </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                        {filtered.map((beca, index) => (
+                                        <tbody>
+                                        {filtered.map((beca, idx) => (
                                             <motion.tr
                                                 key={beca.id}
-                                                className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition-all duration-200 ${
-                                                    index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className={`border-b border-gray-200 hover:bg-purple-50 transition-colors ${
+                                                    idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                                                 }`}
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ duration: 0.2, delay: index * 0.05 }}
                                             >
-                                                <td className="px-6 py-4 text-black font-bold text-lg">#{beca.id}</td>
-                                                <td className="px-6 py-4 text-black font-semibold">Beca {beca.tipo}</td>
-                                                <td className="px-6 py-4 text-gray-700 font-medium">${beca.monto.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900 font-semibold">#{beca.id}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900 font-semibold">Beca {beca.tipo}</td>
+                                                <td className="px-6 py-4 text-sm text-green-700 font-bold">${beca.monto.toLocaleString()}</td>
                                                 <td className="px-6 py-4">
-                                                    <button
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
                                                         onClick={() => toggleActive(beca)}
-                                                        className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm transition-colors ${
+                                                        className={`px-4 py-2 rounded-full font-semibold text-xs shadow transition-colors ${
                                                             beca.activa
                                                                 ? 'bg-green-100 text-green-800 hover:bg-green-200'
                                                                 : 'bg-red-100 text-red-800 hover:bg-red-200'
                                                         }`}
                                                     >
                                                         {beca.activa ? 'Activa' : 'Inactiva'}
-                                                    </button>
+                                                    </motion.button>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex space-x-3">
                                                         <motion.button
-                                                            onClick={() => setViewing(beca)}
-                                                            whileHover={{ scale: 1.2 }}
+                                                            whileHover={{ scale: 1.1 }}
                                                             whileTap={{ scale: 0.9 }}
-                                                            className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-full hover:bg-blue-50"
+                                                            onClick={() => setViewing(beca)}
+                                                            className="text-blue-600 hover:text-blue-800 transition-colors"
                                                             title="Ver detalles"
                                                         >
-                                                            <FiEye size={20} />
+                                                            <FiEye className="w-5 h-5" />
                                                         </motion.button>
                                                         <motion.button
+                                                            whileHover={{ scale: 1.1 }}
+                                                            whileTap={{ scale: 0.9 }}
                                                             onClick={() => openForm(beca)}
-                                                            whileHover={{ scale: 1.2 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            className="text-green-600 hover:text-green-800 transition-colors p-2 rounded-full hover:bg-green-50"
-                                                            title="Editar beca"
+                                                            className="text-green-600 hover:text-green-800 transition-colors"
+                                                            title="Editar"
                                                         >
-                                                            <FiEdit size={20} />
+                                                            <FiEdit className="w-5 h-5" />
                                                         </motion.button>
                                                         <motion.button
-                                                            onClick={() => handleDelete(beca)}
-                                                            whileHover={{ scale: 1.2 }}
+                                                            whileHover={{ scale: 1.1 }}
                                                             whileTap={{ scale: 0.9 }}
-                                                            className="text-red-600 hover:text-red-800 transition-colors p-2 rounded-full hover:bg-red-50"
-                                                            title="Eliminar beca"
+                                                            onClick={() => handleDelete(beca)}
+                                                            className="text-red-600 hover:text-red-800 transition-colors"
+                                                            title="Eliminar"
                                                         >
-                                                            <FiTrash2 size={20} />
+                                                            <FiTrash2 className="w-5 h-5" />
                                                         </motion.button>
                                                     </div>
                                                 </td>
@@ -578,6 +614,129 @@ export default function Becas() {
                             </div>
                         </motion.div>
                     )}
+
+                    {activeTab === 'facturaA' && (
+                        <motion.div
+                            key="facturaA"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+                                <div className="bg-gradient-to-r from-orange-600 to-amber-600 text-white p-6">
+                                    <h2 className="text-2xl font-bold mb-2">Configuración de Factura A</h2>
+                                    <p className="text-orange-100">Establece el porcentaje de IVA para Factura A</p>
+                                </div>
+
+                                <div className="p-8">
+                                    <div className="max-w-2xl mx-auto space-y-6">
+                                        {/* Card de configuración */}
+                                        <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-6 border-2 border-orange-200">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-orange-900 mb-2">Porcentaje de IVA</h3>
+                                                    <p className="text-orange-700 text-sm">
+                                                        Este porcentaje de IVA se aplica cuando se emite una Factura A
+                                                    </p>
+                                                </div>
+                                                <FiFileText className="w-12 h-12 text-orange-600" />
+                                            </div>
+
+                                            {!isEditingFacturaA ? (
+                                                <div className="flex items-center justify-between bg-white rounded-lg p-6 shadow-md">
+                                                    <div>
+                                                        <div className="text-5xl font-bold text-orange-900">
+                                                            {settings?.porcentajeIVAFacturaA || 21}%
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 mt-2">
+                                                            IVA actual para Factura A
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setIsEditingFacturaA(true)}
+                                                        className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold shadow-md"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white rounded-lg p-6 shadow-md space-y-4">
+                                                    <div>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                            Nuevo Porcentaje de IVA (%)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.01"
+                                                            value={facturaAPercentage}
+                                                            onChange={(e) => setFacturaAPercentage(e.target.value)}
+                                                            className="w-full border-2 border-orange-300 rounded-lg px-4 py-3 text-black text-2xl font-bold focus:border-orange-500 focus:outline-none"
+                                                            autoFocus
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-2">
+                                                            Ejemplo: Si el curso cuesta $1000 y el IVA es 21%, el total será $1210
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex space-x-3">
+                                                        <button
+                                                            onClick={handleCancelFacturaA}
+                                                            className="flex-1 border-2 border-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                        <button
+                                                            onClick={handleSaveFacturaAPercentage}
+                                                            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg transition-colors font-semibold shadow-md"
+                                                        >
+                                                            Guardar Cambios
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Ejemplos */}
+                                        <div className="bg-orange-50 rounded-lg p-6 border border-orange-200">
+                                            <h4 className="font-bold text-orange-900 mb-4">💡 Ejemplos de aplicación</h4>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $10,000</span>
+                                                    <span className="font-bold text-orange-900">
+                                                        ${(10000 * (1 + (settings?.porcentajeIVAFacturaA || 21) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $25,000</span>
+                                                    <span className="font-bold text-orange-900">
+                                                        ${(25000 * (1 + (settings?.porcentajeIVAFacturaA || 21) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-white p-3 rounded-lg">
+                                                    <span className="text-gray-700">Curso de $50,000</span>
+                                                    <span className="font-bold text-orange-900">
+                                                        ${(50000 * (1 + (settings?.porcentajeIVAFacturaA || 21) / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Información adicional */}
+                                        <div className="bg-amber-50 rounded-lg p-6 border border-amber-200">
+                                            <h4 className="font-bold text-amber-900 mb-3">ℹ️ Información sobre Factura A</h4>
+                                            <ul className="space-y-2 text-sm text-amber-800">
+                                                <li>• La Factura A se emite a empresas o monotributistas inscritos en IVA</li>
+                                                <li>• El IVA discriminado permite al receptor computar el crédito fiscal</li>
+                                                <li>• El porcentaje estándar de IVA en Argentina es del 21%</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </div>
 
@@ -594,9 +753,10 @@ export default function Becas() {
                             initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-lg">
+                            <div className="p-6 flex items-center justify-between border-b border-gray-200">
                                 <button
-                                    className="absolute top-4 right-4 bg-gray-100 rounded-full p-2 shadow hover:bg-gray-200 transition-colors"
+                                    type="button"
+                                    className="bg-red-100 rounded-full p-2 hover:bg-red-200 transition-colors"
                                     onClick={() => setViewing(null)}
                                 >
                                     <FiX className="w-5 h-5" />

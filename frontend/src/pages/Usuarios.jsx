@@ -2,46 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiEye, FiEdit, FiTrash2, FiX, FiEyeOff } from 'react-icons/fi';
-
-// Datos simulados iniciales de usuarios
-const initialUsers = [
-    {
-        id: 1,
-        nombre: 'Juan',
-        apellido: 'Pérez',
-        dni: '12345678',
-        direccion: 'Av. Corrientes 1234',
-        localidad: 'Buenos Aires',
-        telefono: '11-1234-5678',
-        correo: 'juan.perez@email.com',
-        contraseña: 'password123',
-        rol: 'Administrador'
-    },
-    {
-        id: 2,
-        nombre: 'María',
-        apellido: 'González',
-        dni: '87654321',
-        direccion: 'Calle Falsa 456',
-        localidad: 'Córdoba',
-        telefono: '351-987-6543',
-        correo: 'maria.gonzalez@email.com',
-        contraseña: 'password456',
-        rol: 'Supervisor'
-    },
-    {
-        id: 3,
-        nombre: 'Carlos',
-        apellido: 'López',
-        dni: '11223344',
-        direccion: 'San Martín 789',
-        localidad: 'Rosario',
-        telefono: '341-555-7890',
-        correo: 'carlos.lopez@email.com',
-        contraseña: 'password789',
-        rol: 'Personal'
-    }
-];
+import { useDB } from "../contexts/AppDB.jsx"; // ✅ IMPORTAR useDB
 
 // Componente de notificaciones animadas
 function Notifications({ notifications, remove }) {
@@ -69,7 +30,9 @@ function Notifications({ notifications, remove }) {
 }
 
 export default function Usuarios() {
-    const [users, setUsers] = useState(initialUsers);
+    // ✅ USAR AppDB en lugar de estado local
+    const { users, addUser, updateUser, removeUser } = useDB();
+
     const [search, setSearch] = useState('');
     const [viewing, setViewing] = useState(null);
     const [editing, setEditing] = useState(null);
@@ -83,7 +46,8 @@ export default function Usuarios() {
         telefono: '',
         correo: '',
         contraseña: '',
-        rol: 'Personal'
+        rol: 'Usuario', // ✅ Cambiado de 'Personal' a 'Usuario' para coincidir con el esquema
+        activo: true // ✅ Agregado campo activo
     });
     const [notifications, setNotifications] = useState([]);
     const [showPassword, setShowPassword] = useState(false);
@@ -117,12 +81,13 @@ export default function Usuarios() {
                 nombre: user.nombre,
                 apellido: user.apellido,
                 dni: user.dni,
-                direccion: user.direccion,
-                localidad: user.localidad,
-                telefono: user.telefono,
+                direccion: user.direccion || '',
+                localidad: user.localidad || '',
+                telefono: user.telefono || '',
                 correo: user.correo,
                 contraseña: user.contraseña,
-                rol: user.rol
+                rol: user.rol,
+                activo: user.activo !== false
             });
         } else {
             setEditing(null);
@@ -135,7 +100,8 @@ export default function Usuarios() {
                 telefono: '',
                 correo: '',
                 contraseña: '',
-                rol: 'Personal'
+                rol: 'Usuario',
+                activo: true
             });
         }
         setIsFormOpen(true);
@@ -147,8 +113,11 @@ export default function Usuarios() {
     };
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(fd => ({ ...fd, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(fd => ({
+            ...fd,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
     const validateEmail = (email) => {
@@ -169,45 +138,27 @@ export default function Usuarios() {
             }
 
             if (!validateEmail(formData.correo)) {
-                throw new Error('El correo electrónico no tiene un formato válido');
+                throw new Error('El correo electrónico no es válido');
             }
 
             if (!validateDNI(formData.dni)) {
                 throw new Error('El DNI debe tener 7 u 8 dígitos');
             }
 
-            // Verificar DNI único
-            const existingUserWithDNI = users.find(u => u.dni === formData.dni && (!editing || u.id !== editing.id));
-            if (existingUserWithDNI) {
-                throw new Error('Ya existe un usuario con ese DNI');
+            if (formData.contraseña.length < 4) {
+                throw new Error('La contraseña debe tener al menos 4 caracteres');
             }
-
-            // Verificar correo único
-            const existingUserWithEmail = users.find(u => u.correo === formData.correo && (!editing || u.id !== editing.id));
-            if (existingUserWithEmail) {
-                throw new Error('Ya existe un usuario con ese correo electrónico');
-            }
-
-            const userData = {
-                id: editing ? editing.id : Math.max(0, ...users.map(u => u.id)) + 1,
-                nombre: formData.nombre,
-                apellido: formData.apellido,
-                dni: formData.dni,
-                direccion: formData.direccion,
-                localidad: formData.localidad,
-                telefono: formData.telefono,
-                correo: formData.correo,
-                contraseña: formData.contraseña,
-                rol: formData.rol
-            };
 
             if (editing) {
-                setUsers(us => us.map(u => u.id === editing.id ? userData : u));
-                showNotification('success', 'Usuario editado correctamente');
+                // ✅ Actualizar usuario existente usando AppDB
+                updateUser(editing.id, formData);
+                showNotification('success', 'Usuario actualizado correctamente');
             } else {
-                setUsers(us => [...us, userData]);
+                // ✅ Crear nuevo usuario usando AppDB
+                addUser(formData);
                 showNotification('success', 'Usuario creado correctamente');
             }
+
             closeForm();
         } catch (err) {
             showNotification('error', err.message);
@@ -215,10 +166,19 @@ export default function Usuarios() {
     };
 
     const handleDelete = (user) => {
-        if (window.confirm(`¿Eliminar usuario "${user.nombre} ${user.apellido}"?`)) {
-            setUsers(us => us.filter(u => u.id !== user.id));
-            showNotification('success', 'Usuario eliminado');
+        if (window.confirm(`¿Está seguro de eliminar al usuario ${user.nombre} ${user.apellido}?`)) {
+            try {
+                // ✅ Eliminar usuario usando AppDB
+                removeUser(user.id);
+                showNotification('success', 'Usuario eliminado correctamente');
+            } catch (err) {
+                showNotification('error', err.message);
+            }
         }
+    };
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
     };
 
     const getRolColor = (rol) => {
@@ -227,109 +187,120 @@ export default function Usuarios() {
                 return 'bg-red-100 text-red-800';
             case 'Supervisor':
                 return 'bg-blue-100 text-blue-800';
+            case 'Usuario':
             case 'Personal':
                 return 'bg-green-100 text-green-800';
+            case 'Profesor':
+                return 'bg-purple-100 text-purple-800';
+            case 'Contador':
+                return 'bg-yellow-100 text-yellow-800';
             default:
                 return 'bg-gray-100 text-gray-800';
         }
     };
 
-    const togglePasswordVisibility = () => {
-        setShowPassword(!showPassword);
-    };
-
     return (
-        <div className="p-6 relative">
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-6">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            <div className="flex mb-4">
-                <input
-                    type="text"
-                    placeholder="Buscar por nombre, apellido, DNI, correo o rol..."
-                    className="flex-grow px-4 py-2 border-2 border-purple-500 rounded-l-lg focus:outline-none text-black"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                />
-                <button
-                    onClick={() => openForm(null)}
-                    className="bg-purple-600 text-white px-6 rounded-r-lg hover:bg-purple-700 transition"
-                >
-                    Nuevo Usuario
-                </button>
-            </div>
+            <div className="max-w-7xl mx-auto space-y-6">
+                {/* Header */}
+                <div className="flex justify-between items-center">
+                    <h1 className="text-4xl font-bold text-gray-800">Gestión de Usuarios</h1>
+                    <button
+                        onClick={() => openForm(null)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition-all flex items-center space-x-2"
+                    >
+                        <FiX className="rotate-45" size={20} />
+                        <span>Nuevo Usuario</span>
+                    </button>
+                </div>
 
-            <div className="overflow-auto border-2 border-purple-500 rounded-lg">
-                <table className="min-w-full bg-white">
-                    <thead className="bg-purple-500 text-white">
-                    <tr>
-                        {[
-                            'ID', 'Nombre', 'Apellido', 'DNI', 'Dirección', 'Localidad',
-                            'Teléfono', 'Correo', 'Contraseña', 'Rol', 'Acciones'
-                        ].map(h => (
-                            <th key={h} className="px-4 py-2 whitespace-nowrap">{h}</th>
-                        ))}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {filtered.map(user => (
-                        <motion.tr
-                            key={user.id}
-                            className="hover:bg-gray-50"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <td className="px-4 py-2 text-black">{user.id}</td>
-                            <td className="px-4 py-2 text-black">{user.nombre}</td>
-                            <td className="px-4 py-2 text-black">{user.apellido}</td>
-                            <td className="px-4 py-2 text-black">{user.dni}</td>
-                            <td className="px-4 py-2 text-black">{user.direccion}</td>
-                            <td className="px-4 py-2 text-black">{user.localidad}</td>
-                            <td className="px-4 py-2 text-black">{user.telefono}</td>
-                            <td className="px-4 py-2 text-black">{user.correo}</td>
-                            <td className="px-4 py-2 text-black">{'•'.repeat(user.contraseña.length)}</td>
-                            <td className="px-4 py-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRolColor(user.rol)}`}>
-                    {user.rol}
-                  </span>
-                            </td>
-                            <td className="px-4 py-2 space-x-2">
-                                <motion.button
-                                    onClick={() => setViewing(user)}
-                                    whileHover={{ scale: 1.2 }}
-                                    className="text-black hover:text-purple-700"
-                                    title="Ver detalles"
-                                >
-                                    <FiEye size={18} />
-                                </motion.button>
-                                <motion.button
-                                    onClick={() => openForm(user)}
-                                    whileHover={{ scale: 1.2 }}
-                                    className="text-black hover:text-purple-700"
-                                    title="Editar usuario"
-                                >
-                                    <FiEdit size={18} />
-                                </motion.button>
-                                <motion.button
-                                    onClick={() => handleDelete(user)}
-                                    whileHover={{ scale: 1.2 }}
-                                    className="text-red-500 hover:text-red-700"
-                                    title="Eliminar usuario"
-                                >
-                                    <FiTrash2 size={18} />
-                                </motion.button>
-                            </td>
-                        </motion.tr>
-                    ))}
-                    {filtered.length === 0 && (
+                {/* Barra de búsqueda */}
+                <div className="bg-white rounded-xl shadow-lg p-4">
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre, apellido, DNI, correo o rol..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors text-black"
+                    />
+                </div>
+
+                {/* Tabla de usuarios */}
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <table className="min-w-full">
+                        <thead className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
                         <tr>
-                            <td colSpan={11} className="text-center py-4 text-gray-500">
-                                {search ? 'No se encontraron usuarios que coincidan con la búsqueda.' : 'No hay usuarios disponibles.'}
-                            </td>
+                            <th className="px-6 py-4 text-left text-sm font-bold uppercase">ID</th>
+                            <th className="px-6 py-4 text-left text-sm font-bold uppercase">Nombre</th>
+                            <th className="px-6 py-4 text-left text-sm font-bold uppercase">DNI</th>
+                            <th className="px-6 py-4 text-left text-sm font-bold uppercase">Correo</th>
+                            <th className="px-6 py-4 text-left text-sm font-bold uppercase">Rol</th>
+                            <th className="px-6 py-4 text-left text-sm font-bold uppercase">Estado</th>
+                            <th className="px-6 py-4 text-center text-sm font-bold uppercase">Acciones</th>
                         </tr>
-                    )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                        {filtered.map(user => (
+                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4 text-sm text-gray-900">#{user.id}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                                    {user.nombre} {user.apellido}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">{user.dni}</td>
+                                <td className="px-6 py-4 text-sm text-gray-600">{user.correo}</td>
+                                <td className="px-6 py-4 text-sm">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${getRolColor(user.rol)}`}>
+                                            {user.rol}
+                                        </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                            user.activo !== false
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                        }`}>
+                                            {user.activo !== false ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm">
+                                    <div className="flex justify-center space-x-2">
+                                        <button
+                                            onClick={() => setViewing(user)}
+                                            className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
+                                            title="Ver detalles"
+                                        >
+                                            <FiEye size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => openForm(user)}
+                                            className="p-2 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition-colors"
+                                            title="Editar"
+                                        >
+                                            <FiEdit size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(user)}
+                                            className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                            title="Eliminar"
+                                        >
+                                            <FiTrash2 size={16} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {filtered.length === 0 && (
+                            <tr>
+                                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                                    {search ? 'No se encontraron usuarios que coincidan con la búsqueda' : 'No hay usuarios registrados'}
+                                </td>
+                            </tr>
+                        )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Modal de visualización */}
@@ -362,9 +333,9 @@ export default function Usuarios() {
                                     { label: 'Nombre', value: viewing.nombre },
                                     { label: 'Apellido', value: viewing.apellido },
                                     { label: 'DNI', value: viewing.dni },
-                                    { label: 'Dirección', value: viewing.direccion },
-                                    { label: 'Localidad', value: viewing.localidad },
-                                    { label: 'Teléfono', value: viewing.telefono },
+                                    { label: 'Dirección', value: viewing.direccion || 'N/A' },
+                                    { label: 'Localidad', value: viewing.localidad || 'N/A' },
+                                    { label: 'Teléfono', value: viewing.telefono || 'N/A' },
                                     { label: 'Correo', value: viewing.correo },
                                 ].map((field, i) => (
                                     <div key={i} className="flex flex-col">
@@ -393,9 +364,21 @@ export default function Usuarios() {
                                 <div className="flex flex-col">
                                     <label className="font-medium text-sm text-gray-600">Rol:</label>
                                     <div className="mt-1 w-full border-2 border-gray-300 rounded-xl p-2 bg-gray-50">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRolColor(viewing.rol)}`}>
-                      {viewing.rol}
-                    </span>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRolColor(viewing.rol)}`}>
+                                            {viewing.rol}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col">
+                                    <label className="font-medium text-sm text-gray-600">Estado:</label>
+                                    <div className="mt-1 w-full border-2 border-gray-300 rounded-xl p-2 bg-gray-50">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            viewing.activo !== false
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                        }`}>
+                                            {viewing.activo !== false ? 'Activo' : 'Inactivo'}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -466,10 +449,26 @@ export default function Usuarios() {
                                         className="border-2 border-gray-300 rounded-xl px-3 py-2 text-black focus:border-purple-500 focus:outline-none"
                                         required
                                     >
-                                        <option value="Personal">Personal</option>
-                                        <option value="Supervisor">Supervisor</option>
+                                        <option value="Usuario">Usuario</option>
                                         <option value="Administrador">Administrador</option>
+                                        <option value="Supervisor">Supervisor</option>
+                                        <option value="Profesor">Profesor</option>
+                                        <option value="Contador">Contador</option>
                                     </select>
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <label className="text-sm font-medium mb-1">Estado:</label>
+                                    <div className="flex items-center space-x-2 h-full">
+                                        <input
+                                            type="checkbox"
+                                            name="activo"
+                                            checked={formData.activo}
+                                            onChange={handleChange}
+                                            className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                        />
+                                        <span className="text-sm text-gray-700">Usuario activo</span>
+                                    </div>
                                 </div>
                             </div>
 

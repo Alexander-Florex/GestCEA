@@ -267,7 +267,7 @@ const ensureInstallmentsConsistency = ({ total, installments }) => {
     }
 };
 
-// Caja / Pagos
+// Caja
 const validateCashMovement = (mov) => {
     if (!mov?.formaPago) throw new Error("La forma de pago es obligatoria.");
     if (Number(mov?.monto) <= 0) throw new Error("El monto debe ser mayor a 0.");

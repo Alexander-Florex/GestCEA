@@ -339,40 +339,104 @@ export default function Inscripciones() {
                 console.log('🎁 Bonificación: $', descuentoBonificacion);
             }
 
-            // 4. Calcular total final
-            const totalFinal = precioBase + totalCertificados - descuentoBeca - descuentoBonificacion;
+            // 4. NUEVA LÓGICA: Calcular cuotas con descuentos distribuidos
+            // ============================================================
+
+            // 4.1. Precio base bruto (antes de descuentos)
+            const precioBaseBruto = precioBase + totalCertificados;
+            console.log('💰 Precio Base Bruto (antes de descuentos): $', precioBaseBruto);
+
+            // 4.2. Descuento total a aplicar
+            const descuentoTotal = descuentoBeca + descuentoBonificacion;
+            console.log('🎁 Descuento Total: $', descuentoTotal);
+
+            // 4.3. Total final (para verificación)
+            const totalFinal = precioBaseBruto - descuentoTotal;
             console.log('💵 TOTAL FINAL: $', totalFinal);
 
             if (totalFinal <= 0) {
                 throw new Error('El total final debe ser mayor a 0');
             }
 
-            // 5. GENERAR CUOTAS (si no es pago completo)
+            // 5. GENERAR CUOTAS CON DESCUENTOS DISTRIBUIDOS
             let installments = [];
 
             if (!form.fullPayment) {
-                const montoPorCuota = Math.round((totalFinal / numCuotas) * 100) / 100;
                 const fechaInicio = form.fechaInicio ? new Date(form.fechaInicio) : new Date();
 
-                console.log('📅 Generando', numCuotas, 'cuotas de $', montoPorCuota, 'cada una');
+                // 5.1. Calcular cuota bruta (sin descuentos)
+                const cuotaBruta = precioBase / numCuotas;
+                console.log('📊 Cuota Bruta (sin descuentos): $', cuotaBruta.toFixed(2));
+
+                // 5.2. Calcular descuento por cuota (distribución proporcional)
+                const descuentoPorCuotaBase = descuentoTotal / numCuotas;
+
+                // 5.3. Distribuir el descuento manejando redondeos
+                let descuentosDistribuidos = [];
+                let descuentoAcumulado = 0;
+
+                for (let i = 0; i < numCuotas; i++) {
+                    if (i === numCuotas - 1) {
+                        // Última cuota: ajustar para que el total sea exacto
+                        descuentosDistribuidos.push(descuentoTotal - descuentoAcumulado);
+                    } else {
+                        // Redondear a 2 decimales
+                        const descuentoCuota = Math.round(descuentoPorCuotaBase * 100) / 100;
+                        descuentosDistribuidos.push(descuentoCuota);
+                        descuentoAcumulado += descuentoCuota;
+                    }
+                }
+
+                console.log('📉 Descuentos distribuidos por cuota:', descuentosDistribuidos);
+
+                // 5.4. Generar cuotas con montos finales (en fecha y vencido)
+                let totalVerificacion = 0;
 
                 for (let i = 0; i < numCuotas; i++) {
                     const fechaVencimiento = new Date(fechaInicio);
                     fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i);
 
+                    // Descuento para esta cuota
+                    const descuentoCuotaActual = descuentosDistribuidos[i];
+
+                    // Certificados (solo en la última cuota)
+                    const certificadosCuota = (i === numCuotas - 1) ? totalCertificados : 0;
+
+                    // ✅ MONTO EN FECHA = cuota bruta - descuento + certificados (solo última)
+                    let montoEnFecha = cuotaBruta - descuentoCuotaActual + certificadosCuota;
+
+                    // ✅ MONTO VENCIDO = monto en fecha + recargo por mora
+                    const recargoPorcentaje = course.porcentajeRecargoCuotaVencida || 10;
+                    let montoVencido = montoEnFecha + (montoEnFecha * recargoPorcentaje / 100);
+
+                    // Redondear a 2 decimales
+                    montoEnFecha = Math.round(montoEnFecha * 100) / 100;
+                    montoVencido = Math.round(montoVencido * 100) / 100;
+                    totalVerificacion += montoEnFecha;
+
                     installments.push({
                         number: i + 1,
-                        dueDate: fechaVencimiento.toISOString(),
-                        amount: montoPorCuota,
+                        dueDate: fechaVencimiento.toISOString().split('T')[0],
+                        amount: Math.round(cuotaBruta * 100) / 100, // Cuota base sin modificar
+                        amountEnFecha: montoEnFecha, // Monto si paga en fecha
+                        amountVencido: montoVencido, // Monto si paga vencido
                         amountPaid: 0,
                         status: 'Pendiente',
                         paymentDate: null,
                         payments: []
                     });
+
+                    console.log(`   Cuota ${i + 1}: EnFecha=$${montoEnFecha.toFixed(2)} | Vencido=$${montoVencido.toFixed(2)} | Descuento=$${descuentoCuotaActual.toFixed(2)}`);
                 }
 
                 console.log('✅ Cuotas generadas:', installments.length);
-                console.log('📊 Detalle:', installments);
+                console.log('💯 Total de cuotas: $', totalVerificacion.toFixed(2), '| Total esperado: $', totalFinal.toFixed(2));
+
+                // Verificación de consistencia
+                const diferencia = Math.abs(totalVerificacion - totalFinal);
+                if (diferencia > 0.5) {
+                    throw new Error(`Error de redondeo: Total de cuotas (${totalVerificacion.toFixed(2)}) no coincide con total esperado (${totalFinal.toFixed(2)})`);
+                }
             } else {
                 console.log('💳 Pago completo - No se generan cuotas');
             }
@@ -411,7 +475,8 @@ export default function Inscripciones() {
                 status: 'Cursando',
 
                 // CUOTAS Y TOTAL
-                totalFinal: totalFinal,
+                total: Math.round(totalFinal * 100) / 100, // ✅ CAMPO REQUERIDO POR APPDB
+                totalCertificados: totalCertificados,
                 installments: installments,
                 numCuotas: numCuotas,
 
@@ -795,17 +860,23 @@ export default function Inscripciones() {
                                                 <div className="bg-white p-4 rounded-lg border border-cyan-300">
                                                     <p className="text-sm text-gray-600 mb-1">Efectivo</p>
                                                     <p className="text-2xl font-bold text-green-700">${formatNumber(selectedCourse.totalEfectivo || 0)}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{selectedCourse.cuotasEfectivo || 1} cuota(s)</p>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1} cuota(s)
+                                                    </p>
                                                 </div>
                                                 <div className="bg-white p-4 rounded-lg border border-cyan-300">
                                                     <p className="text-sm text-gray-600 mb-1">Transferencia</p>
                                                     <p className="text-2xl font-bold text-blue-700">${formatNumber(selectedCourse.totalTransferencia || 0)}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{selectedCourse.cuotasTransferencia || 1} cuota(s)</p>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1} cuota(s)
+                                                    </p>
                                                 </div>
                                                 <div className="bg-white p-4 rounded-lg border border-cyan-300">
                                                     <p className="text-sm text-gray-600 mb-1">Tarjeta</p>
                                                     <p className="text-2xl font-bold text-purple-700">${formatNumber(selectedCourse.totalTarjeta || 0)}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{selectedCourse.cuotasTarjeta || 1} cuota(s)</p>
+                                                    <p className="text-xs text-purple-600 mt-1 font-semibold">
+                                                        1 cuota (Pago único)
+                                                    </p>
                                                 </div>
                                             </div>
                                             {selectedCourse.vacantes > 0 && (

@@ -149,6 +149,13 @@ class DatabaseIndex {
     findStudentByDni(dni) { return this.indices.students.get(`dni:${dni}`); }
     findStudentByEmail(email) { return this.indices.students.get(`email:${email}`); }
     findUserByEmail(email) { return this.indices.users.get(`email:${email}`); }
+    findUserByLogin(username) {
+        const byEmail = this.indices.users.get(`email:${username}`);
+        if (byEmail) return byEmail;
+        const byDni = this.indices.users.get(`dni:${username}`);
+        if (byDni) return byDni;
+        return null;
+    }
     findInscription(studentId, courseId) { return this.indices.inscriptions.get(`${studentId}-${courseId}`); }
     findCourseByName(nombre) { return this.indices.courses.get(normalize(nombre)); }
     findBecaByType(tipo) { return this.indices.becas.get(normalize(tipo)); }
@@ -260,7 +267,7 @@ const ensureInscriptionRules = (db, data) => {
 };
 
 const ensureInstallmentsConsistency = ({ total, installments }) => {
-    const sum = Number((installments || []).reduce((a,c) => a + Number(c.amount || 0), 0).toFixed(2));
+    const sum = Number((installments || []).reduce((a,c) => a + Number(c.amountEnFecha || c.amount || 0), 0).toFixed(2));
     const tot = Number(Number(total || 0).toFixed(2));
     if (sum !== tot) {
         throw new Error(`Las cuotas (${sum.toFixed(2)}) no coinciden con el total (${tot.toFixed(2)}).`);
@@ -1425,7 +1432,7 @@ export const AppDBProvider = ({ children }) => {
 
     // ========================== OPERACIONES CRUD ==========================
     // ✅ CREATE con validación y auditoría
-    const create = useCallback((collection, data, options = {}) => {
+    const create = useCallback((collection, data = {}) => {
         if (!db || !db[collection]) throw new Error(`Colección "${collection}" no existe.`);
 
         let newData = { ...data };
@@ -1515,7 +1522,7 @@ export const AppDBProvider = ({ children }) => {
     }, [db]);
 
     // ✅ UPDATE con validación y auditoría
-    const update = useCallback((collection, id, updates, options = {}) => {
+    const update = useCallback((collection, id, updates) => {
         if (!db || !db[collection]) throw new Error(`Colección "${collection}" no existe.`);
 
         const index = db[collection].findIndex(item => item.id === id);
@@ -1684,8 +1691,8 @@ export const AppDBProvider = ({ children }) => {
                 ? {
                     ...i,
                     amountPaid: (i.amountPaid || 0) + Number(monto),
-                    paidAt: i.amountPaid + Number(monto) >= i.amount ? nowISO() : null,
-                    status: i.amountPaid + Number(monto) >= i.amount ? "Pagado" : "Parcial"
+                    paidAt: (i.amountPaid || 0) + Number(monto) >= i.amount ? nowISO() : i.paidAt ?? null,
+                    status: (i.amountPaid || 0) + Number(monto) >= i.amount ? "Pagado" : "Parcial"
                 }
                 : i
         );
@@ -1721,8 +1728,8 @@ export const AppDBProvider = ({ children }) => {
                     installmentNumber,
                     monto,
                     formaPago,
-                    previousAmountPaid: installment.amountPaid,
-                    newAmountPaid: installment.amountPaid + Number(monto)
+                    previousAmountPaid: installment.amountPaid || 0,
+                    newAmountPaid: (installment.amountPaid || 0) + Number(monto)
                 },
                 user.id,
                 `${user.nombre} ${user.apellido}`
@@ -1813,36 +1820,33 @@ export const AppDBProvider = ({ children }) => {
     const importDB = useCallback((jsonData) => {
         try {
             const importedDB = JSON.parse(jsonData);
-            if (importedDB.__schema) {
-                const migratedDB = migrateDB(importedDB);
-                if (saveDB(migratedDB)) {
-                    setDB(migratedDB);
-                    return true;
-                }
+            const toUse = importedDB.__schema ? migrateDB(importedDB) : migrateDB({ ...defaultDB, ...importedDB });
+            if (saveDB(toUse)) {
+                setDB(toUse);
+                return true;
             }
-        } catch (err) {
-            console.error('[DB] Error importando datos:', err);
-            setError('Error importando los datos. Verifica el formato.');
+            return false;
+        } catch (e) {
+            console.error('[DB] Error importando backup:', e);
+            setError('Archivo inválido para importar.');
+            return false;
         }
-        return false;
     }, [saveDB]);
 
     // ========================== EFECTOS ==========================
+    // Cargar DB al montar
     useEffect(() => {
         loadDB();
     }, [loadDB]);
 
+    // Auto-backup periódico
     useEffect(() => {
-        if (!db) return;
-
-        // ✅ Auto-backup programado
-        const backupInterval = setInterval(() => {
-            if (db.settings?.autoBackup) {
+        const id = setInterval(() => {
+            if (db && db.settings?.autoBackup) {
                 createBackup(db);
             }
         }, AUTO_BACKUP_INTERVAL);
-
-        return () => clearInterval(backupInterval);
+        return () => clearInterval(id);
     }, [db]);
 
     // ========================== RENDER ==========================
@@ -1851,6 +1855,16 @@ export const AppDBProvider = ({ children }) => {
         db,
         loading,
         error,
+
+        // ✅ Colecciones base (AGREGADO)
+        students: db?.students || [],
+        professors: db?.professors || [],
+        courses: db?.courses || [],
+        inscriptions: db?.inscriptions || [],
+        becas: db?.becas || [],
+        users: db?.users || [],
+        cajaMovimientos: db?.caja || [],              // ✅ AGREGADO
+        settings: db?.settings || {},                  // ✅ AGREGADO
 
         // CRUD Básico
         create,
@@ -1862,6 +1876,50 @@ export const AppDBProvider = ({ children }) => {
         inscribirAlumno,
         registrarPago,
         asignarBeca,
+
+        // CRUD específico por entidad
+        addStudent: (data) => create('students', data),
+        updateStudent: (id, data) => update('students', id, data),
+        removeStudent: (id) => remove('students', id),
+        findStudent: (id) => db?.students?.find(s => s.id === id),
+
+        addProfessor: (data) => create('professors', data),
+        updateProfessor: (id, data) => update('professors', id, data),
+        removeProfessor: (id) => remove('professors', id),
+        findProfessor: (id) => db?.professors?.find(p => p.id === id),
+
+        addCourse: (data) => create('courses', data),
+        updateCourse: (id, data) => update('courses', id, data),
+        removeCourse: (id) => remove('courses', id),
+        findCourse: (id) => db?.courses?.find(c => c.id === id),
+
+        addInscription: (data) => create('inscriptions', data),
+        updateInscription: (id, data) => update('inscriptions', id, data),
+        removeInscription: (id) => remove('inscriptions', id),
+
+        addBeca: (data) => create('becas', data),
+        updateBeca: (id, data) => update('becas', id, data),
+        removeBeca: (id) => remove('becas', id),
+        findBeca: (id) => db?.becas?.find(b => b.id === id),
+
+        // ✅ AGREGADO: CRUD para Users
+        addUser: (data) => create('users', data),
+        updateUser: (id, data) => update('users', id, data),
+        removeUser: (id) => remove('users', id),
+        findUser: (id) => db?.users?.find(u => u.id === id),
+
+        // ✅ AGREGADO: Función para Settings
+        updateSettings: (newSettings) => {
+            const updatedDB = {
+                ...db,
+                settings: { ...db.settings, ...newSettings },
+                __lastModified: nowISO()
+            };
+            return saveDB(updatedDB);
+        },
+
+        // ✅ AGREGADO: Función para Caja
+        addCajaMovimiento: (data) => create('caja', data),
 
         // Consultas
         getStudentInscriptions,
@@ -1880,6 +1938,10 @@ export const AppDBProvider = ({ children }) => {
         findStudentByDni: (dni) => dbIndex.findStudentByDni(dni),
         findStudentByEmail: (email) => dbIndex.findStudentByEmail(email),
         findUserByEmail: (email) => dbIndex.findUserByEmail(email),
+        findUserByLogin: (username) => {
+            const userId = dbIndex.findUserByLogin(username);
+            return db?.users?.find(u => u.id === userId);
+        },
         findInscription: (studentId, courseId) => dbIndex.findInscription(studentId, courseId),
         findCourseByName: (nombre) => dbIndex.findCourseByName(nombre),
         findBecaByType: (tipo) => dbIndex.findBecaByType(tipo)
@@ -1887,7 +1949,7 @@ export const AppDBProvider = ({ children }) => {
         db, loading, error, create, read, update, remove,
         inscribirAlumno, registrarPago, asignarBeca,
         getStudentInscriptions, getCourseInscriptions, getStudentWithBecas,
-        resetDB, exportDB, importDB, restoreBackup
+        resetDB, exportDB, importDB, restoreBackup, saveDB  // ✅ AGREGADO saveDB
     ]);
 
     if (loading) {

@@ -9,19 +9,15 @@ export const useAuth = () => useContext(AuthContext);
 const SESSION_KEY = 'gestcea_session';
 
 // ⚠️ NOTA DE SEGURIDAD: En producción, las contraseñas deben hashearse con bcrypt o similar
-// Esta es una implementación básica para desarrollo/demostración
 const simpleHash = (password) => {
-    // En producción, usar bcrypt, argon2, o similar
-    // Por ahora, retornamos la contraseña tal cual para compatibilidad
     return password;
 };
 
 const comparePassword = (plainPassword, hashedPassword) => {
-    // En producción, usar bcrypt.compare() o similar
     return plainPassword === hashedPassword;
 };
 
-export function AuthProvider({ children, dbContext }) {
+export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
@@ -34,12 +30,11 @@ export function AuthProvider({ children, dbContext }) {
                 if (savedSession) {
                     const sessionData = JSON.parse(savedSession);
 
-                    // Verificar que la sesión no haya expirado (opcional)
+                    // Verificar que la sesión no haya expirado (24 horas)
                     const now = new Date().getTime();
                     const sessionTime = new Date(sessionData.loginTime).getTime();
                     const hoursSinceLogin = (now - sessionTime) / (1000 * 60 * 60);
 
-                    // Expirar sesión después de 24 horas
                     if (hoursSinceLogin < 24) {
                         setUser(sessionData);
                         console.log('[Auth] Sesión restaurada:', sessionData.nombre);
@@ -71,20 +66,27 @@ export function AuthProvider({ children, dbContext }) {
     }, [user]);
 
     /**
-     * Login usando la tabla users de AppDB
+     * ✅ Login usando la tabla users de AppDB
      * @param {string} username - Puede ser correo o DNI
      * @param {string} password - Contraseña del usuario
-     * @param {object} findUserByLogin - Función de AppDB para buscar usuarios
+     * @param {Array} users - Lista de usuarios desde AppDB
      */
-    const login = ({ username, password }, findUserByLogin) => {
+    const login = ({ username, password }, users = []) => {
         try {
+            console.log('[Auth] Intentando login con:', username);
+
             if (!username || !password) {
                 alert('Usuario y contraseña son obligatorios');
                 return false;
             }
 
-            // Buscar usuario en la base de datos
-            const foundUser = findUserByLogin(username.trim());
+            // ✅ Buscar usuario por correo o DNI
+            const foundUser = users.find(u =>
+                u.correo?.toLowerCase() === username.toLowerCase().trim() ||
+                u.dni === username.trim()
+            );
+
+            console.log('[Auth] Usuario encontrado:', foundUser);
 
             if (!foundUser) {
                 alert('Usuario no encontrado');
@@ -108,11 +110,11 @@ export function AuthProvider({ children, dbContext }) {
                 id: foundUser.id,
                 nombre: foundUser.nombre,
                 apellido: foundUser.apellido,
-                name: `${foundUser.nombre} ${foundUser.apellido}`, // Para compatibilidad
+                name: `${foundUser.nombre} ${foundUser.apellido}`,
                 correo: foundUser.correo,
                 dni: foundUser.dni,
                 rol: foundUser.rol || 'Usuario',
-                role: foundUser.rol || 'Usuario', // Para compatibilidad
+                role: foundUser.rol || 'Usuario',
                 loginTime: new Date().toISOString(),
                 lastActivity: new Date().toISOString()
             };
@@ -147,7 +149,6 @@ export function AuthProvider({ children, dbContext }) {
 
     /**
      * Actualizar datos del usuario en sesión
-     * (útil cuando se edita el perfil)
      */
     const updateUserSession = (updatedData) => {
         if (!user) return;
@@ -191,7 +192,7 @@ export function AuthProvider({ children, dbContext }) {
     };
 
     /**
-     * Actualizar última actividad (útil para extender sesión)
+     * Actualizar última actividad
      */
     const updateActivity = () => {
         if (user) {
@@ -233,20 +234,17 @@ export function AuthProvider({ children, dbContext }) {
 
 /**
  * Hook personalizado para usar AuthContext con AppDB
- * Este hook debe usarse en componentes que necesitan acceso a ambos contextos
  */
 export function useAuthWithDB() {
     const auth = useAuth();
 
     return {
         ...auth,
-        // Métodos adicionales que combinan Auth + DB pueden agregarse aquí
     };
 }
 
 /**
  * HOC para proteger rutas que requieren autenticación
- * Uso: <ProtectedRoute><MiComponente /></ProtectedRoute>
  */
 export function ProtectedRoute({ children, requiredRole = null, allowedRoles = [] }) {
     const { isAuthenticated, hasRole, hasAnyRole, isLoading } = useAuth();

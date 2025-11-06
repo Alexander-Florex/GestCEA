@@ -1762,6 +1762,165 @@ export const AppDBProvider = ({ children }) => {
         return create('asignacionBecas', asignacionData);
     }, [create, db]);
 
+
+    // ✅ DEPOSITAR CUOTA (Pago parcial)
+    const depositarCuota = useCallback((inscriptionId, installmentNumber, monto, formaPago, observaciones = '') => {
+        try {
+            const inscription = db.inscriptions.find(ins => ins.id === inscriptionId);
+            if (!inscription) throw new Error('Inscripción no encontrada');
+
+            const installment = inscription.installments.find(inst => inst.number === installmentNumber);
+            if (!installment) throw new Error('Cuota no encontrada');
+
+            const student = db.students.find(s => s.id === inscription.studentId);
+            const course = db.courses.find(c => c.id === inscription.courseId);
+
+            if (!student) throw new Error('Alumno no encontrado');
+            if (!course) throw new Error('Curso no encontrado');
+
+            // Calcular cuánto falta pagar
+            const today = new Date();
+            const dueDate = new Date(installment.dueDate);
+            const isOverdue = !installment.frozen && today > dueDate;
+
+            const montoActual = isOverdue
+                ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
+                : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
+
+            const montoPendiente = montoActual - Number(installment.amountPaid || 0);
+
+            if (monto <= 0) throw new Error('El monto debe ser mayor a cero');
+            if (monto > montoPendiente) throw new Error(`El monto no puede superar lo pendiente: $${Math.round(montoPendiente)}`);
+
+            // Actualizar amountPaid
+            const nuevoAmountPaid = Number(installment.amountPaid || 0) + Number(monto);
+            const quedaCompleto = nuevoAmountPaid >= montoActual;
+
+            const updatedInstallment = {
+                ...installment,
+                amountPaid: nuevoAmountPaid,
+                status: quedaCompleto ? 'Pagado' : 'Parcial',
+                paidAt: quedaCompleto ? new Date().toISOString() : installment.paidAt
+            };
+
+            // Actualizar la inscripción
+            const updatedInstallments = inscription.installments.map(inst =>
+                inst.number === installmentNumber ? updatedInstallment : inst
+            );
+
+            const updatedInscription = {
+                ...inscription,
+                installments: updatedInstallments
+            };
+
+            // Crear movimiento de caja
+            const nextCajaId = getNextId(db.caja || []);
+            const cajaMovimiento = {
+                id: nextCajaId,
+                usuario: `${student.nombre} ${student.apellido}`,
+                operacion: `${quedaCompleto ? 'Pago completo' : 'Pago parcial'} cuota ${installmentNumber} - ${course.nombre}${observaciones ? ` (${observaciones})` : ''}`,
+                entrada: Number(monto),
+                salida: 0,
+                tipo: formaPago,
+                fechaHora: new Date().toISOString(),
+                studentId: student.id,
+                courseId: course.id,
+                inscriptionId: inscription.id,
+                installmentNumber: installmentNumber
+            };
+
+            // Actualizar DB
+            const updatedDB = {
+                ...db,
+                inscriptions: db.inscriptions.map(ins => ins.id === inscriptionId ? updatedInscription : ins),
+                caja: [...(db.caja || []), cajaMovimiento],
+                __lastModified: nowISO()
+            };
+
+            if (saveDB(updatedDB)) {
+                setDB(updatedDB);
+
+                // Auditoría
+                if (user) {
+                    const auditLog = createAuditLog(
+                        AUDIT_ACTIONS.PAYMENT,
+                        'inscription',
+                        inscriptionId,
+                        { installmentNumber, monto, formaPago, quedaCompleto },
+                        user.id,
+                        user.name || `${user.nombre} ${user.apellido}`
+                    );
+                    saveAuditLog(auditLog);
+                }
+
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('[DB] Error en depositarCuota:', error);
+            setError(error.message);
+            throw error;
+        }
+    }, [db, user, saveDB]);
+
+    // ✅ FREEZAR/DESFREEZAR CUOTA
+    const freezarCuota = useCallback((inscriptionId, installmentNumber, frozen = true) => {
+        try {
+            const inscription = db.inscriptions.find(ins => ins.id === inscriptionId);
+            if (!inscription) throw new Error('Inscripción no encontrada');
+
+            const installment = inscription.installments.find(inst => inst.number === installmentNumber);
+            if (!installment) throw new Error('Cuota no encontrada');
+
+            // Actualizar la cuota
+            const updatedInstallment = {
+                ...installment,
+                frozen: frozen
+            };
+
+            const updatedInstallments = inscription.installments.map(inst =>
+                inst.number === installmentNumber ? updatedInstallment : inst
+            );
+
+            const updatedInscription = {
+                ...inscription,
+                installments: updatedInstallments
+            };
+
+            // Actualizar DB
+            const updatedDB = {
+                ...db,
+                inscriptions: db.inscriptions.map(ins => ins.id === inscriptionId ? updatedInscription : ins),
+                __lastModified: nowISO()
+            };
+
+            if (saveDB(updatedDB)) {
+                setDB(updatedDB);
+
+                // Auditoría
+                if (user) {
+                    const auditLog = createAuditLog(
+                        AUDIT_ACTIONS.UPDATE,
+                        'inscription',
+                        inscriptionId,
+                        { installmentNumber, frozen },
+                        user.id,
+                        user.name || `${user.nombre} ${user.apellido}`
+                    );
+                    saveAuditLog(auditLog);
+                }
+
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('[DB] Error en freezarCuota:', error);
+            setError(error.message);
+            throw error;
+        }
+    }, [db, user, saveDB]);
+
+
     // ✅ CONSULTAS ESPECIALIZADAS
     const getStudentInscriptions = useCallback((studentId) => {
         return db.inscriptions
@@ -1876,6 +2035,8 @@ export const AppDBProvider = ({ children }) => {
         inscribirAlumno,
         registrarPago,
         asignarBeca,
+        depositarCuota,
+        freezarCuota,
 
         // CRUD específico por entidad
         addStudent: (data) => create('students', data),
@@ -1947,7 +2108,7 @@ export const AppDBProvider = ({ children }) => {
         findBecaByType: (tipo) => dbIndex.findBecaByType(tipo)
     }), [
         db, loading, error, create, read, update, remove,
-        inscribirAlumno, registrarPago, asignarBeca,
+        inscribirAlumno, registrarPago, asignarBeca, depositarCuota, freezarCuota,
         getStudentInscriptions, getCourseInscriptions, getStudentWithBecas,
         resetDB, exportDB, importDB, restoreBackup, saveDB  // ✅ AGREGADO saveDB
     ]);

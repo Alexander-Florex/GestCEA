@@ -332,18 +332,33 @@ export default function CajaDiaria() {
         showNotification('success', 'Operación registrada exitosamente');
     };
 
-    // Simulación de operaciones automáticas del sistema
-    // En producción, estas vendrían de cajaMovimientos transformadas
+    // ✅ Operaciones del sistema - Compatible con formato nuevo y antiguo
     const operacionesAutomaticas = useMemo(() => {
-        return cajaMovimientos.map((mov, index) => ({
-            id: `auto-${index}`,
-            usuario: mov.personal || 'Sistema',
-            operacion: `${mov.pago} - ${mov.cursoNombre || 'Curso'} (${mov.estudianteNombre || 'Estudiante'})`,
-            entrada: Number(mov.monto || 0),
-            salida: 0,
-            tipo: 'Automática',
-            fechaHora: mov.fechaHora || new Date().toISOString()
-        }));
+        return cajaMovimientos.map((mov, index) => {
+            // ✅ NUEVO FORMATO (desde Cobros con depositarCuota)
+            if (mov.usuario && mov.operacion) {
+                return {
+                    id: mov.id || `auto-${index}`,
+                    usuario: mov.usuario,
+                    operacion: mov.operacion,
+                    entrada: Number(mov.entrada || 0),
+                    salida: Number(mov.salida || 0),
+                    tipo: mov.tipo || 'Automática',
+                    fechaHora: mov.fechaHora || new Date().toISOString()
+                };
+            }
+
+            // ✅ FORMATO ANTIGUO (compatibilidad hacia atrás)
+            return {
+                id: `auto-${index}`,
+                usuario: mov.personal || 'Sistema',
+                operacion: `${mov.pago} - ${mov.cursoNombre || 'Curso'} (${mov.estudianteNombre || 'Estudiante'})`,
+                entrada: Number(mov.monto || 0),
+                salida: 0,
+                tipo: 'Automática',
+                fechaHora: mov.fechaHora || new Date().toISOString()
+            };
+        });
     }, [cajaMovimientos]);
 
     // Combinar operaciones automáticas y manuales
@@ -449,8 +464,8 @@ export default function CajaDiaria() {
                                 <p className="text-sm font-medium text-green-700">Total Entradas</p>
                                 <p className="text-3xl font-bold text-green-800 mt-1">
                                     ${totales.entradas.toLocaleString('es-AR', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0
                                 })}
                                 </p>
                             </div>
@@ -469,8 +484,8 @@ export default function CajaDiaria() {
                                 <p className="text-sm font-medium text-red-700">Total Salidas</p>
                                 <p className="text-3xl font-bold text-red-800 mt-1">
                                     ${totales.salidas.toLocaleString('es-AR', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0
                                 })}
                                 </p>
                             </div>
@@ -499,8 +514,8 @@ export default function CajaDiaria() {
                                     totales.balance >= 0 ? 'text-blue-800' : 'text-orange-800'
                                 }`}>
                                     ${totales.balance.toLocaleString('es-AR', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0
                                 })}
                                 </p>
                             </div>
@@ -674,24 +689,24 @@ export default function CajaDiaria() {
                                             {operacion.entrada > 0 ? (
                                                 <span className="font-bold text-green-700">
                                                         ${operacion.entrada.toLocaleString('es-AR', {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 0
                                                 })}
                                                     </span>
                                             ) : (
-                                                <span className="text-gray-400">$0.00</span>
+                                                <span className="text-gray-400">$0</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-right">
                                             {operacion.salida > 0 ? (
                                                 <span className="font-bold text-red-700">
                                                         ${operacion.salida.toLocaleString('es-AR', {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 0
                                                 })}
                                                     </span>
                                             ) : (
-                                                <span className="text-gray-400">$0.00</span>
+                                                <span className="text-gray-400">$0</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-center">

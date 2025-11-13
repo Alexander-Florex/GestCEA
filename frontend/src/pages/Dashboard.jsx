@@ -17,8 +17,17 @@ import {
 
 export default function Dashboard() {
     return (
-        <div className="flex flex-col min-h-screen text-white">
+        <div className="flex flex-col min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50">
             <Navbar />
+
+            {/* Header con colores rojo y azul */}
+            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 shadow-lg">
+                <h1 className="text-3xl font-bold mb-2">Panel de Control</h1>
+                <p className="text-red-100 text-lg">
+                    Bienvenido al sistema de gestión CEA CURSOS
+                </p>
+            </div>
+
             <div className="p-6 flex flex-wrap">
                 <AnimatedCard
                     icon={FaUsers}
@@ -91,6 +100,7 @@ export default function Dashboard() {
                     to="cobros"
                 />
             </div>
+
             <div className="flex-1">
                 <Outlet />
             </div>

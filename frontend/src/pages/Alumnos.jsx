@@ -47,7 +47,7 @@ function SearchableSelect({ options, value, onChange, placeholder, getLabel, get
     return (
         <div className="relative">
             <div
-                className="border-2 border-gray-300 rounded-lg p-3 bg-white cursor-pointer flex justify-between items-center focus-within:border-green-500 transition-colors"
+                className="border-2 border-gray-300 rounded-lg p-3 bg-white cursor-pointer flex justify-between items-center focus-within:border-blue-500 transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className="text-black">
@@ -69,7 +69,7 @@ function SearchableSelect({ options, value, onChange, placeholder, getLabel, get
                     {filtered.map((option, index) => (
                         <div
                             key={index}
-                            className="p-3 hover:bg-green-100 cursor-pointer text-black border-b border-gray-100 last:border-b-0"
+                            className="p-3 hover:bg-blue-100 cursor-pointer text-black border-b border-gray-100 last:border-b-0"
                             onClick={() => {
                                 onChange(getSafeValue(option));
                                 setIsOpen(false);
@@ -497,7 +497,6 @@ export default function Alumnos() {
         }
     };
 
-
     // Eliminar alumno
     const handleDelete = (student) => {
         if (window.confirm(`¿Seguro que querés eliminar a ${student.nombre}?`)) {
@@ -586,10 +585,18 @@ export default function Alumnos() {
     const historial = viewing ? getStudentHistory(viewing.id) : null;
 
     return (
-        <div className="p-6 relative">
+        <div className="p-4 md:p-6 relative">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            {/* Buscador + Nuevo - Diseño mejorado */}
+            {/* Header con gradiente rojo-azul */}
+            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 md:p-6 rounded-xl shadow-lg mb-6">
+                <h1 className="text-2xl md:text-3xl font-bold mb-2">Gestión de Alumnos</h1>
+                <p className="text-red-100 text-base md:text-lg">
+                    Administra la información de todos los estudiantes del sistema
+                </p>
+            </div>
+
+            {/* Buscador + Nuevo */}
             <div className="mb-6">
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
@@ -599,13 +606,13 @@ export default function Alumnos() {
                         <input
                             type="text"
                             placeholder="Buscar por nombre, apellido o DNI..."
-                            className="w-full pl-10 pr-4 py-3 text-lg border-2 border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black bg-white shadow-sm transition-all duration-200 hover:border-purple-400"
+                            className="w-full pl-10 pr-4 py-3 text-base md:text-lg border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black bg-white shadow-sm transition-all duration-200 hover:border-blue-400"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <button
-                        className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold text-lg flex items-center space-x-2"
+                        className="bg-gradient-to-r from-red-600 to-blue-600 text-white px-6 md:px-8 py-3 rounded-xl hover:from-red-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold text-base md:text-lg flex items-center justify-center space-x-2"
                         onClick={() => openForm(null)}
                     >
                         <FiUserPlus className="w-5 h-5" />
@@ -614,11 +621,11 @@ export default function Alumnos() {
                 </div>
             </div>
 
-            {/* Tabla - Diseño mejorado */}
+            {/* Tabla - Responsive */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
                 <div className="overflow-x-auto">
                     <table className="min-w-full">
-                        <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                        <thead className="bg-gradient-to-r from-red-600 to-blue-600 text-white">
                         <tr>
                             {[
                                 'ID',
@@ -632,7 +639,7 @@ export default function Alumnos() {
                                 'Estado',
                                 'Acciones',
                             ].map((h) => (
-                                <th key={h} className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                                <th key={h} className="px-4 py-3 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold uppercase tracking-wider">
                                     {h}
                                 </th>
                             ))}
@@ -642,28 +649,28 @@ export default function Alumnos() {
                         {filtered.map((alumno, index) => (
                             <motion.tr
                                 key={alumno.id}
-                                className={`hover:bg-purple-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.2, delay: index * 0.05 }}
                             >
-                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{alumno.id}</td>
-                                <td className="px-6 py-4 text-sm text-gray-900">{alumno.nombre}</td>
-                                <td className="px-6 py-4 text-sm text-gray-900">{alumno.apellido}</td>
-                                <td className="px-6 py-4 text-sm text-gray-900">{alumno.dni}</td>
-                                <td className="px-6 py-4 text-sm text-gray-900">{alumno.telefono}</td>
-                                <td className="px-6 py-4 text-sm text-gray-900">
-                                    <div className="max-w-32 truncate" title={alumno.email}>
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm font-medium text-gray-900">{alumno.id}</td>
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-900">{alumno.nombre}</td>
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-900">{alumno.apellido}</td>
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-900">{alumno.dni}</td>
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-900">{alumno.telefono}</td>
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-900">
+                                    <div className="max-w-20 md:max-w-32 truncate" title={alumno.email}>
                                         {alumno.email}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-900">
-                                    <div className="max-w-32 truncate" title={alumno.direccion}>
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-900">
+                                    <div className="max-w-20 md:max-w-32 truncate" title={alumno.direccion}>
                                         {alumno.direccion}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-900">{alumno.localidad}</td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-900">{alumno.localidad}</td>
+                                <td className="px-4 py-3 md:px-6 md:py-4">
                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                         alumno.estado === 'Activo'
                                             ? 'bg-green-100 text-green-800'
@@ -672,31 +679,31 @@ export default function Alumnos() {
                                         {alumno.estado}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-sm font-medium">
-                                    <div className="flex space-x-3">
+                                <td className="px-4 py-3 md:px-6 md:py-4 text-sm font-medium">
+                                    <div className="flex space-x-2 md:space-x-3">
                                         <motion.button
                                             onClick={() => setViewing(alumno)}
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.95 }}
-                                            className="text-purple-600 hover:text-purple-800 p-2 rounded-full hover:bg-purple-100 transition-all"
+                                            className="text-blue-600 hover:text-blue-800 p-1 md:p-2 rounded-full hover:bg-blue-100 transition-all"
                                         >
-                                            <FiEye size={18} />
+                                            <FiEye size={16} className="md:w-5 md:h-5"/>
                                         </motion.button>
                                         <motion.button
                                             onClick={() => openForm(alumno)}
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.95 }}
-                                            className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition-all"
+                                            className="text-red-600 hover:text-red-800 p-1 md:p-2 rounded-full hover:bg-red-100 transition-all"
                                         >
-                                            <FiEdit size={18} />
+                                            <FiEdit size={16} className="md:w-5 md:h-5"/>
                                         </motion.button>
                                         <motion.button
                                             onClick={() => handleDelete(alumno)}
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.95 }}
-                                            className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition-all"
+                                            className="text-gray-600 hover:text-gray-800 p-1 md:p-2 rounded-full hover:bg-gray-100 transition-all"
                                         >
-                                            <FiTrash2 size={18} />
+                                            <FiTrash2 size={16} className="md:w-5 md:h-5"/>
                                         </motion.button>
                                     </div>
                                 </td>
@@ -704,9 +711,9 @@ export default function Alumnos() {
                         ))}
                         {filtered.length === 0 && (
                             <tr>
-                                <td colSpan="10" className="text-center py-12 text-gray-500 text-lg">
+                                <td colSpan="10" className="text-center py-12 text-gray-500 text-base md:text-lg">
                                     <div className="flex flex-col items-center space-y-2">
-                                        <FiSearch className="w-12 h-12 text-gray-300" />
+                                        <FiSearch className="w-8 h-8 md:w-12 md:h-12 text-gray-300" />
                                         <span>No hay resultados para tu búsqueda</span>
                                     </div>
                                 </td>
@@ -734,19 +741,19 @@ export default function Alumnos() {
                             exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-lg">
-                                <button className="absolute top-4 right-4 bg-gray-100 rounded-full p-2 shadow hover:bg-gray-200 transition-colors" onClick={() => setViewing(null)}>
+                            <div className="sticky top-0 bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 md:p-6 rounded-t-lg">
+                                <button className="absolute top-4 right-4 bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors" onClick={() => setViewing(null)}>
                                     <FiX className="w-5 h-5"/>
                                 </button>
-                                <h2 className="text-2xl font-bold text-gray-800">Detalles del Alumno</h2>
+                                <h2 className="text-xl md:text-2xl font-bold">Detalles del Alumno</h2>
                             </div>
 
-                            <div className="p-6 space-y-6">
+                            <div className="p-4 md:p-6 space-y-6">
                                 {/* Información principal en layout horizontal */}
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                                     {/* Foto y datos básicos */}
                                     <div className="space-y-4">
-                                        <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden mx-auto lg:mx-0 shadow-md">
+                                        <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 rounded-lg overflow-hidden mx-auto lg:mx-0 shadow-md">
                                             {viewing.foto ? (
                                                 <img src={viewing.foto} alt="Foto del alumno" className="w-full h-full object-cover"/>
                                             ) : (
@@ -758,14 +765,14 @@ export default function Alumnos() {
                                             )}
                                         </div>
                                         <div className="text-center lg:text-left">
-                                            <h3 className="text-xl font-semibold text-gray-800">{viewing.nombre} {viewing.apellido}</h3>
+                                            <h3 className="text-lg md:text-xl font-semibold text-gray-800">{viewing.nombre} {viewing.apellido}</h3>
                                             <p className="text-gray-600">Estudiante</p>
                                         </div>
                                     </div>
 
                                     {/* Datos personales */}
                                     <div className="space-y-3">
-                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Datos Personales</h4>
+                                        <h4 className="text-base md:text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Datos Personales</h4>
                                         <div className="space-y-2">
                                             <div className="flex justify-between">
                                                 <span className="font-medium text-gray-600">DNI:</span>
@@ -786,19 +793,19 @@ export default function Alumnos() {
                                             <div className="flex justify-between">
                                                 <span className="font-medium text-gray-600">Estado:</span>
                                                 <span className={`px-2 py-1 rounded-full text-xs ${viewing.estado === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                              {viewing.estado}
-                            </span>
+                                                    {viewing.estado}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Datos de ubicación */}
                                     <div className="space-y-3">
-                                        <h4 className="text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Ubicación</h4>
+                                        <h4 className="text-base md:text-lg font-semibold text-gray-700 border-b border-gray-300 pb-2">Ubicación</h4>
                                         <div className="space-y-2">
                                             <div className="flex justify-between">
                                                 <span className="font-medium text-gray-600">Dirección:</span>
-                                                <span className="text-right">{viewing.direccion}</span>
+                                                <span className="text-right text-sm">{viewing.direccion}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-medium text-gray-600">Localidad:</span>
@@ -815,7 +822,7 @@ export default function Alumnos() {
                                 {/* Información adicional en layout horizontal */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     <div>
-                                        <h4 className="text-lg font-semibold text-gray-700 mb-3">Datos de Padres/Tutores/Empresa</h4>
+                                        <h4 className="text-base md:text-lg font-semibold text-gray-700 mb-3">Datos de Padres/Tutores/Empresa</h4>
                                         <div className="border-2 border-gray-300 rounded-xl p-4 bg-gray-50 min-h-[120px]">
                                             <p className="text-gray-700 whitespace-pre-wrap">
                                                 {viewing.padreTutor || 'No se han registrado datos de padres, tutores o empresa'}
@@ -824,7 +831,7 @@ export default function Alumnos() {
                                     </div>
 
                                     <div>
-                                        <h4 className="text-lg font-semibold text-gray-700 mb-3">Observaciones</h4>
+                                        <h4 className="text-base md:text-lg font-semibold text-gray-700 mb-3">Observaciones</h4>
                                         <div className="border-2 border-gray-300 rounded-xl p-4 bg-gray-50 min-h-[120px]">
                                             <p className="text-gray-700 whitespace-pre-wrap">
                                                 {viewing.observaciones || 'Sin observaciones'}
@@ -834,23 +841,23 @@ export default function Alumnos() {
                                 </div>
 
                                 {/* Acciones - Nuevos botones */}
-                                <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200">
+                                <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4 border-t border-gray-200">
                                     <button
-                                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                                        className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-lg hover:from-red-700 hover:to-blue-700 transition-colors flex items-center justify-center space-x-2"
                                         onClick={() => openInscription(viewing)}
                                     >
                                         <FiUserPlus className="w-4 h-4"/>
                                         <span>Inscribir a Curso</span>
                                     </button>
                                     <button
-                                        className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2"
+                                        className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-red-500 to-blue-500 text-white rounded-lg hover:from-red-600 hover:to-blue-600 transition-colors flex items-center justify-center space-x-2"
                                         onClick={() => openHistorial(viewing)}
                                     >
                                         <FiClock className="w-4 h-4"/>
                                         <span>Ver Historial</span>
                                     </button>
                                     <button
-                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                                        className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-red-400 to-blue-400 text-white rounded-lg hover:from-red-500 hover:to-blue-500 transition-colors flex items-center justify-center space-x-2"
                                         onClick={()=>{setViewing(null); openForm(viewing);}}
                                     >
                                         <FiEdit className="w-4 h-4"/>
@@ -881,10 +888,10 @@ export default function Alumnos() {
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
-                            <div className="bg-green-600 text-white p-6 flex justify-between items-center">
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 flex justify-between items-center">
                                 <div>
                                     <h2 className="text-2xl font-bold">Inscribir Alumno a Curso</h2>
-                                    <p className="text-green-100">Complete los datos requeridos para la inscripción</p>
+                                    <p className="text-red-100">Complete los datos requeridos para la inscripción</p>
                                 </div>
                                 <button
                                     type="button"
@@ -903,7 +910,7 @@ export default function Alumnos() {
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         {/* Alumno (solo lectura) */}
                                         <div>
-                                            <label className="text-sm font-semibold mb-2 text-green-700 block">Alumno:</label>
+                                            <label className="text-sm font-semibold mb-2 text-blue-700 block">Alumno:</label>
                                             <div className="border-2 border-gray-300 rounded-lg p-3 bg-gray-100 text-black">
                                                 {(() => {
                                                     const student = students.find(s => s.id === inscriptionData.studentId);
@@ -914,7 +921,7 @@ export default function Alumnos() {
 
                                         {/* Curso */}
                                         <div>
-                                            <label className="text-sm font-semibold mb-2 text-green-700 block">Curso *:</label>
+                                            <label className="text-sm font-semibold mb-2 text-blue-700 block">Curso *:</label>
                                             <SearchableSelect
                                                 options={courses}
                                                 value={inscriptionData.courseId}
@@ -927,7 +934,7 @@ export default function Alumnos() {
 
                                         {/* Profesor */}
                                         <div>
-                                            <label className="text-sm font-semibold mb-2 text-green-700 block">Profesor *:</label>
+                                            <label className="text-sm font-semibold mb-2 text-blue-700 block">Profesor *:</label>
                                             <SearchableSelect
                                                 options={(() => {
                                                     const selectedCourse = courses.find(c => c.id === Number(inscriptionData.courseId));
@@ -965,7 +972,7 @@ export default function Alumnos() {
 
                                         {/* Vacantes (solo lectura) */}
                                         <div>
-                                            <label className="text-sm font-semibold mb-2 text-green-700 block">Vacantes:</label>
+                                            <label className="text-sm font-semibold mb-2 text-blue-700 block">Vacantes:</label>
                                             <input
                                                 type="number"
                                                 value={inscriptionData.customVacantes}
@@ -978,18 +985,18 @@ export default function Alumnos() {
                                     {/* Forma de Pago Detallada */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-green-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Forma de Pago
                                         </h3>
 
                                         {/* Selector de tipo de pago */}
                                         <div className="mb-6">
-                                            <label className="text-sm font-semibold mb-2 text-green-700 block">Tipo de Pago *:</label>
+                                            <label className="text-sm font-semibold mb-2 text-blue-700 block">Tipo de Pago *:</label>
                                             <select
                                                 name="paymentType"
                                                 value={inscriptionData.paymentType}
                                                 onChange={handleInscriptionChange}
-                                                className="w-full border-2 border-green-300 rounded-lg p-3 text-black focus:border-green-500 focus:outline-none"
+                                                className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
                                             >
                                                 <option value="Efectivo">Efectivo</option>
                                                 <option value="Transferencia">Transferencia</option>
@@ -999,72 +1006,15 @@ export default function Alumnos() {
 
                                         {/* Campos específicos por tipo de pago */}
                                         {inscriptionData.paymentType === 'Efectivo' && (
-                                            <div className="bg-green-50 p-6 rounded-lg border border-green-200 mb-4">
-                                                <h4 className="text-lg font-semibold text-green-800 mb-4">Datos de Efectivo</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                                    <div>
-                                                        <label className="text-sm font-semibold mb-2 text-green-700 block">Pago en Fecha (Por Cuota):</label>
-                                                        <input
-                                                            type="number"
-                                                            name="efectivoPagoEnFecha"
-                                                            value={inscriptionData.efectivoPagoEnFecha}
-                                                            onChange={handleInscriptionChange}
-                                                            className="w-full border-2 border-green-300 rounded-lg p-3 text-black focus:border-green-500 focus:outline-none"
-                                                            step="0.01"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-sm font-semibold mb-2 text-green-700 block">Pago Vencido (Por Cuota):</label>
-                                                        <input
-                                                            type="number"
-                                                            name="efectivoPagoVencido"
-                                                            value={inscriptionData.efectivoPagoVencido}
-                                                            onChange={handleInscriptionChange}
-                                                            className="w-full border-2 border-green-300 rounded-lg p-3 text-black focus:border-green-500 focus:outline-none"
-                                                            step="0.01"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-sm font-semibold mb-2 text-green-700 block">Total del Curso:</label>
-                                                        <input
-                                                            type="number"
-                                                            name="efectivoTotal"
-                                                            value={inscriptionData.efectivoTotal}
-                                                            onChange={handleInscriptionChange}
-                                                            className="w-full border-2 border-green-300 rounded-lg p-3 text-black focus:border-green-500 focus:outline-none"
-                                                            step="0.01"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-sm font-semibold mb-2 text-green-700 block">Número de Cuotas:</label>
-                                                        <input
-                                                            type="number"
-                                                            name="efectivoCuotas"
-                                                            value={inscriptionData.efectivoCuotas}
-                                                            onChange={handleInscriptionChange}
-                                                            disabled={inscriptionData.fullPayment}
-                                                            className={`w-full border-2 rounded-lg p-3 text-black ${
-                                                                inscriptionData.fullPayment
-                                                                    ? 'bg-gray-100 cursor-not-allowed border-gray-300'
-                                                                    : 'border-green-300 focus:border-green-500 focus:outline-none'
-                                                            }`}
-                                                            min="1"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {inscriptionData.paymentType === 'Transferencia' && (
                                             <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 mb-4">
-                                                <h4 className="text-lg font-semibold text-blue-800 mb-4">Datos de Transferencias</h4>
+                                                <h4 className="text-lg font-semibold text-blue-800 mb-4">Datos de Efectivo</h4>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                                     <div>
                                                         <label className="text-sm font-semibold mb-2 text-blue-700 block">Pago en Fecha (Por Cuota):</label>
                                                         <input
                                                             type="number"
-                                                            name="transferenciasPagoEnFecha"
-                                                            value={inscriptionData.transferenciasPagoEnFecha}
+                                                            name="efectivoPagoEnFecha"
+                                                            value={inscriptionData.efectivoPagoEnFecha}
                                                             onChange={handleInscriptionChange}
                                                             className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
                                                             step="0.01"
@@ -1074,8 +1024,8 @@ export default function Alumnos() {
                                                         <label className="text-sm font-semibold mb-2 text-blue-700 block">Pago Vencido (Por Cuota):</label>
                                                         <input
                                                             type="number"
-                                                            name="transferenciasPagoVencido"
-                                                            value={inscriptionData.transferenciasPagoVencido}
+                                                            name="efectivoPagoVencido"
+                                                            value={inscriptionData.efectivoPagoVencido}
                                                             onChange={handleInscriptionChange}
                                                             className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
                                                             step="0.01"
@@ -1085,8 +1035,8 @@ export default function Alumnos() {
                                                         <label className="text-sm font-semibold mb-2 text-blue-700 block">Total del Curso:</label>
                                                         <input
                                                             type="number"
-                                                            name="transferenciasTotal"
-                                                            value={inscriptionData.transferenciasTotal}
+                                                            name="efectivoTotal"
+                                                            value={inscriptionData.efectivoTotal}
                                                             onChange={handleInscriptionChange}
                                                             className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
                                                             step="0.01"
@@ -1096,8 +1046,8 @@ export default function Alumnos() {
                                                         <label className="text-sm font-semibold mb-2 text-blue-700 block">Número de Cuotas:</label>
                                                         <input
                                                             type="number"
-                                                            name="transferenciasCuotas"
-                                                            value={inscriptionData.transferenciasCuotas}
+                                                            name="efectivoCuotas"
+                                                            value={inscriptionData.efectivoCuotas}
                                                             onChange={handleInscriptionChange}
                                                             disabled={inscriptionData.fullPayment}
                                                             className={`w-full border-2 rounded-lg p-3 text-black ${
@@ -1112,36 +1062,93 @@ export default function Alumnos() {
                                             </div>
                                         )}
 
+                                        {inscriptionData.paymentType === 'Transferencia' && (
+                                            <div className="bg-red-50 p-6 rounded-lg border border-red-200 mb-4">
+                                                <h4 className="text-lg font-semibold text-red-800 mb-4">Datos de Transferencias</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                    <div>
+                                                        <label className="text-sm font-semibold mb-2 text-red-700 block">Pago en Fecha (Por Cuota):</label>
+                                                        <input
+                                                            type="number"
+                                                            name="transferenciasPagoEnFecha"
+                                                            value={inscriptionData.transferenciasPagoEnFecha}
+                                                            onChange={handleInscriptionChange}
+                                                            className="w-full border-2 border-red-300 rounded-lg p-3 text-black focus:border-red-500 focus:outline-none"
+                                                            step="0.01"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-semibold mb-2 text-red-700 block">Pago Vencido (Por Cuota):</label>
+                                                        <input
+                                                            type="number"
+                                                            name="transferenciasPagoVencido"
+                                                            value={inscriptionData.transferenciasPagoVencido}
+                                                            onChange={handleInscriptionChange}
+                                                            className="w-full border-2 border-red-300 rounded-lg p-3 text-black focus:border-red-500 focus:outline-none"
+                                                            step="0.01"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-semibold mb-2 text-red-700 block">Total del Curso:</label>
+                                                        <input
+                                                            type="number"
+                                                            name="transferenciasTotal"
+                                                            value={inscriptionData.transferenciasTotal}
+                                                            onChange={handleInscriptionChange}
+                                                            className="w-full border-2 border-red-300 rounded-lg p-3 text-black focus:border-red-500 focus:outline-none"
+                                                            step="0.01"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-semibold mb-2 text-red-700 block">Número de Cuotas:</label>
+                                                        <input
+                                                            type="number"
+                                                            name="transferenciasCuotas"
+                                                            value={inscriptionData.transferenciasCuotas}
+                                                            onChange={handleInscriptionChange}
+                                                            disabled={inscriptionData.fullPayment}
+                                                            className={`w-full border-2 rounded-lg p-3 text-black ${
+                                                                inscriptionData.fullPayment
+                                                                    ? 'bg-gray-100 cursor-not-allowed border-gray-300'
+                                                                    : 'border-red-300 focus:border-red-500 focus:outline-none'
+                                                            }`}
+                                                            min="1"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {inscriptionData.paymentType === 'Tarjeta' && (
-                                            <div className="bg-purple-50 p-6 rounded-lg border border-purple-200 mb-4">
-                                                <h4 className="text-lg font-semibold text-purple-800 mb-4">Datos de Tarjetas</h4>
+                                            <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-lg border border-blue-200 mb-4">
+                                                <h4 className="text-lg font-semibold text-blue-800 mb-4">Datos de Tarjetas</h4>
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div>
-                                                        <label className="text-sm font-semibold mb-2 text-purple-700 block">Porcentaje (%):</label>
+                                                        <label className="text-sm font-semibold mb-2 text-blue-700 block">Porcentaje (%):</label>
                                                         <input
                                                             type="number"
                                                             name="tarjetasPorcentaje"
                                                             value={inscriptionData.tarjetasPorcentaje}
                                                             onChange={handleInscriptionChange}
-                                                            className="w-full border-2 border-purple-300 rounded-lg p-3 text-black focus:border-purple-500 focus:outline-none"
+                                                            className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
                                                             step="0.01"
                                                             min="0"
                                                             max="100"
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="text-sm font-semibold mb-2 text-purple-700 block">Curso Total:</label>
+                                                        <label className="text-sm font-semibold mb-2 text-blue-700 block">Curso Total:</label>
                                                         <input
                                                             type="number"
                                                             name="tarjetasCursoTotal"
                                                             value={inscriptionData.tarjetasCursoTotal}
                                                             onChange={handleInscriptionChange}
-                                                            className="w-full border-2 border-purple-300 rounded-lg p-3 text-black focus:border-purple-500 focus:outline-none"
+                                                            className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
                                                             step="0.01"
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="text-sm font-semibold mb-2 text-purple-700 block">Número de Cuotas:</label>
+                                                        <label className="text-sm font-semibold mb-2 text-blue-700 block">Número de Cuotas:</label>
                                                         <input
                                                             type="number"
                                                             name="tarjetasCuotas"
@@ -1151,7 +1158,7 @@ export default function Alumnos() {
                                                             className={`w-full border-2 rounded-lg p-3 text-black ${
                                                                 inscriptionData.fullPayment
                                                                     ? 'bg-gray-100 cursor-not-allowed border-gray-300'
-                                                                    : 'border-purple-300 focus:border-purple-500 focus:outline-none'
+                                                                    : 'border-blue-300 focus:border-blue-500 focus:outline-none'
                                                             }`}
                                                             min="1"
                                                         />
@@ -1164,17 +1171,17 @@ export default function Alumnos() {
                                     {/* Certificados Múltiples */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-green-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Certificados (Múltiples Selecciones)
                                         </h3>
-                                        <div className="bg-orange-50 p-6 rounded-lg border border-orange-200">
-                                            <p className="text-sm text-orange-700 mb-4">El alumno puede seleccionar múltiples certificados para este curso</p>
+                                        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                                            <p className="text-sm text-blue-700 mb-4">El alumno puede seleccionar múltiples certificados para este curso</p>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {(() => {
                                                     const selectedCourse = courses.find(c => c.id === Number(inscriptionData.courseId));
                                                     const certificateTypes = selectedCourse?.tiposCertificado || [];
                                                     return certificateTypes.length > 0 ? certificateTypes.map(tipo => (
-                                                        <div key={tipo} className="flex items-center space-x-3 p-4 bg-white border-2 border-orange-200 rounded-lg hover:border-orange-300 transition-colors">
+                                                        <div key={tipo} className="flex items-center space-x-3 p-4 bg-white border-2 border-blue-200 rounded-lg hover:border-blue-300 transition-colors">
                                                             <input
                                                                 type="checkbox"
                                                                 id={`cert-${tipo}`}
@@ -1188,11 +1195,11 @@ export default function Alumnos() {
                                                                             : (prev.selectedCertificados || []).filter(c => c !== tipo)
                                                                     }));
                                                                 }}
-                                                                className="w-5 h-5 text-green-600"
+                                                                className="w-5 h-5 text-blue-600"
                                                             />
                                                             <label htmlFor={`cert-${tipo}`} className="flex-1 cursor-pointer">
                                                                 <div className="font-semibold text-gray-800">{tipo}</div>
-                                                                <div className="text-sm text-orange-600 font-medium">
+                                                                <div className="text-sm text-blue-600 font-medium">
                                                                     ${Number(selectedCourse?.costosCertificado?.[tipo] || 0).toFixed(2)}
                                                                 </div>
                                                             </label>
@@ -1210,19 +1217,19 @@ export default function Alumnos() {
                                     {/* Bonificación */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-green-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Bonificación
                                         </h3>
-                                        <div className="flex items-center gap-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                        <div className="flex items-center gap-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                             <input
                                                 type="checkbox"
                                                 id="hasBonus"
                                                 name="hasBonus"
                                                 checked={inscriptionData.hasBonus}
                                                 onChange={handleInscriptionChange}
-                                                className="w-5 h-5 text-green-600"
+                                                className="w-5 h-5 text-blue-600"
                                             />
-                                            <label htmlFor="hasBonus" className="font-semibold text-yellow-800">
+                                            <label htmlFor="hasBonus" className="font-semibold text-blue-800">
                                                 Bonificación (descuento sobre el total)
                                             </label>
                                             <input
@@ -1234,7 +1241,7 @@ export default function Alumnos() {
                                                 min="0"
                                                 className={`border-2 rounded-lg p-2 text-black ${
                                                     inscriptionData.hasBonus
-                                                        ? 'border-yellow-400 focus:border-yellow-500'
+                                                        ? 'border-blue-400 focus:border-blue-500'
                                                         : 'bg-gray-100 border-gray-300 cursor-not-allowed'
                                                 }`}
                                                 placeholder="Monto a descontar"
@@ -1245,10 +1252,10 @@ export default function Alumnos() {
                                     {/* Becas */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-green-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Becas
                                         </h3>
-                                        <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+                                        <div className="bg-red-50 rounded-lg border border-red-200 p-4">
                                             <div className="flex items-center gap-4 mb-4">
                                                 <input
                                                     type="checkbox"
@@ -1256,21 +1263,21 @@ export default function Alumnos() {
                                                     name="hasBeca"
                                                     checked={inscriptionData.hasBeca}
                                                     onChange={handleInscriptionChange}
-                                                    className="w-5 h-5 text-green-600"
+                                                    className="w-5 h-5 text-blue-600"
                                                 />
-                                                <label htmlFor="hasBeca" className="font-semibold text-blue-800">
+                                                <label htmlFor="hasBeca" className="font-semibold text-red-800">
                                                     Aplicar Beca
                                                 </label>
                                             </div>
 
                                             {inscriptionData.hasBeca && (
                                                 <div>
-                                                    <label className="text-sm font-semibold mb-2 text-blue-700 block">Seleccionar Beca Activa:</label>
+                                                    <label className="text-sm font-semibold mb-2 text-red-700 block">Seleccionar Beca Activa:</label>
                                                     <select
                                                         name="selectedBecaId"
                                                         value={inscriptionData.selectedBecaId}
                                                         onChange={handleInscriptionChange}
-                                                        className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
+                                                        className="w-full border-2 border-red-300 rounded-lg p-3 text-black focus:border-red-500 focus:outline-none"
                                                     >
                                                         <option value="">Seleccionar beca...</option>
                                                         {becas
@@ -1283,7 +1290,7 @@ export default function Alumnos() {
                                                         }
                                                     </select>
                                                     {inscriptionData.selectedBecaId && (
-                                                        <div className="mt-2 p-2 bg-blue-100 rounded text-sm text-blue-700">
+                                                        <div className="mt-2 p-2 bg-red-100 rounded text-sm text-red-700">
                                                             {(() => {
                                                                 const selectedBeca = becas.find(b => b.id === Number(inscriptionData.selectedBecaId));
                                                                 return selectedBeca ? `Descuento aplicado: ${formatNumber(selectedBeca.monto)}` : '';
@@ -1298,19 +1305,19 @@ export default function Alumnos() {
                                     {/* Resumen Final Actualizado */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-green-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Resumen de Precios
                                         </h3>
-                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-l-4 border-green-500">
+                                        <div className="bg-gradient-to-r from-blue-50 to-red-50 p-6 rounded-xl border-l-4 border-blue-500">
                                             <div className="grid md:grid-cols-2 gap-6">
                                                 <div className="space-y-4">
                                                     {/* Total del Curso según forma de pago */}
                                                     {inscriptionData.paymentType === 'Efectivo' && (
-                                                        <div className="bg-green-100 p-4 rounded-lg">
-                                                            <div className="text-green-800 font-bold text-lg">Total Curso (Efectivo)</div>
-                                                            <div className="text-2xl font-bold text-green-900">${formatNumber(inscriptionData.efectivoTotal)}</div>
+                                                        <div className="bg-blue-100 p-4 rounded-lg">
+                                                            <div className="text-blue-800 font-bold text-lg">Total Curso (Efectivo)</div>
+                                                            <div className="text-2xl font-bold text-blue-900">${formatNumber(inscriptionData.efectivoTotal)}</div>
                                                             {!inscriptionData.fullPayment && inscriptionData.efectivoCuotas > 0 && (
-                                                                <div className="text-sm text-green-700 mt-2">
+                                                                <div className="text-sm text-blue-700 mt-2">
                                                                     <div>Pago en Fecha: ${formatNumber(inscriptionData.efectivoPagoEnFecha)} por cuota</div>
                                                                     <div>Pago Vencido: ${formatNumber(inscriptionData.efectivoPagoVencido)} por cuota</div>
                                                                     <div className="font-semibold">Cuotas: {formatNumber(inscriptionData.efectivoCuotas)}</div>
@@ -1320,11 +1327,11 @@ export default function Alumnos() {
                                                     )}
 
                                                     {inscriptionData.paymentType === 'Transferencia' && (
-                                                        <div className="bg-blue-100 p-4 rounded-lg">
-                                                            <div className="text-blue-800 font-bold text-lg">Total Curso (Transferencia)</div>
-                                                            <div className="text-2xl font-bold text-blue-900">${formatNumber(inscriptionData.transferenciasTotal)}</div>
+                                                        <div className="bg-red-100 p-4 rounded-lg">
+                                                            <div className="text-red-800 font-bold text-lg">Total Curso (Transferencia)</div>
+                                                            <div className="text-2xl font-bold text-red-900">${formatNumber(inscriptionData.transferenciasTotal)}</div>
                                                             {!inscriptionData.fullPayment && inscriptionData.transferenciasCuotas > 0 && (
-                                                                <div className="text-sm text-blue-700 mt-2">
+                                                                <div className="text-sm text-red-700 mt-2">
                                                                     <div>Pago en Fecha: ${formatNumber(inscriptionData.transferenciasPagoEnFecha)} por cuota</div>
                                                                     <div>Pago Vencido: ${formatNumber(inscriptionData.transferenciasPagoVencido)} por cuota</div>
                                                                     <div className="font-semibold">Cuotas: {formatNumber(inscriptionData.transferenciasCuotas)}</div>
@@ -1334,10 +1341,10 @@ export default function Alumnos() {
                                                     )}
 
                                                     {inscriptionData.paymentType === 'Tarjeta' && (
-                                                        <div className="bg-purple-100 p-4 rounded-lg">
-                                                            <div className="text-purple-800 font-bold text-lg">Total Curso (Tarjeta)</div>
-                                                            <div className="text-2xl font-bold text-purple-900">${formatNumber(inscriptionData.tarjetasCursoTotal)}</div>
-                                                            <div className="text-sm text-purple-700 mt-2">
+                                                        <div className="bg-gradient-to-r from-blue-100 to-red-100 p-4 rounded-lg">
+                                                            <div className="text-blue-800 font-bold text-lg">Total Curso (Tarjeta)</div>
+                                                            <div className="text-2xl font-bold text-blue-900">${formatNumber(inscriptionData.tarjetasCursoTotal)}</div>
+                                                            <div className="text-sm text-blue-700 mt-2">
                                                                 <div>Porcentaje: {formatNumber(inscriptionData.tarjetasPorcentaje)}%</div>
                                                                 {!inscriptionData.fullPayment && inscriptionData.tarjetasCuotas > 0 && (
                                                                     <>
@@ -1350,8 +1357,8 @@ export default function Alumnos() {
                                                     )}
 
                                                     {/* Certificados Seleccionados */}
-                                                    <div className="bg-orange-100 p-4 rounded-lg">
-                                                        <div className="text-orange-800 font-bold text-lg mb-2">Certificados Seleccionados</div>
+                                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                                        <div className="text-blue-800 font-bold text-lg mb-2">Certificados Seleccionados</div>
                                                         {inscriptionData.selectedCertificados && inscriptionData.selectedCertificados.length > 0 ? (
                                                             <div className="space-y-1">
                                                                 {inscriptionData.selectedCertificados.map(certTipo => {
@@ -1360,14 +1367,14 @@ export default function Alumnos() {
                                                                     return (
                                                                         <div key={certTipo} className="flex justify-between text-sm">
                                                                             <span className="font-medium">{certTipo}</span>
-                                                                            <span className="text-orange-900 font-bold">${formatNumber(costo)}</span>
+                                                                            <span className="text-blue-900 font-bold">${formatNumber(costo)}</span>
                                                                         </div>
                                                                     );
                                                                 })}
-                                                                <div className="border-t border-orange-300 pt-2 mt-2">
+                                                                <div className="border-t border-blue-300 pt-2 mt-2">
                                                                     <div className="flex justify-between font-bold">
                                                                         <span>Total Certificados:</span>
-                                                                        <span className="text-orange-900">
+                                                                        <span className="text-blue-900">
                                                                             ${(() => {
                                                                             const selectedCourse = courses.find(c => c.id === Number(inscriptionData.courseId));
                                                                             let total = 0;
@@ -1381,7 +1388,7 @@ export default function Alumnos() {
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <div className="text-orange-700">No hay certificados seleccionados</div>
+                                                            <div className="text-blue-700">No hay certificados seleccionados</div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1397,19 +1404,19 @@ export default function Alumnos() {
                                                     )}
 
                                                     {/* Total Final */}
-                                                    <div className="bg-green-100 p-6 rounded-lg border-2 border-green-300">
-                                                        <div className="text-green-800 font-bold text-xl mb-2">TOTAL FINAL</div>
-                                                        <div className="text-4xl font-bold text-green-900">
+                                                    <div className="bg-gradient-to-r from-blue-100 to-red-100 p-6 rounded-lg border-2 border-blue-300">
+                                                        <div className="text-blue-800 font-bold text-xl mb-2">TOTAL FINAL</div>
+                                                        <div className="text-4xl font-bold text-blue-900">
                                                             ${calcTotalFinal().toFixed(2)}
                                                         </div>
-                                                        <div className="text-sm text-green-700 mt-2">
+                                                        <div className="text-sm text-blue-700 mt-2">
                                                             Incluye curso + certificados - bonificación
                                                         </div>
 
                                                         {/* Información de cuotas para el total final */}
                                                         {!inscriptionData.fullPayment && (
-                                                            <div className="mt-3 pt-3 border-t border-green-300">
-                                                                <div className="text-sm text-green-700">
+                                                            <div className="mt-3 pt-3 border-t border-blue-300">
+                                                                <div className="text-sm text-blue-700">
                                                                     <div className="font-semibold">Plan de Cuotas:</div>
                                                                     <div>Cuotas: {getCuotasForPaymentType()}</div>
                                                                     <div>Valor estimado por cuota: ${(calcTotalFinal() / Math.max(1, getCuotasForPaymentType())).toFixed(2)}</div>
@@ -1430,7 +1437,7 @@ export default function Alumnos() {
                                             name="fullPayment"
                                             checked={inscriptionData.fullPayment}
                                             onChange={handleInscriptionChange}
-                                            className="w-5 h-5 text-green-600"
+                                            className="w-5 h-5 text-blue-600"
                                         />
                                         <label htmlFor="fullPayment" className="font-semibold text-blue-800">
                                             Pago Total (sin plan de cuotas)
@@ -1439,13 +1446,13 @@ export default function Alumnos() {
 
                                     {/* Observaciones */}
                                     <div>
-                                        <label className="text-sm font-semibold mb-2 text-green-700 block">Observaciones:</label>
+                                        <label className="text-sm font-semibold mb-2 text-blue-700 block">Observaciones:</label>
                                         <textarea
                                             name="observaciones"
                                             value={inscriptionData.observaciones || ''}
                                             onChange={handleInscriptionChange}
                                             rows={3}
-                                            className="w-full border-2 border-green-300 rounded-lg p-3 text-black focus:border-green-500 focus:outline-none"
+                                            className="w-full border-2 border-blue-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none"
                                             placeholder="Observaciones adicionales sobre la inscripción..."
                                         />
                                     </div>
@@ -1462,7 +1469,7 @@ export default function Alumnos() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-colors font-semibold"
+                                        className="px-8 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-lg hover:from-red-700 hover:to-blue-700 transition-colors font-semibold"
                                     >
                                         Confirmar Inscripción
                                     </button>
@@ -1491,10 +1498,10 @@ export default function Alumnos() {
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
-                            <div className="bg-orange-600 text-white p-6 flex justify-between items-center">
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 flex justify-between items-center">
                                 <div>
                                     <h2 className="text-2xl font-bold">Historial del Alumno</h2>
-                                    <p className="text-orange-100">Cursos y actividad académica</p>
+                                    <p className="text-red-100">Cursos y actividad académica</p>
                                 </div>
                                 <button
                                     type="button"
@@ -1510,11 +1517,11 @@ export default function Alumnos() {
                                 {viewing && historial && (
                                     <div className="space-y-6">
                                         {/* Información del Alumno */}
-                                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
+                                        <div className="bg-gradient-to-r from-red-50 to-blue-50 rounded-lg p-4 border border-blue-200">
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <h3 className="text-lg font-semibold text-orange-800">{viewing.nombre} {viewing.apellido}</h3>
-                                                    <p className="text-orange-600">DNI: {viewing.dni}</p>
+                                                    <h3 className="text-lg font-semibold text-blue-800">{viewing.nombre} {viewing.apellido}</h3>
+                                                    <p className="text-blue-600">DNI: {viewing.dni}</p>
                                                 </div>
                                                 <div className="flex items-center space-x-4">
                                                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -1524,7 +1531,7 @@ export default function Alumnos() {
                                                     }`}>
                                                         {historial.esDeudor ? 'DEUDOR' : 'AL DÍA'}
                                                     </span>
-                                                    <span className="text-orange-600 text-sm">
+                                                    <span className="text-blue-600 text-sm">
                                                         Total inscripciones: {historial.cursos.length}
                                                     </span>
                                                 </div>
@@ -1534,14 +1541,14 @@ export default function Alumnos() {
                                         {/* Cursos del Alumno */}
                                         <div>
                                             <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                                                <div className="w-1 h-6 bg-orange-600 rounded mr-3"></div>
+                                                <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                                 Cursos Inscriptos
                                             </h3>
 
                                             {historial.cursos.length > 0 ? (
                                                 <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
                                                     <table className="min-w-full">
-                                                        <thead className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                                                        <thead className="bg-gradient-to-r from-red-600 to-blue-600 text-white">
                                                         <tr>
                                                             <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
                                                                 Nombre del Curso
@@ -1561,7 +1568,7 @@ export default function Alumnos() {
                                                         {historial.cursos.map((curso, index) => (
                                                             <motion.tr
                                                                 key={curso.id}
-                                                                className={`hover:bg-orange-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                                                className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
                                                                 initial={{ opacity: 0, y: 10 }}
                                                                 animate={{ opacity: 1, y: 0 }}
                                                                 transition={{ duration: 0.2, delay: index * 0.1 }}
@@ -1594,7 +1601,7 @@ export default function Alumnos() {
                                                                 <td className="px-6 py-4 text-center">
                                                                     <button
                                                                         onClick={() => navigateToInscriptions(viewing.id)}
-                                                                        className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105"
+                                                                        className="bg-gradient-to-r from-red-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-red-700 hover:to-blue-700 transition-all font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105"
                                                                     >
                                                                         Ver
                                                                     </button>
@@ -1620,7 +1627,7 @@ export default function Alumnos() {
                                         {/* Resumen de Pagos */}
                                         <div>
                                             <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                                                <div className="w-1 h-6 bg-orange-600 rounded mr-3"></div>
+                                                <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                                 Historial de Pagos
                                             </h3>
                                             {historial.movimientos.length > 0 ? (
@@ -1664,7 +1671,7 @@ export default function Alumnos() {
                 )}
             </AnimatePresence>
 
-            {/* Modal Crear/Editar - Mantiene el diseño original */}
+            {/* Modal Crear/Editar */}
             <AnimatePresence>
                 {isFormOpen && (
                     <motion.div
@@ -1681,7 +1688,7 @@ export default function Alumnos() {
                                     onClick={(e) => e.stopPropagation()}>
 
                             {/* Header fijo */}
-                            <div className="bg-purple-600 text-white p-6 flex justify-between items-center">
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 flex justify-between items-center">
                                 <h2 className="text-2xl font-bold">{editing ? 'Editar Alumno' : 'Nuevo Alumno'}</h2>
                                 <button type="button" className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors" onClick={closeForm}>
                                     <FiX className="w-6 h-6"/>
@@ -1695,10 +1702,10 @@ export default function Alumnos() {
                                     {/* Foto del alumno */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Foto del Alumno
                                         </h3>
-                                        <div className="flex items-center gap-6 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
+                                        <div className="flex items-center gap-6 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-colors">
                                             <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shadow-md flex-shrink-0">
                                                 {formData.foto ? (
                                                     <img src={formData.foto} alt="Foto del alumno" className="w-full h-full object-cover"/>
@@ -1725,7 +1732,7 @@ export default function Alumnos() {
                                                             reader.readAsDataURL(file);
                                                         }
                                                     }}
-                                                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                 />
                                                 <p className="text-xs text-gray-500 mt-1">Formatos aceptados: JPG, PNG, GIF</p>
                                             </div>
@@ -1735,7 +1742,7 @@ export default function Alumnos() {
                                     {/* Información Personal */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Información Personal
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1754,7 +1761,7 @@ export default function Alumnos() {
                                                         type={type || 'text'}
                                                         value={formData[name] || ''}
                                                         onChange={handleChange}
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                         required={['nombre', 'apellido', 'dni'].includes(name)}
                                                     />
                                                 </div>
@@ -1765,7 +1772,7 @@ export default function Alumnos() {
                                     {/* Ubicación y Estado */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Ubicación y Estado
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1776,7 +1783,7 @@ export default function Alumnos() {
                                                     type="text"
                                                     value={formData.direccion || ''}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                     required
                                                 />
                                             </div>
@@ -1787,7 +1794,7 @@ export default function Alumnos() {
                                                     type="text"
                                                     value={formData.localidad || ''}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                     required
                                                 />
                                             </div>
@@ -1797,7 +1804,7 @@ export default function Alumnos() {
                                                     name="estado"
                                                     value={formData.estado || 'Activo'}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                 >
                                                     <option value="Activo">Activo</option>
                                                     <option value="Inactivo">Inactivo</option>
@@ -1809,7 +1816,7 @@ export default function Alumnos() {
                                     {/* Información Adicional */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
+                                            <div className="w-1 h-6 bg-gradient-to-r from-red-600 to-blue-600 rounded mr-3"></div>
                                             Información Adicional
                                         </h3>
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1821,7 +1828,7 @@ export default function Alumnos() {
                                                     value={formData.padreTutor || ''}
                                                     onChange={handleChange}
                                                     rows={5}
-                                                    className="border-2 border-gray-300 rounded-lg p-3 text-black focus:border-purple-500 focus:outline-none transition-colors resize-none"
+                                                    className="border-2 border-gray-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none transition-colors resize-none"
                                                     placeholder="Información de contacto de padres, tutores o empresa..."
                                                 />
                                             </div>
@@ -1834,7 +1841,7 @@ export default function Alumnos() {
                                                     value={formData.observaciones || ''}
                                                     onChange={handleChange}
                                                     rows={5}
-                                                    className="border-2 border-gray-300 rounded-lg p-3 text-black focus:border-purple-500 focus:outline-none transition-colors resize-none"
+                                                    className="border-2 border-gray-300 rounded-lg p-3 text-black focus:border-blue-500 focus:outline-none transition-colors resize-none"
                                                     placeholder="Observaciones adicionales sobre el alumno..."
                                                 />
                                             </div>
@@ -1853,7 +1860,7 @@ export default function Alumnos() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                                        className="px-6 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-lg hover:from-red-700 hover:to-blue-700 transition-colors flex items-center space-x-2"
                                     >
                                         <span>{editing ? 'Guardar Cambios' : 'Crear Alumno'}</span>
                                     </button>

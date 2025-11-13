@@ -46,7 +46,7 @@ function SearchableSelect({ options, value, onChange, placeholder, getLabel, get
     return (
         <div className="relative">
             <div
-                className="border-2 border-gray-300 rounded-xl p-3 bg-white cursor-pointer flex justify-between items-center focus-within:border-green-500 transition-colors"
+                className="border-2 border-gray-300 rounded-xl p-3 bg-white cursor-pointer flex justify-between items-center focus-within:border-red-500 transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className="text-black">
@@ -68,7 +68,7 @@ function SearchableSelect({ options, value, onChange, placeholder, getLabel, get
                     {filtered.map((option, index) => (
                         <div
                             key={index}
-                            className="p-3 hover:bg-green-50 cursor-pointer text-black transition-colors"
+                            className="p-3 hover:bg-red-50 cursor-pointer text-black transition-colors"
                             onClick={() => {
                                 onChange(getSafeValue(option));
                                 setIsOpen(false);
@@ -100,7 +100,7 @@ function Notifications({ notifications, remove }) {
                         exit={{ opacity: 0, x: 50 }}
                         transition={{ duration: 0.3 }}
                         className={`px-4 py-2 rounded shadow-md cursor-pointer ${
-                            n.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            n.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'
                         }`}
                         onClick={() => remove(n.id)}
                     >
@@ -558,13 +558,13 @@ export default function Inscripciones() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 text-black p-4 sm:p-6">
+        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 text-black p-4 sm:p-6">
             <Notifications notifications={notifications} remove={removeNotification} />
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 sm:p-6 rounded-2xl mb-6 shadow-lg">
+            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 sm:p-6 rounded-2xl mb-6 shadow-lg">
                 <h1 className="text-2xl sm:text-3xl font-bold">📚 Gestión de Inscripciones</h1>
-                <p className="text-green-100 text-xs sm:text-sm mt-1">Administra las inscripciones académicas</p>
+                <p className="text-blue-100 text-xs sm:text-sm mt-1">Administra las inscripciones académicas</p>
             </div>
 
             {/* Barra de búsqueda */}
@@ -574,11 +574,11 @@ export default function Inscripciones() {
                     placeholder="🔍 Buscar inscripción..."
                     value={search}
                     onChange={e=>setSearch(e.target.value)}
-                    className="flex-1 border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none shadow-sm"
+                    className="flex-1 border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-red-500 focus:outline-none shadow-sm"
                 />
                 <button
                     onClick={()=>openForm(null)}
-                    className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl hover:from-green-700 hover:to-green-800 transition-all font-bold shadow-lg"
+                    className="bg-gradient-to-r from-red-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-red-700 hover:to-blue-700 transition-all font-bold shadow-lg"
                 >
                     + Nueva Inscripción
                 </button>
@@ -588,7 +588,7 @@ export default function Inscripciones() {
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
+                        <thead className="bg-gradient-to-r from-red-100 to-blue-100">
                         <tr>
                             <th className="px-4 py-3 text-left text-xs sm:text-sm font-bold text-gray-700 border-b-2 border-gray-300">Alumno</th>
                             <th className="px-4 py-3 text-left text-xs sm:text-sm font-bold text-gray-700 border-b-2 border-gray-300">Curso</th>
@@ -602,7 +602,7 @@ export default function Inscripciones() {
                         </thead>
                         <tbody>
                         {filtered.map((ins,i)=>(
-                            <tr key={ins.id || i} className="hover:bg-green-50 transition-colors border-b border-gray-200">
+                            <tr key={ins.id || i} className="hover:bg-red-50 transition-colors border-b border-gray-200">
                                 <td className="px-4 py-3 text-xs sm:text-sm">{ins.studentName}</td>
                                 <td className="px-4 py-3 text-xs sm:text-sm">{ins.courseName}</td>
                                 <td className="px-4 py-3 text-xs sm:text-sm">{ins.professorName}</td>
@@ -705,7 +705,7 @@ export default function Inscripciones() {
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 sticky top-0 z-10">
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 sticky top-0 z-10">
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <h2 className="text-2xl font-bold">Detalles de Inscripción</h2>
@@ -744,13 +744,13 @@ export default function Inscripciones() {
 
                                 {/* Cuotas */}
                                 {viewing.installments && viewing.installments.length > 0 && (
-                                    <div className="bg-green-50 p-4 rounded-xl border-2 border-green-200">
-                                        <h3 className="text-lg font-bold text-green-800 mb-3">
+                                    <div className="bg-red-50 p-4 rounded-xl border-2 border-red-200">
+                                        <h3 className="text-lg font-bold text-red-800 mb-3">
                                             Cuotas ({viewing.installments.length})
                                         </h3>
                                         <div className="space-y-2">
                                             {viewing.installments.map((cuota, idx) => (
-                                                <div key={idx} className="bg-white p-3 rounded-lg border border-green-300 flex justify-between items-center">
+                                                <div key={idx} className="bg-white p-3 rounded-lg border border-red-300 flex justify-between items-center">
                                                     <div>
                                                         <span className="font-semibold text-gray-900">Cuota #{cuota.number}</span>
                                                         <span className="text-sm text-gray-600 ml-3">
@@ -837,12 +837,12 @@ export default function Inscripciones() {
                             exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 flex justify-between items-center sticky top-0 z-10">
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 flex justify-between items-center sticky top-0 z-10">
                                 <div>
                                     <h2 className="text-2xl font-bold">
                                         {editing ? 'Editar Inscripción' : 'Nueva Inscripción'}
                                     </h2>
-                                    <p className="text-green-100 text-sm">Completa la información del curso</p>
+                                    <p className="text-blue-100 text-sm">Completa la información del curso</p>
                                 </div>
                                 <button
                                     type="button"
@@ -856,8 +856,8 @@ export default function Inscripciones() {
                             <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(95vh-140px)]">
                                 <div className="p-6 space-y-6">
                                     {/* Información Principal */}
-                                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-200">
-                                        <h3 className="text-lg font-bold text-green-800 mb-4">Datos Principales</h3>
+                                    <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-xl border-2 border-red-200">
+                                        <h3 className="text-lg font-bold text-red-800 mb-4">Datos Principales</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
                                                 <label className="text-sm font-semibold mb-2 text-gray-700 block">Alumno *</label>
@@ -899,24 +899,24 @@ export default function Inscripciones() {
 
                                     {/* 💰 Información de Costos del Curso */}
                                     {selectedCourse && (
-                                        <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-6 rounded-xl border-2 border-cyan-200">
-                                            <h3 className="text-lg font-bold text-cyan-800 mb-4">💰 Información de Costos</h3>
+                                        <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-xl border-2 border-blue-200">
+                                            <h3 className="text-lg font-bold text-blue-800 mb-4">💰 Información de Costos</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="bg-white p-4 rounded-lg border border-cyan-300">
+                                                <div className="bg-white p-4 rounded-lg border border-red-300">
                                                     <p className="text-sm text-gray-600 mb-1">Efectivo</p>
                                                     <p className="text-2xl font-bold text-green-700">${formatNumber(selectedCourse.totalEfectivo || 0)}</p>
                                                     <p className="text-xs text-gray-500 mt-1">
                                                         {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1} cuota(s)
                                                     </p>
                                                 </div>
-                                                <div className="bg-white p-4 rounded-lg border border-cyan-300">
+                                                <div className="bg-white p-4 rounded-lg border border-blue-300">
                                                     <p className="text-sm text-gray-600 mb-1">Transferencia</p>
                                                     <p className="text-2xl font-bold text-blue-700">${formatNumber(selectedCourse.totalTransferencia || 0)}</p>
                                                     <p className="text-xs text-gray-500 mt-1">
                                                         {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1} cuota(s)
                                                     </p>
                                                 </div>
-                                                <div className="bg-white p-4 rounded-lg border border-cyan-300">
+                                                <div className="bg-white p-4 rounded-lg border border-purple-300">
                                                     <p className="text-sm text-gray-600 mb-1">Tarjeta</p>
                                                     <p className="text-2xl font-bold text-purple-700">${formatNumber(selectedCourse.totalTarjeta || 0)}</p>
                                                     <p className="text-xs text-purple-600 mt-1 font-semibold">
@@ -933,37 +933,6 @@ export default function Inscripciones() {
                                             )}
                                         </div>
                                     )}
-
-                                    {/* Forma de Pago */}
-                                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl border-2 border-blue-200">
-                                        <h3 className="text-lg font-bold text-blue-800 mb-4">Forma de Pago</h3>
-                                        <div className="space-y-4">
-                                            <select
-                                                name="paymentType"
-                                                value={form.paymentType}
-                                                onChange={handleChange}
-                                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none"
-                                            >
-                                                <option value="Efectivo">Efectivo</option>
-                                                <option value="Transferencia">Transferencia</option>
-                                                <option value="Tarjeta">Tarjeta</option>
-                                            </select>
-
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    id="fullPayment"
-                                                    name="fullPayment"
-                                                    checked={form.fullPayment}
-                                                    onChange={handleChange}
-                                                    className="w-5 h-5 text-green-600"
-                                                />
-                                                <label htmlFor="fullPayment" className="font-semibold text-blue-900 cursor-pointer">
-                                                    Pago Completo (sin cuotas)
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
 
                                     {/* Certificados */}
                                     {form.certificados.length > 0 && (
@@ -1111,7 +1080,7 @@ export default function Inscripciones() {
                                                 onChange={handleChange}
                                                 rows={4}
                                                 placeholder="Observaciones adicionales..."
-                                                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-black focus:border-green-500 focus:outline-none resize-none"
+                                                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-black focus:border-red-500 focus:outline-none resize-none"
                                             />
                                         </div>
                                     </div>
@@ -1128,7 +1097,7 @@ export default function Inscripciones() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-colors font-bold shadow-lg"
+                                        className="px-6 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-xl hover:from-red-700 hover:to-blue-700 transition-colors font-bold shadow-lg"
                                     >
                                         {editing ? 'Guardar Cambios' : 'Crear Inscripción'}
                                     </button>

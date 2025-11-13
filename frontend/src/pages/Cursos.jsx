@@ -43,13 +43,13 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (selectorRef.current && !selectorRef.current.contains(event.target)) {
-                setIsTeacherSelectorOpen(false);
+                onToggle(false);
             }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [onToggle]);
 
     const filteredTeachers = availableTeachers.filter(teacher =>
         `${teacher.nombre} ${teacher.apellido}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,14 +67,14 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
     return (
         <div className="relative" ref={selectorRef}>
             {/* Input de búsqueda y tags de seleccionados */}
-            <div className="w-full border-2 border-gray-300 rounded-xl bg-white focus-within:border-purple-500 shadow-sm">
+            <div className="w-full border-2 border-gray-300 rounded-xl bg-white focus-within:border-red-500 shadow-sm">
                 {/* Tags de profesores seleccionados - AHORA ARRIBA */}
                 {selectedTeachers.length > 0 && (
                     <div className="flex flex-wrap gap-1 p-2 border-b border-gray-200 bg-gray-50 rounded-t-xl">
                         {selectedTeachers.map(teacherId => {
                             const teacher = availableTeachers.find(t => t.id === teacherId);
                             return teacher ? (
-                                <span key={teacherId} className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                                <span key={teacherId} className="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
                                     {teacher.nombre} {teacher.apellido}
                                     <button
                                         type="button"
@@ -98,7 +98,7 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                     placeholder="Buscar profesores por nombre o especialidad..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onFocus={() => !isOpen && onToggle()}
+                    onFocus={() => !isOpen && onToggle(true)}
                     className="w-full px-3 py-2 text-black focus:outline-none rounded-xl"
                 />
             </div>
@@ -130,7 +130,7 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                                             type="checkbox"
                                             checked={selectedTeachers.includes(teacher.id)}
                                             onChange={() => handleTeacherToggle(teacher.id)}
-                                            className="mr-3 w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                                            className="mr-3 w-4 h-4 text-red-600 rounded focus:ring-red-500"
                                             onClick={(e) => e.stopPropagation()}
                                         />
                                         <div className="flex-1">
@@ -151,8 +151,8 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                             </div>
                             <button
                                 type="button"
-                                onClick={onToggle}
-                                className="text-sm bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 transition-colors"
+                                onClick={() => onToggle(false)}
+                                className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors"
                             >
                                 Cerrar
                             </button>
@@ -177,8 +177,8 @@ function Notifications({ notifications, remove }) {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 50 }}
                         transition={{ duration: 0.3 }}
-                        className={`px-4 py-2 rounded shadow-md cursor-pointer ${
-                            n.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        className={`px-4 py-2 rounded shadow-md cursor-pointer border-l-4 ${
+                            n.type === 'success' ? 'bg-green-100 text-green-800 border-green-500' : 'bg-red-100 text-red-800 border-red-500'
                         }`}
                         onClick={() => remove(n.id)}
                     >
@@ -654,34 +654,47 @@ export default function Cursos() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-            <div className="p-6 relative max-w-[1800px] mx-auto">
-                <Notifications notifications={notifications} remove={removeNotification} />
+        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 sm:p-6">
+            <Notifications notifications={notifications} remove={removeNotification} />
 
-                <div className="mb-6 space-y-4">
-                    <div className="flex shadow-lg rounded-xl overflow-hidden">
+            <div className="max-w-[1800px] mx-auto space-y-6">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 rounded-2xl shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-bold">📚 Gestión de Cursos</h1>
+                            <p className="text-blue-100 text-sm mt-1">Administra los cursos académicos</p>
+                        </div>
+                        <button
+                            onClick={() => openForm(null)}
+                            className="bg-white text-red-600 px-6 py-3 rounded-xl hover:bg-red-50 transition-all font-bold shadow-lg w-full sm:w-auto text-center"
+                        >
+                            + Nuevo Curso
+                        </button>
+                    </div>
+                </div>
+
+                {/* Barra de búsqueda y filtros */}
+                <div className="space-y-4">
+                    {/* Barra de búsqueda */}
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <input
                             type="text"
-                            placeholder="Buscar por nombre o profesor..."
-                            className="flex-grow px-6 py-4 border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-white rounded-l-xl focus:outline-none focus:from-white focus:to-blue-50 focus:border-blue-600 text-black placeholder-blue-600 text-lg"
+                            placeholder="🔍 Buscar por nombre o profesor..."
+                            className="flex-1 border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-red-500 focus:outline-none shadow-sm"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
-                        <button
-                            onClick={() => openForm(null)}
-                            className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-4 rounded-r-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 font-semibold text-lg shadow-lg"
-                        >
-                            Nuevo Curso
-                        </button>
                     </div>
 
-                    <div className="flex gap-4 bg-white p-4 rounded-xl shadow-md">
+                    {/* Filtros */}
+                    <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row gap-4">
                         <div className="flex items-center gap-2">
                             <label className="text-sm font-medium text-gray-700">Estado:</label>
                             <select
                                 value={filterEstado}
                                 onChange={(e) => setFilterEstado(e.target.value)}
-                                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:outline-none shadow-sm"
+                                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none shadow-sm"
                             >
                                 <option value="">Todos</option>
                                 <option value="Próximo">Próximo</option>
@@ -697,7 +710,7 @@ export default function Cursos() {
                                 placeholder="Filtrar por código..."
                                 value={filterCod}
                                 onChange={(e) => setFilterCod(e.target.value)}
-                                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:outline-none w-32 shadow-sm"
+                                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none w-32 shadow-sm"
                             />
                         </div>
 
@@ -716,20 +729,23 @@ export default function Cursos() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
-                    <div className="overflow-auto">
+                {/* Tabla de cursos */}
+                <div className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-gray-200">
+                    <div className="overflow-x-auto">
                         <table className="min-w-full">
-                            <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                            <thead className="bg-gradient-to-r from-red-100 to-blue-100">
                             <tr>
                                 {[
                                     'COD', 'Nombre del Curso', 'Fecha Inicio', 'Fecha Fin',
                                     'Día y Horario', 'Profesor/es', 'Vacantes', 'Estado', 'Acciones'
                                 ].map(h => (
-                                    <th key={h} className="px-6 py-4 text-left font-semibold tracking-wide">{h}</th>
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                        {h}
+                                    </th>
                                 ))}
                             </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-200">
                             {filtered.map((course, index) => {
                                 const estado = getEstadoCurso(course.inicio, course.fin);
                                 const horarios = resumenHorarios(course.horarios || []);
@@ -737,18 +753,18 @@ export default function Cursos() {
                                 return (
                                     <motion.tr
                                         key={course.id}
-                                        className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition-all duration-200 ${
+                                        className={`hover:bg-red-50 transition-colors ${
                                             index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                                         }`}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.2, delay: index * 0.05 }}
                                     >
-                                        <td className="px-6 py-4 text-black font-bold text-lg">#{course.id}</td>
-                                        <td className="px-6 py-4 text-black font-semibold">{course.nombre}</td>
-                                        <td className="px-6 py-4 text-gray-700">{formatDate(course.inicio)}</td>
-                                        <td className="px-6 py-4 text-gray-700">{formatDate(course.fin)}</td>
-                                        <td className="px-6 py-4 text-gray-700">
+                                        <td className="px-4 py-3 text-red-600 font-bold">#{course.id}</td>
+                                        <td className="px-4 py-3 font-semibold text-gray-900">{course.nombre}</td>
+                                        <td className="px-4 py-3 text-gray-700">{formatDate(course.inicio)}</td>
+                                        <td className="px-4 py-3 text-gray-700">{formatDate(course.fin)}</td>
+                                        <td className="px-4 py-3 text-gray-700">
                                             {Array.isArray(horarios) && horarios.length > 0 ? (
                                                 <div className="space-y-1">
                                                     {horarios.map((horario, idx) => (
@@ -761,8 +777,8 @@ export default function Cursos() {
                                                 <span className="text-gray-500">-</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 text-gray-700">{getTeacherNames(course.profesores || [], professors)}</td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 py-3 text-gray-700">{getTeacherNames(course.profesores || [], professors)}</td>
+                                        <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${vacantesInfo.color} flex items-center gap-1`}>
                                                     <span className="text-base">{vacantesInfo.emoji}</span>
@@ -770,13 +786,13 @@ export default function Cursos() {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 py-3">
                                             <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${estado.color}`}>
                                                 {estado.text}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex space-x-3">
+                                        <td className="px-4 py-3">
+                                            <div className="flex space-x-2">
                                                 <motion.button
                                                     onClick={() => setViewing(course)}
                                                     whileHover={{ scale: 1.2 }}
@@ -784,7 +800,7 @@ export default function Cursos() {
                                                     className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-full hover:bg-blue-50"
                                                     title="Ver detalles"
                                                 >
-                                                    <FiEye size={20} />
+                                                    <FiEye size={18} />
                                                 </motion.button>
                                                 <motion.button
                                                     onClick={() => openForm(course)}
@@ -793,7 +809,7 @@ export default function Cursos() {
                                                     className="text-green-600 hover:text-green-800 transition-colors p-2 rounded-full hover:bg-green-50"
                                                     title="Editar curso"
                                                 >
-                                                    <FiEdit size={20} />
+                                                    <FiEdit size={18} />
                                                 </motion.button>
                                                 <motion.button
                                                     onClick={() => handleDuplicate(course)}
@@ -802,7 +818,7 @@ export default function Cursos() {
                                                     className="text-purple-600 hover:text-purple-800 transition-colors p-2 rounded-full hover:bg-purple-50"
                                                     title="Duplicar curso"
                                                 >
-                                                    <FiCopy size={20} />
+                                                    <FiCopy size={18} />
                                                 </motion.button>
                                                 <motion.button
                                                     onClick={() => handleDelete(course)}
@@ -811,7 +827,7 @@ export default function Cursos() {
                                                     className="text-red-600 hover:text-red-800 transition-colors p-2 rounded-full hover:bg-red-50"
                                                     title="Eliminar curso"
                                                 >
-                                                    <FiTrash2 size={20} />
+                                                    <FiTrash2 size={18} />
                                                 </motion.button>
                                             </div>
                                         </td>
@@ -839,7 +855,6 @@ export default function Cursos() {
             </div>
 
             {/* Modal Detalles */}
-            // Reemplaza el modal de detalles existente con este código mejorado
             <AnimatePresence>
                 {viewing && (
                     <motion.div
@@ -848,12 +863,12 @@ export default function Cursos() {
                         onClick={() => setViewing(null)}
                     >
                         <motion.div
-                            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto relative border-2 border-purple-200 shadow-2xl"
+                            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto relative border-2 border-red-200 shadow-2xl"
                             initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header con gradiente */}
-                            <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 rounded-t-2xl">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
@@ -864,7 +879,7 @@ export default function Cursos() {
                                             </div>
                                             <h2 className="text-2xl font-bold">Detalles del Curso</h2>
                                         </div>
-                                        <p className="text-purple-100 text-lg font-semibold">{viewing.nombre}</p>
+                                        <p className="text-blue-100 text-lg font-semibold">{viewing.nombre}</p>
                                     </div>
                                     <button
                                         className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-all duration-200 hover:scale-110"
@@ -891,7 +906,7 @@ export default function Cursos() {
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center pb-3 border-b border-gray-100">
                                                 <span className="text-sm font-medium text-gray-600">Código:</span>
-                                                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-bold">#{viewing.id}</span>
+                                                <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold">#{viewing.id}</span>
                                             </div>
                                             <div className="flex justify-between items-center pb-3 border-b border-gray-100">
                                                 <span className="text-sm font-medium text-gray-600">Vacantes:</span>
@@ -937,8 +952,8 @@ export default function Cursos() {
                                     {/* Tarjeta de profesores */}
                                     <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
                                         <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-purple-100 rounded-lg p-2">
-                                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="bg-red-100 rounded-lg p-2">
+                                                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                 </svg>
                                             </div>
@@ -950,7 +965,7 @@ export default function Cursos() {
                                                     const profesor = professors.find(p => p.id === profesorId);
                                                     return profesor ? (
                                                         <div key={profesorId} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                                                            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                            <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                                                 {profesor.nombre.charAt(0)}{profesor.apellido.charAt(0)}
                                                             </div>
                                                             <div>
@@ -985,24 +1000,24 @@ export default function Cursos() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         {/* Efectivo */}
-                                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-200">
+                                        <div className="bg-gradient-to-br from-red-50 to-blue-50 rounded-xl p-5 border-2 border-red-200">
                                             <div className="flex items-center gap-2 mb-4">
-                                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                                                <h4 className="font-bold text-green-800 text-lg">Efectivo</h4>
+                                                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <h4 className="font-bold text-red-800 text-lg">Efectivo</h4>
                                             </div>
                                             <div className="space-y-3">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-green-700">Pago en fecha:</span>
-                                                    <span className="font-bold text-green-900">${Number(viewing.pagoFechaEfectivo || 0).toLocaleString('es-AR')}</span>
+                                                    <span className="text-sm text-red-700">Pago en fecha:</span>
+                                                    <span className="font-bold text-red-900">${Number(viewing.pagoFechaEfectivo || 0).toLocaleString('es-AR')}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-green-700">Pago vencido:</span>
-                                                    <span className="font-bold text-green-900">${Number(viewing.pagoVencidoEfectivo || 0).toLocaleString('es-AR')}</span>
+                                                    <span className="text-sm text-red-700">Pago vencido:</span>
+                                                    <span className="font-bold text-red-900">${Number(viewing.pagoVencidoEfectivo || 0).toLocaleString('es-AR')}</span>
                                                 </div>
-                                                <div className="border-t border-green-200 pt-2 mt-2">
+                                                <div className="border-t border-red-200 pt-2 mt-2">
                                                     <div className="flex justify-between items-center">
-                                                        <span className="font-semibold text-green-800">Total:</span>
-                                                        <span className="font-bold text-xl text-green-900">${Number(viewing.totalEfectivo || 0).toLocaleString('es-AR')}</span>
+                                                        <span className="font-semibold text-red-800">Total:</span>
+                                                        <span className="font-bold text-xl text-red-900">${Number(viewing.totalEfectivo || 0).toLocaleString('es-AR')}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1136,8 +1151,8 @@ export default function Cursos() {
                                                             <span className="font-semibold text-gray-800">{tipo}</span>
                                                         </div>
                                                         <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold text-sm">
-                                                ${Number(viewing.costosCertificado?.[tipo] || 0).toLocaleString('es-AR')}
-                                            </span>
+                                                            ${Number(viewing.costosCertificado?.[tipo] || 0).toLocaleString('es-AR')}
+                                                        </span>
                                                     </div>
                                                 ))
                                             ) : (
@@ -1158,7 +1173,7 @@ export default function Cursos() {
                             <div className="sticky bottom-0 bg-gradient-to-r from-white to-gray-50 border-t border-gray-200 p-6 rounded-b-2xl">
                                 <div className="flex justify-center">
                                     <button
-                                        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-300 flex items-center gap-3 shadow-lg hover:shadow-xl font-semibold"
+                                        className="px-8 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-xl hover:from-red-700 hover:to-blue-700 transition-all duration-300 flex items-center gap-3 shadow-lg hover:shadow-xl font-semibold"
                                         onClick={() => { setViewing(null); openForm(viewing); }}
                                     >
                                         <FiEdit className="w-5 h-5" />
@@ -1179,12 +1194,15 @@ export default function Cursos() {
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-hidden relative text-black shadow-md"
+                            className="bg-white rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden relative text-black shadow-2xl border-2 border-gray-200"
                             initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="bg-purple-600 text-white p-6 flex justify-between items-center shadow-sm">
-                                <h2 className="text-2xl font-bold">{editing ? 'Editar Curso' : 'Nuevo Curso'}</h2>
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-bold">{editing ? 'Editar Curso' : 'Nuevo Curso'}</h2>
+                                    <p className="text-blue-100 text-sm">Completa la información del curso</p>
+                                </div>
                                 <button type="button" className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors" onClick={closeForm}>
                                     <FiX className="w-6 h-6" />
                                 </button>
@@ -1193,31 +1211,28 @@ export default function Cursos() {
                             <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(95vh-140px)]">
                                 <div className="p-6 space-y-8">
                                     {/* Información general */}
-                                    <div className="shadow-sm rounded-xl">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Información General
-                                        </h3>
+                                    <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-xl border-2 border-red-200">
+                                        <h3 className="text-lg font-bold text-red-800 mb-4">Información General</h3>
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                             <div className="flex flex-col lg:col-span-2">
-                                                <label className="text-sm font-medium mb-2 text-gray-700">Nombre:</label>
+                                                <label className="text-sm font-semibold mb-2 text-gray-700">Nombre:</label>
                                                 <input
                                                     name="nombre"
                                                     type="text"
                                                     value={formData.nombre}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                                                     required
                                                 />
                                             </div>
 
                                             <div className="flex flex-col lg:col-span-2">
-                                                <label className="text-sm font-medium mb-2 text-gray-700">Profesor/es:</label>
+                                                <label className="text-sm font-semibold mb-2 text-gray-700">Profesor/es:</label>
                                                 <TeacherSelector
                                                     selectedTeachers={formData.profesores}
                                                     onTeachersChange={(teachers) => setFormData(fd => ({ ...fd, profesores: teachers }))}
                                                     isOpen={isTeacherSelectorOpen}
-                                                    onToggle={() => setIsTeacherSelectorOpen(!isTeacherSelectorOpen)}
+                                                    onToggle={setIsTeacherSelectorOpen}
                                                     availableTeachers={professors}
                                                 />
                                             </div>
@@ -1225,16 +1240,13 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Datos Económicos */}
-                                    <div className="shadow-sm rounded-xl">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Datos Económicos
-                                        </h3>
+                                    <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-xl border-2 border-blue-200">
+                                        <h3 className="text-lg font-bold text-blue-800 mb-4">Datos Económicos</h3>
 
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                             {/* Efectivo */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
-                                                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center bg-green-100 py-2 rounded">Efectivo</h4>
+                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
+                                                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center bg-red-100 py-2 rounded">Efectivo</h4>
                                                 <div className="space-y-3">
                                                     <div className="flex flex-col">
                                                         <Tooltip content={tooltipContent.pagoFechaEfectivo}>
@@ -1247,7 +1259,7 @@ export default function Cursos() {
                                                             type="number"
                                                             value={formData.pagoFechaEfectivo}
                                                             onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                                                             required min="0" step="0.01"
                                                         />
                                                     </div>
@@ -1262,7 +1274,7 @@ export default function Cursos() {
                                                             type="number"
                                                             value={formData.pagoVencidoEfectivo}
                                                             onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                                                             required min="0" step="0.01"
                                                         />
                                                     </div>
@@ -1276,7 +1288,7 @@ export default function Cursos() {
                                                             name="totalEfectivo"
                                                             type="number"
                                                             value={formData.totalEfectivo}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors bg-yellow-50 cursor-not-allowed"
+                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors bg-yellow-50 cursor-not-allowed"
                                                             required min="0" step="0.01"
                                                             readOnly
                                                         />
@@ -1290,7 +1302,7 @@ export default function Cursos() {
                                             </div>
 
                                             {/* Transferencias */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
+                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
                                                 <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center bg-blue-100 py-2 rounded">Transferencias</h4>
                                                 <div className="space-y-3">
                                                     <div className="flex flex-col">
@@ -1304,7 +1316,7 @@ export default function Cursos() {
                                                             type="number"
                                                             value={formData.pagoFechaTransferencia}
                                                             onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                             required min="0" step="0.01"
                                                         />
                                                     </div>
@@ -1319,7 +1331,7 @@ export default function Cursos() {
                                                             type="number"
                                                             value={formData.pagoVencidoTransferencia}
                                                             onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                             required min="0" step="0.01"
                                                         />
                                                     </div>
@@ -1333,7 +1345,7 @@ export default function Cursos() {
                                                             name="totalTransferencia"
                                                             type="number"
                                                             value={formData.totalTransferencia}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors bg-yellow-50 cursor-not-allowed"
+                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors bg-yellow-50 cursor-not-allowed"
                                                             required min="0" step="0.01"
                                                             readOnly
                                                         />
@@ -1347,7 +1359,7 @@ export default function Cursos() {
                                             </div>
 
                                             {/* Tarjetas */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
+                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
                                                 <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center bg-purple-100 py-2 rounded">Tarjetas</h4>
                                                 <div className="space-y-3">
                                                     <div className="flex flex-col">
@@ -1386,7 +1398,7 @@ export default function Cursos() {
                                                                 : 'Se calcula a partir del Costo Total en Efectivo'}
                                                         </small>
                                                     </div>
-                                                    <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-3 text-xs text-purple-800">
+                                                    <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 text-xs text-red-800">
                                                         <strong>⚠️ Importante:</strong> El pago con tarjeta es <strong>siempre en 1 sola cuota</strong> (pago completo del curso).
                                                         El monto incluye el {formData.porcentajeTarjeta}% de recargo configurado en Parametrización.
                                                     </div>
@@ -1395,7 +1407,7 @@ export default function Cursos() {
                                         </div>
 
                                         {/* Cuotas compartidas (fuera de las tres columnas) */}
-                                        <div className="mt-6 border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
+                                        <div className="mt-6 border-2 border-gray-200 rounded-lg p-4 bg-white">
                                             <div className="flex items-center space-x-2 mb-3">
                                                 <input
                                                     type="checkbox"
@@ -1406,7 +1418,7 @@ export default function Cursos() {
                                                         cuotasEnabled: e.target.checked,
                                                         cuotasCompartidas: e.target.checked ? fd.cuotasCompartidas : ''
                                                     }))}
-                                                    className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                                                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                                                 />
                                                 <label htmlFor="cuotasEnabled" className="text-sm text-gray-700 font-medium">
                                                     Habilitar cuotas para Efectivo y Transferencias (La tarjeta siempre es 1 cuota)
@@ -1425,7 +1437,7 @@ export default function Cursos() {
                                                         type="number"
                                                         value={formData.cuotasCompartidas}
                                                         onChange={handleChange}
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                                                         min="1" step="1"
                                                     />
                                                 </div>
@@ -1434,14 +1446,11 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Certificados */}
-                                    <div className="shadow-sm rounded-xl">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Certificados
-                                        </h3>
+                                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-200">
+                                        <h3 className="text-lg font-bold text-purple-800 mb-4">Certificados</h3>
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-700">Tipo(s) de Certificado:</label>
+                                                <label className="text-sm font-semibold text-gray-700">Tipo(s) de Certificado:</label>
                                                 <div className="flex gap-2">
                                                     <input
                                                         list="cert-types"
@@ -1466,8 +1475,8 @@ export default function Cursos() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-700">Certificados agregados:</label>
-                                                <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[100px] shadow-sm">
+                                                <label className="text-sm font-semibold text-gray-700">Certificados agregados:</label>
+                                                <div className="border-2 border-gray-200 rounded-lg p-4 bg-white min-h-[100px] shadow-sm">
                                                     {formData.tiposCertificado.length === 0 ? (
                                                         <div className="text-gray-500 italic">Agrega al menos un tipo de certificado.</div>
                                                     ) : (
@@ -1508,45 +1517,42 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Horarios */}
-                                    <div className="shadow-sm rounded-xl">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Horarios
-                                        </h3>
+                                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border-2 border-orange-200">
+                                        <h3 className="text-lg font-bold text-orange-800 mb-4">Horarios</h3>
                                         <div className="space-y-4">
                                             <div className="flex flex-wrap gap-4 items-end">
                                                 <div className="flex flex-col">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700">Día:</label>
+                                                    <label className="text-sm font-semibold mb-2 text-gray-700">Día:</label>
                                                     <select
                                                         value={formData.horarioDraft.dia}
                                                         onChange={(e) => setFormData(fd => ({ ...fd, horarioDraft: { ...fd.horarioDraft, dia: e.target.value } }))}
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors"
                                                     >
                                                         {diasSemana.map(d => <option key={d} value={d}>{d}</option>)}
                                                     </select>
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700">Desde:</label>
+                                                    <label className="text-sm font-semibold mb-2 text-gray-700">Desde:</label>
                                                     <input
                                                         type="time"
                                                         value={formData.horarioDraft.desde}
                                                         onChange={(e) => setFormData(fd => ({ ...fd, horarioDraft: { ...fd.horarioDraft, desde: e.target.value } }))}
-                                                        className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors"
                                                     />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <label className="text-sm font-medium mb-2 text-gray-700">Hasta:</label>
+                                                    <label className="text-sm font-semibold mb-2 text-gray-700">Hasta:</label>
                                                     <input
                                                         type="time"
                                                         value={formData.horarioDraft.hasta}
                                                         onChange={(e) => setFormData(fd => ({ ...fd, horarioDraft: { ...fd.horarioDraft, hasta: e.target.value } }))}
-                                                        className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                        className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors"
                                                     />
                                                 </div>
                                                 <button
                                                     type="button"
                                                     onClick={handleAddHorario}
-                                                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors whitespace-nowrap shadow-sm"
+                                                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 transition-colors whitespace-nowrap shadow-sm"
                                                     title="Agregar horario"
                                                 >
                                                     <FiPlus className="w-4 h-4" /> Agregar
@@ -1554,7 +1560,7 @@ export default function Cursos() {
                                             </div>
 
                                             {/* Listado */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[100px] shadow-sm">
+                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white min-h-[100px] shadow-sm">
                                                 {formData.horarios.length === 0 ? (
                                                     <div className="text-gray-500 italic">Agrega al menos un horario.</div>
                                                 ) : (
@@ -1585,42 +1591,39 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Fechas y Vacantes */}
-                                    <div className="shadow-sm rounded-xl">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                            <div className="w-1 h-6 bg-purple-600 rounded mr-3"></div>
-                                            Fechas y Vacantes
-                                        </h3>
+                                    <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl border-2 border-gray-200">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-4">Fechas y Vacantes</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="flex flex-col">
-                                                <label className="text-sm font-medium mb-2 text-gray-700">Fecha de inicio:</label>
+                                                <label className="text-sm font-semibold mb-2 text-gray-700">Fecha de inicio:</label>
                                                 <input
                                                     type="date"
                                                     name="inicio"
                                                     value={formData.inicio}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                                                     required
                                                 />
                                             </div>
                                             <div className="flex flex-col">
-                                                <label className="text-sm font-medium mb-2 text-gray-700">Fecha de fin:</label>
+                                                <label className="text-sm font-semibold mb-2 text-gray-700">Fecha de fin:</label>
                                                 <input
                                                     type="date"
                                                     name="fin"
                                                     value={formData.fin}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                                                     required
                                                 />
                                             </div>
                                             <div className="flex flex-col">
-                                                <label className="text-sm font-medium mb-2 text-gray-700">Vacantes:</label>
+                                                <label className="text-sm font-semibold mb-2 text-gray-700">Vacantes:</label>
                                                 <input
                                                     type="number"
                                                     name="vacantes"
                                                     value={formData.vacantes}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors"
+                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                                                     min="0"
                                                     step="1"
                                                     required
@@ -1631,19 +1634,19 @@ export default function Cursos() {
                                 </div>
 
                                 {/* Footer con botones */}
-                                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex justify-end space-x-4">
+                                <div className="sticky bottom-0 bg-white border-t-2 border-gray-200 p-6 flex justify-end gap-3 shadow-lg">
                                     <button
                                         type="button"
                                         onClick={closeForm}
-                                        className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                        className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 shadow"
+                                        className="px-6 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-xl hover:from-red-700 hover:to-blue-700 transition-colors font-bold shadow-lg"
                                     >
-                                        <span>{editing ? 'Guardar Cambios' : 'Crear Curso'}</span>
+                                        {editing ? 'Guardar Cambios' : 'Crear Curso'}
                                     </button>
                                 </div>
                             </form>

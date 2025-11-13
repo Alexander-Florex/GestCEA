@@ -43,7 +43,7 @@ function Notifications({ notifications, remove }) {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 50 }}
                         className={`px-4 py-2 rounded shadow-md cursor-pointer ${
-                            n.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            n.type === 'success' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'
                         }`}
                         onClick={() => remove(n.id)}
                     >
@@ -183,12 +183,12 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                     onClick={(e) => e.stopPropagation()}
                     className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
                 >
-                    {/* Header */}
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+                    {/* Header con gradiente rojo-azul */}
+                    <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="text-2xl font-bold">Depositar Pago</h2>
-                                <p className="text-blue-100 text-sm mt-1">Cuota #{installment.number}</p>
+                                <p className="text-red-100 text-sm mt-1">Cuota #{installment.number}</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -226,7 +226,7 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Forma de pago <span className="text-red-500">*</span>
                             </label>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 {['Efectivo', 'Transferencia', 'Tarjeta'].map(forma => (
                                     <button
                                         key={forma}
@@ -302,7 +302,7 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                         </div>
 
                         {/* Botones */}
-                        <div className="flex gap-3 pt-4">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4">
                             <button
                                 type="button"
                                 onClick={onClose}
@@ -313,7 +313,7 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                             </button>
                             <button
                                 type="submit"
-                                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={isProcessing}
                             >
                                 {isProcessing ? 'Procesando...' : 'Confirmar Depósito'}
@@ -397,7 +397,7 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
                                 : 'border-gray-300 bg-white hover:border-blue-300'
                 }`}
             >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center space-x-4">
                         <input
                             type="checkbox"
@@ -406,15 +406,15 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
                             className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
                         />
                         <div>
-                            <div className="font-bold text-gray-800 flex items-center gap-2">
+                            <div className="font-bold text-gray-800 flex flex-col sm:flex-row sm:items-center gap-2">
                                 Cuota #{installment.number}
                                 {installment.frozen && (
-                                    <span className="text-xs px-2 py-0.5 bg-purple-500 text-white rounded-full flex items-center gap-1">
+                                    <span className="text-xs px-2 py-0.5 bg-purple-500 text-white rounded-full flex items-center gap-1 w-fit">
                                         ❄️ CONGELADA
                                     </span>
                                 )}
                                 {!installment.frozen && isOverdue && (
-                                    <span className="text-xs px-2 py-0.5 bg-red-500 text-white rounded-full">
+                                    <span className="text-xs px-2 py-0.5 bg-red-500 text-white rounded-full w-fit">
                                         VENCIDA
                                     </span>
                                 )}
@@ -430,7 +430,7 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                         <div className="text-right">
                             <div className="text-2xl font-bold text-blue-900">
                                 ${formatNumber(pending)}
@@ -459,7 +459,7 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
 
                         <button
                             onClick={() => setShowActions(!showActions)}
-                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors font-semibold"
+                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors font-semibold w-full sm:w-auto"
                         >
                             Acciones
                         </button>
@@ -472,18 +472,18 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="mt-4 pt-4 border-t border-gray-200 flex space-x-3"
+                            className="mt-4 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3"
                         >
                             <button
                                 onClick={handleDepositar}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold flex items-center justify-center space-x-2"
+                                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg transition-colors font-semibold flex items-center justify-center space-x-2"
                             >
                                 <FiTrendingUp className="w-4 h-4" />
                                 <span>Depositar</span>
                             </button>
                             <button
                                 onClick={handleFreezar}
-                                className={`flex-1 ${installment.frozen ? 'bg-orange-600 hover:bg-orange-700' : 'bg-purple-600 hover:bg-purple-700'} text-white px-4 py-2 rounded-lg transition-colors font-semibold flex items-center justify-center space-x-2`}
+                                className={`flex-1 ${installment.frozen ? 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800' : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800'} text-white px-4 py-2 rounded-lg transition-colors font-semibold flex items-center justify-center space-x-2`}
                             >
                                 <FiCreditCard className="w-4 h-4" />
                                 <span>{installment.frozen ? 'Descongelar' : 'Freezar'}</span>
@@ -616,11 +616,11 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
                     className="bg-white rounded-2xl max-w-2xl w-full relative text-black shadow-2xl max-h-[90vh] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 sticky top-0 z-10">
+                    <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 sticky top-0 z-10">
                         <div className="flex justify-between items-center">
                             <div>
                                 <h2 className="text-2xl font-bold">Procesar Pago</h2>
-                                <p className="text-blue-100 text-sm">
+                                <p className="text-red-100 text-sm">
                                     {selectedInstallments.length} cuota{selectedInstallments.length !== 1 ? 's' : ''} seleccionada{selectedInstallments.length !== 1 ? 's' : ''}
                                 </p>
                             </div>
@@ -639,7 +639,7 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
                             <div className="space-y-3">
                                 {cuotasDetalle.map((cuota, idx) => (
                                     <div key={idx} className="bg-white p-3 rounded-lg border border-blue-300">
-                                        <div className="flex justify-between items-start mb-2">
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
                                             <div>
                                                 <span className="font-bold text-gray-900">Cuota #{cuota.number}</span>
                                                 {cuota.isOverdue && (
@@ -692,7 +692,7 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
                             <label className="block text-sm font-bold text-gray-700">
                                 Método de Pago
                             </label>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 {['Efectivo', 'Transferencia', 'Tarjeta'].map(method => (
                                     <button
                                         key={method}
@@ -711,7 +711,7 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
                         </div>
 
                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-300">
-                            <div className="flex justify-between items-center">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                                 <span className="text-2xl font-bold text-green-900">TOTAL A COBRAR:</span>
                                 <span className="text-4xl font-bold text-green-700">
                                     ${formatNumber(totalActual)}
@@ -724,7 +724,7 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
                             )}
                         </div>
 
-                        <div className="flex space-x-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={onClose}
                                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold"
@@ -927,21 +927,21 @@ export default function Cobros() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 sm:p-6">
             <Notifications notifications={notifications} remove={removeNotification} />
 
             <div className="max-w-7xl mx-auto space-y-6">
-                {/* Header */}
+                {/* Header con gradiente rojo-azul */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-2xl p-8 text-white"
+                    className="bg-gradient-to-r from-red-600 to-blue-600 rounded-2xl shadow-2xl p-6 sm:p-8 text-white"
                 >
-                    <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-                        <FiShoppingCart className="w-10 h-10" />
+                    <h1 className="text-3xl sm:text-4xl font-bold mb-2 flex items-center gap-3">
+                        <FiShoppingCart className="w-8 h-8 sm:w-10 sm:h-10" />
                         Gestión de Cobros
                     </h1>
-                    <p className="text-blue-100">
+                    <p className="text-red-100 text-sm sm:text-base">
                         Sistema de cobro de cuotas pendientes
                     </p>
                 </motion.div>
@@ -951,7 +951,7 @@ export default function Cobros() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl shadow-lg p-6"
+                        className="bg-white rounded-xl shadow-lg p-4 sm:p-6"
                     >
                         <div className="relative">
                             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -975,22 +975,22 @@ export default function Cobros() {
                                     key={student.id}
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow cursor-pointer border-l-4 border-red-500"
+                                    className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow cursor-pointer border-l-4 border-red-500"
                                     onClick={() => setSelectedStudent(student)}
                                 >
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                                         <div>
-                                            <h3 className="text-2xl font-bold text-gray-800">
+                                            <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
                                                 {student.nombre} {student.apellido}
                                             </h3>
-                                            <div className="text-gray-600 mt-2">
-                                                <div>DNI: {student.dni}</div>
-                                                {student.email && <div>Email: {student.email}</div>}
+                                            <div className="text-gray-600 mt-2 space-y-1">
+                                                <div className="text-sm">DNI: {student.dni}</div>
+                                                {student.email && <div className="text-sm">Email: {student.email}</div>}
                                             </div>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-left sm:text-right">
                                             <div className="text-sm text-gray-600">Deuda Total</div>
-                                            <div className="text-4xl font-bold text-red-700">
+                                            <div className="text-3xl sm:text-4xl font-bold text-red-700">
                                                 ${formatNumber(student.totalPending)}
                                             </div>
                                             <div className="text-sm text-gray-500 mt-1">
@@ -1002,12 +1002,12 @@ export default function Cobros() {
                             ))}
 
                             {filteredStudents.length === 0 && (
-                                <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-                                    <FiShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                    <h3 className="text-2xl font-bold text-gray-700 mb-2">
+                                <div className="bg-white rounded-xl shadow-lg p-8 sm:p-12 text-center">
+                                    <FiShoppingCart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+                                    <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">
                                         No hay deudores
                                     </h3>
-                                    <p className="text-gray-500">
+                                    <p className="text-gray-500 text-sm sm:text-base">
                                         {search ? 'No se encontraron alumnos con los filtros aplicados' : '¡Todos los alumnos están al día!'}
                                     </p>
                                 </div>
@@ -1015,7 +1015,7 @@ export default function Cobros() {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            <div className="bg-white rounded-xl shadow-lg p-6">
+                            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
                                 <button
                                     onClick={() => {
                                         setSelectedStudent(null);
@@ -1027,19 +1027,19 @@ export default function Cobros() {
                                     ← Volver a la lista
                                 </button>
 
-                                <div className="flex justify-between items-start">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                                     <div>
-                                        <h2 className="text-3xl font-bold text-gray-800">
+                                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
                                             {selectedStudent.nombre} {selectedStudent.apellido}
                                         </h2>
-                                        <div className="text-gray-600 mt-2">
-                                            <div>DNI: {selectedStudent.dni}</div>
-                                            <div>Email: {selectedStudent.email}</div>
+                                        <div className="text-gray-600 mt-2 space-y-1">
+                                            <div className="text-sm">DNI: {selectedStudent.dni}</div>
+                                            <div className="text-sm">Email: {selectedStudent.email}</div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-left sm:text-right">
                                         <div className="text-sm text-gray-600">Deuda Total</div>
-                                        <div className="text-4xl font-bold text-red-700">
+                                        <div className="text-3xl sm:text-4xl font-bold text-red-700">
                                             ${formatNumber(selectedStudent.totalPending)}
                                         </div>
                                     </div>
@@ -1049,12 +1049,12 @@ export default function Cobros() {
                             {studentCourses.map(course => (
                                 <div key={course.id} className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200">
                                     <div
-                                        className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 cursor-pointer hover:from-purple-600 hover:to-purple-700 transition-colors flex justify-between items-center"
+                                        className="bg-gradient-to-r from-red-500 to-blue-500 text-white p-4 cursor-pointer hover:from-red-600 hover:to-blue-600 transition-colors flex justify-between items-center"
                                         onClick={() => toggleCourseExpansion(course.id)}
                                     >
                                         <div>
-                                            <h3 className="text-xl font-bold">{course.courseName}</h3>
-                                            <div className="text-sm text-purple-100">
+                                            <h3 className="text-lg sm:text-xl font-bold">{course.courseName}</h3>
+                                            <div className="text-sm text-red-100">
                                                 {course.installments.length} cuotas pendientes
                                             </div>
                                         </div>
@@ -1095,21 +1095,21 @@ export default function Cobros() {
                     )}
                 </div>
 
-                {/* Carrito flotante */}
+                {/* Carrito flotante responsive */}
                 {selectedInstallments.length > 0 && (
                     <motion.div
                         initial={{ y: 100, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
-                        className="fixed bottom-6 right-6 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl shadow-2xl p-6 min-w-80"
+                        className="fixed bottom-4 right-4 left-4 sm:left-auto bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl shadow-2xl p-4 sm:p-6 sm:min-w-80 z-40"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <div className="text-sm text-green-100">Total a cobrar</div>
-                                <div className="text-3xl font-bold">${formatNumber(totalCarrito)}</div>
+                                <div className="text-2xl sm:text-3xl font-bold">${formatNumber(totalCarrito)}</div>
                             </div>
                             <div className="text-right">
                                 <div className="text-sm text-green-100">Cuotas</div>
-                                <div className="text-2xl font-bold">{selectedInstallments.length}</div>
+                                <div className="text-xl sm:text-2xl font-bold">{selectedInstallments.length}</div>
                             </div>
                         </div>
                         <button

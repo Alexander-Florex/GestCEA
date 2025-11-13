@@ -21,7 +21,7 @@ function Notifications({ notifications, remove }) {
                         exit={{ opacity: 0, x: 50 }}
                         transition={{ duration: 0.3 }}
                         className={`px-4 py-2 rounded shadow-md cursor-pointer ${
-                            n.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            n.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'
                         }`}
                         onClick={() => remove(n.id)}
                     >
@@ -33,7 +33,7 @@ function Notifications({ notifications, remove }) {
     );
 }
 
-/* ==================== Modal Nueva Operación (SIN FONDO NEGRO) ==================== */
+/* ==================== Modal Nueva Operación ==================== */
 function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual }) {
     const [formData, setFormData] = useState({
         descripcion: '',
@@ -103,31 +103,31 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border-2 border-gray-300"
+                    className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border-2 border-gray-200"
                 >
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 rounded-t-2xl">
+                    <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 lg:p-6 rounded-t-2xl">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                                <FiPlus className="w-8 h-8" />
+                                <FiPlus className="w-6 h-6 lg:w-8 lg:h-8" />
                                 <div>
-                                    <h2 className="text-2xl font-bold">Nueva Operación (Egreso)</h2>
-                                    <p className="text-red-100">Registrar salida de efectivo</p>
+                                    <h2 className="text-xl lg:text-2xl font-bold">Nueva Operación (Egreso)</h2>
+                                    <p className="text-blue-100 text-sm lg:text-base">Registrar salida de efectivo</p>
                                 </div>
                             </div>
                             <button
                                 onClick={handleCancel}
                                 className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors"
                             >
-                                <FiX className="w-6 h-6" />
+                                <FiX className="w-5 h-5 lg:w-6 lg:h-6" />
                             </button>
                         </div>
                     </div>
 
                     {/* Form */}
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    <form onSubmit={handleSubmit} className="p-4 lg:p-6 space-y-4 lg:space-y-6">
                         {/* Información automática BLOQUEADA */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                                     <FiLock className="w-4 h-4 text-gray-500" />
@@ -160,7 +160,7 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                                 rows="3"
                                 required
                                 placeholder="Ej: Compra de materiales, Gastos administrativos, etc."
-                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none transition-colors"
+                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none transition-colors text-black"
                             />
                         </div>
 
@@ -188,24 +188,24 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                         </div>
 
                         {/* Información adicional */}
-                        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
-                            <p className="text-sm text-amber-800">
+                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                            <p className="text-sm text-blue-800">
                                 <strong>Nota:</strong> El campo "Entrada" está bloqueado porque esta operación es únicamente para registrar egresos/gastos de la caja. Las entradas se registran automáticamente desde el sistema.
                             </p>
                         </div>
 
                         {/* Botones */}
-                        <div className="flex gap-4 pt-4 border-t border-gray-200">
+                        <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-gray-200">
                             <button
                                 type="button"
                                 onClick={handleCancel}
-                                className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                                className="flex-1 px-4 lg:px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="submit"
-                                className="flex-1 px-6 py-3 rounded-lg font-semibold text-white transition-colors bg-red-600 hover:bg-red-700 shadow-lg"
+                                className="flex-1 px-4 lg:px-6 py-3 rounded-lg font-semibold text-white transition-colors bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-700 hover:to-blue-700 shadow-lg"
                             >
                                 Registrar Salida
                             </button>
@@ -235,15 +235,15 @@ function ModalEstadoCaja({ isOpen, onClose, cajaAbierta, onToggleCaja }) {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white rounded-2xl shadow-2xl max-w-md w-full border-2 border-gray-300"
+                    className="bg-white rounded-2xl shadow-2xl max-w-md w-full border-2 border-gray-200"
                 >
-                    <div className={`bg-gradient-to-r ${cajaAbierta ? 'from-green-600 to-green-700' : 'from-gray-600 to-gray-700'} text-white p-6 rounded-t-2xl`}>
+                    <div className={`bg-gradient-to-r ${cajaAbierta ? 'from-red-600 to-blue-600' : 'from-gray-600 to-gray-700'} text-white p-4 lg:p-6 rounded-t-2xl`}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                                {cajaAbierta ? <FiUnlock className="w-8 h-8" /> : <FiLock className="w-8 h-8" />}
+                                {cajaAbierta ? <FiUnlock className="w-6 h-6 lg:w-8 lg:h-8" /> : <FiLock className="w-6 h-6 lg:w-8 lg:h-8" />}
                                 <div>
-                                    <h2 className="text-2xl font-bold">Estado de Caja</h2>
-                                    <p className={cajaAbierta ? 'text-green-100' : 'text-gray-100'}>
+                                    <h2 className="text-xl lg:text-2xl font-bold">Estado de Caja</h2>
+                                    <p className={cajaAbierta ? 'text-blue-100' : 'text-gray-100'}>
                                         {cajaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}
                                     </p>
                                 </div>
@@ -252,14 +252,14 @@ function ModalEstadoCaja({ isOpen, onClose, cajaAbierta, onToggleCaja }) {
                                 onClick={onClose}
                                 className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors"
                             >
-                                <FiX className="w-6 h-6" />
+                                <FiX className="w-5 h-5 lg:w-6 lg:h-6" />
                             </button>
                         </div>
                     </div>
 
-                    <div className="p-6 space-y-6">
-                        <div className={`${cajaAbierta ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'} border-2 rounded-lg p-4`}>
-                            <p className={`text-center text-lg font-semibold ${cajaAbierta ? 'text-green-800' : 'text-gray-800'}`}>
+                    <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+                        <div className={`${cajaAbierta ? 'bg-gradient-to-r from-red-50 to-blue-50 border-red-200' : 'bg-gray-50 border-gray-200'} border-2 rounded-lg p-4`}>
+                            <p className={`text-center text-base lg:text-lg font-semibold ${cajaAbierta ? 'text-gray-800' : 'text-gray-800'}`}>
                                 La caja está actualmente <span className="font-bold">{cajaAbierta ? 'ABIERTA' : 'CERRADA'}</span>
                             </p>
                         </div>
@@ -275,16 +275,16 @@ function ModalEstadoCaja({ isOpen, onClose, cajaAbierta, onToggleCaja }) {
                                 }}
                                 className={`w-full px-6 py-3 rounded-lg font-semibold text-white transition-colors shadow-lg ${
                                     cajaAbierta
-                                        ? 'bg-red-600 hover:bg-red-700'
-                                        : 'bg-green-600 hover:bg-green-700'
+                                        ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+                                        : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
                                 }`}
                             >
                                 {cajaAbierta ? 'Cerrar Caja' : 'Abrir Caja'}
                             </button>
                         </div>
 
-                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                            <p className="text-xs text-blue-700">
+                        <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
+                            <p className="text-xs text-red-700">
                                 <strong>Nota:</strong> {cajaAbierta
                                 ? 'Al cerrar la caja, se suspenderán los registros de nuevas operaciones hasta que se vuelva a abrir.'
                                 : 'Al abrir la caja, se habilitará el registro de operaciones nuevamente.'}
@@ -311,10 +311,10 @@ export default function CajaDiaria() {
     // Filtros
     const [filtroFechaDesde, setFiltroFechaDesde] = useState(new Date().toISOString().split('T')[0]);
     const [filtroFechaHasta, setFiltroFechaHasta] = useState(new Date().toISOString().split('T')[0]);
-    const [filtroTipo, setFiltroTipo] = useState('Todos'); // 'Todos', 'Automática', 'Manual'
+    const [filtroTipo, setFiltroTipo] = useState('Todos');
     const [filtroUsuario, setFiltroUsuario] = useState('Todos');
 
-    // Usuario actual (debería venir del contexto de autenticación)
+    // Usuario actual
     const usuarioActual = "Administrador";
 
     // Notificaciones
@@ -332,10 +332,9 @@ export default function CajaDiaria() {
         showNotification('success', 'Operación registrada exitosamente');
     };
 
-    // ✅ Operaciones del sistema - Compatible con formato nuevo y antiguo
+    // Operaciones del sistema
     const operacionesAutomaticas = useMemo(() => {
         return cajaMovimientos.map((mov, index) => {
-            // ✅ NUEVO FORMATO (desde Cobros con depositarCuota)
             if (mov.usuario && mov.operacion) {
                 return {
                     id: mov.id || `auto-${index}`,
@@ -348,7 +347,6 @@ export default function CajaDiaria() {
                 };
             }
 
-            // ✅ FORMATO ANTIGUO (compatibilidad hacia atrás)
             return {
                 id: `auto-${index}`,
                 usuario: mov.personal || 'Sistema',
@@ -403,7 +401,6 @@ export default function CajaDiaria() {
     // Generar PDF
     const handleImprimir = () => {
         showNotification('success', 'Generando reporte PDF...');
-        // Aquí iría la lógica para generar el PDF
         console.log('Generando PDF con operaciones:', operacionesFiltradas);
     };
 
@@ -414,40 +411,40 @@ export default function CajaDiaria() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 lg:p-6">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-6 rounded-2xl shadow-lg">
-                    <div className="flex items-center justify-between">
+                <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 lg:p-6 rounded-2xl shadow-lg">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold">📊 Caja Diaria</h1>
-                            <p className="text-indigo-100 mt-1">Sistema de rastreo y auditoría de movimientos</p>
+                            <h1 className="text-2xl lg:text-3xl font-bold">📊 Caja Diaria</h1>
+                            <p className="text-blue-100 mt-1 text-sm lg:text-base">Sistema de rastreo y auditoría de movimientos</p>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={() => setModalCajaOpen(true)}
-                                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all shadow-md ${
+                                className={`flex items-center justify-center gap-2 px-4 lg:px-6 py-3 rounded-lg font-semibold transition-all shadow-md ${
                                     cajaAbierta
-                                        ? 'bg-green-600 hover:bg-green-700'
-                                        : 'bg-gray-600 hover:bg-gray-700'
+                                        ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+                                        : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800'
                                 }`}
                             >
-                                {cajaAbierta ? <FiUnlock className="w-5 h-5" /> : <FiLock className="w-5 h-5" />}
-                                <span>{cajaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}</span>
+                                {cajaAbierta ? <FiUnlock className="w-4 h-4 lg:w-5 lg:h-5" /> : <FiLock className="w-4 h-4 lg:w-5 lg:h-5" />}
+                                <span className="text-sm lg:text-base">{cajaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}</span>
                             </button>
                             <button
                                 onClick={() => setModalOpen(true)}
                                 disabled={!cajaAbierta}
-                                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all shadow-md ${
+                                className={`flex items-center justify-center gap-2 px-4 lg:px-6 py-3 rounded-lg font-semibold transition-all shadow-md ${
                                     cajaAbierta
-                                        ? 'bg-white text-indigo-600 hover:bg-indigo-50'
+                                        ? 'bg-white text-red-600 hover:bg-red-50'
                                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                 }`}
                             >
-                                <FiPlus className="w-5 h-5" />
-                                <span>Nueva Operación</span>
+                                <FiPlus className="w-4 h-4 lg:w-5 lg:h-5" />
+                                <span className="text-sm lg:text-base">Nueva Operación</span>
                             </button>
                         </div>
                     </div>
@@ -455,63 +452,66 @@ export default function CajaDiaria() {
 
                 {/* Tarjetas de resumen */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Entradas */}
                     <motion.div
                         whileHover={{ y: -2 }}
-                        className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border-2 border-green-200 shadow-md"
+                        className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 lg:p-6 border-2 border-blue-200 shadow-md"
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-green-700">Total Entradas</p>
-                                <p className="text-3xl font-bold text-green-800 mt-1">
+                                <p className="text-sm font-medium text-blue-700">Total Entradas</p>
+                                <p className="text-2xl lg:text-3xl font-bold text-blue-800 mt-1">
                                     ${totales.entradas.toLocaleString('es-AR', {
                                     minimumFractionDigits: 0,
                                     maximumFractionDigits: 0
                                 })}
                                 </p>
                             </div>
-                            <div className="bg-green-200 rounded-full p-3">
-                                <FiArrowDownLeft className="w-8 h-8 text-green-700" />
+                            <div className="bg-blue-200 rounded-full p-2 lg:p-3">
+                                <FiArrowDownLeft className="w-6 h-6 lg:w-8 lg:h-8 text-blue-700" />
                             </div>
                         </div>
                     </motion.div>
 
+                    {/* Salidas */}
                     <motion.div
                         whileHover={{ y: -2 }}
-                        className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border-2 border-red-200 shadow-md"
+                        className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 lg:p-6 border-2 border-red-200 shadow-md"
                     >
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-red-700">Total Salidas</p>
-                                <p className="text-3xl font-bold text-red-800 mt-1">
+                                <p className="text-2xl lg:text-3xl font-bold text-red-800 mt-1">
                                     ${totales.salidas.toLocaleString('es-AR', {
                                     minimumFractionDigits: 0,
                                     maximumFractionDigits: 0
                                 })}
                                 </p>
                             </div>
-                            <div className="bg-red-200 rounded-full p-3">
-                                <FiArrowUpLeft className="w-8 h-8 text-red-700" />
+                            <div className="bg-red-200 rounded-full p-2 lg:p-3">
+                                <FiArrowUpLeft className="w-6 h-6 lg:w-8 lg:h-8 text-red-700" />
                             </div>
                         </div>
                     </motion.div>
 
+                    {/* Balance */}
                     <motion.div
                         whileHover={{ y: -2 }}
-                        className={`bg-gradient-to-br rounded-xl p-6 border-2 shadow-md ${
+                        className={`bg-gradient-to-br rounded-xl p-4 lg:p-6 border-2 shadow-md ${
                             totales.balance >= 0
-                                ? 'from-blue-50 to-blue-100 border-blue-200'
+                                ? 'from-green-50 to-green-100 border-green-200'
                                 : 'from-orange-50 to-orange-100 border-orange-200'
                         }`}
                     >
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className={`text-sm font-medium ${
-                                    totales.balance >= 0 ? 'text-blue-700' : 'text-orange-700'
+                                    totales.balance >= 0 ? 'text-green-700' : 'text-orange-700'
                                 }`}>
                                     Balance
                                 </p>
-                                <p className={`text-3xl font-bold mt-1 ${
-                                    totales.balance >= 0 ? 'text-blue-800' : 'text-orange-800'
+                                <p className={`text-2xl lg:text-3xl font-bold mt-1 ${
+                                    totales.balance >= 0 ? 'text-green-800' : 'text-orange-800'
                                 }`}>
                                     ${totales.balance.toLocaleString('es-AR', {
                                     minimumFractionDigits: 0,
@@ -519,11 +519,11 @@ export default function CajaDiaria() {
                                 })}
                                 </p>
                             </div>
-                            <div className={`rounded-full p-3 ${
-                                totales.balance >= 0 ? 'bg-blue-200' : 'bg-orange-200'
+                            <div className={`rounded-full p-2 lg:p-3 ${
+                                totales.balance >= 0 ? 'bg-green-200' : 'bg-orange-200'
                             }`}>
-                                <FiDollarSign className={`w-8 h-8 ${
-                                    totales.balance >= 0 ? 'text-blue-700' : 'text-orange-700'
+                                <FiDollarSign className={`w-6 h-6 lg:w-8 lg:h-8 ${
+                                    totales.balance >= 0 ? 'text-green-700' : 'text-orange-700'
                                 }`} />
                             </div>
                         </div>
@@ -531,38 +531,38 @@ export default function CajaDiaria() {
                 </div>
 
                 {/* Filtros y acciones */}
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 lg:p-6">
                     <div className="flex items-center gap-2 mb-4">
-                        <FiFilter className="w-5 h-5 text-gray-600" />
+                        <FiFilter className="w-5 h-5 text-red-600" />
                         <h3 className="text-lg font-bold text-gray-800">Filtros y Acciones</h3>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Filtro Fecha Desde */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                <FiCalendar className="w-4 h-4" />
+                                <FiCalendar className="w-4 h-4 text-red-600" />
                                 Fecha Desde:
                             </label>
                             <input
                                 type="date"
                                 value={filtroFechaDesde}
                                 onChange={(e) => setFiltroFechaDesde(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-indigo-500 focus:outline-none transition-colors"
+                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                             />
                         </div>
 
                         {/* Filtro Fecha Hasta */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                <FiCalendar className="w-4 h-4" />
+                                <FiCalendar className="w-4 h-4 text-blue-600" />
                                 Fecha Hasta:
                             </label>
                             <input
                                 type="date"
                                 value={filtroFechaHasta}
                                 onChange={(e) => setFiltroFechaHasta(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-indigo-500 focus:outline-none transition-colors"
+                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                             />
                         </div>
 
@@ -574,7 +574,7 @@ export default function CajaDiaria() {
                             <select
                                 value={filtroTipo}
                                 onChange={(e) => setFiltroTipo(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-indigo-500 focus:outline-none transition-colors"
+                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
                             >
                                 <option value="Todos">Todos</option>
                                 <option value="Automática">Automática</option>
@@ -585,13 +585,13 @@ export default function CajaDiaria() {
                         {/* Filtro Usuario */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                <FiUser className="w-4 h-4" />
+                                <FiUser className="w-4 h-4 text-blue-600" />
                                 Usuario:
                             </label>
                             <select
                                 value={filtroUsuario}
                                 onChange={(e) => setFiltroUsuario(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-indigo-500 focus:outline-none transition-colors"
+                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
                             >
                                 {usuariosUnicos.map(usuario => (
                                     <option key={usuario} value={usuario}>{usuario}</option>
@@ -604,17 +604,17 @@ export default function CajaDiaria() {
                     <div className="mt-4 flex justify-end">
                         <button
                             onClick={handleImprimir}
-                            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:from-purple-700 hover:to-purple-800"
+                            className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-blue-600 text-white px-4 lg:px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:from-red-700 hover:to-blue-700 w-full sm:w-auto"
                         >
-                            <FiPrinter className="w-5 h-5" />
-                            <span>Imprimir Reporte PDF</span>
+                            <FiPrinter className="w-4 h-4 lg:w-5 lg:h-5" />
+                            <span className="text-sm lg:text-base">Imprimir Reporte PDF</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Tabla de movimientos */}
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 border-b border-gray-200">
+                    <div className="bg-gradient-to-r from-red-50 to-blue-50 p-4 border-b border-gray-200">
                         <h3 className="text-lg font-bold text-gray-800">
                             Movimientos Registrados ({operacionesFiltradas.length})
                         </h3>
@@ -622,27 +622,27 @@ export default function CajaDiaria() {
 
                     <div className="overflow-x-auto">
                         <table className="min-w-full">
-                            <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
+                            <thead className="bg-gradient-to-r from-red-100 to-blue-100">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     ID
                                 </th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Fecha/Hora
                                 </th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Usuario
                                 </th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Operación
                                 </th>
-                                <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Entrada
                                 </th>
-                                <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Salida
                                 </th>
-                                <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 lg:px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Tipo
                                 </th>
                             </tr>
@@ -650,10 +650,10 @@ export default function CajaDiaria() {
                             <tbody className="divide-y divide-gray-200">
                             {operacionesFiltradas.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan="7" className="px-6 py-8 lg:py-12 text-center text-gray-500">
                                         <div className="flex flex-col items-center space-y-3">
-                                            <FiDollarSign className="w-16 h-16 text-gray-300" />
-                                            <p className="text-lg font-medium">No hay operaciones registradas</p>
+                                            <FiDollarSign className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300" />
+                                            <p className="text-base lg:text-lg font-medium">No hay operaciones registradas</p>
                                             <p className="text-sm">Ajusta los filtros o registra una nueva operación</p>
                                         </div>
                                     </td>
@@ -667,10 +667,10 @@ export default function CajaDiaria() {
                                         transition={{ delay: index * 0.05 }}
                                         className="hover:bg-gray-50 transition-colors"
                                     >
-                                        <td className="px-6 py-4 text-sm font-bold text-indigo-600">
+                                        <td className="px-4 lg:px-6 py-3 text-sm font-bold text-red-600">
                                             #{operacion.id}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-gray-600">
                                             {new Date(operacion.fechaHora).toLocaleString('es-AR', {
                                                 day: '2-digit',
                                                 month: '2-digit',
@@ -679,44 +679,44 @@ export default function CajaDiaria() {
                                                 minute: '2-digit'
                                             })}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-gray-900 font-medium">
                                             {operacion.usuario}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-gray-700">
                                             {operacion.operacion}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-right">
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-right">
                                             {operacion.entrada > 0 ? (
                                                 <span className="font-bold text-green-700">
-                                                        ${operacion.entrada.toLocaleString('es-AR', {
+                                                    ${operacion.entrada.toLocaleString('es-AR', {
                                                     minimumFractionDigits: 0,
                                                     maximumFractionDigits: 0
                                                 })}
-                                                    </span>
+                                                </span>
                                             ) : (
                                                 <span className="text-gray-400">$0</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-right">
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-right">
                                             {operacion.salida > 0 ? (
                                                 <span className="font-bold text-red-700">
-                                                        ${operacion.salida.toLocaleString('es-AR', {
+                                                    ${operacion.salida.toLocaleString('es-AR', {
                                                     minimumFractionDigits: 0,
                                                     maximumFractionDigits: 0
                                                 })}
-                                                    </span>
+                                                </span>
                                             ) : (
                                                 <span className="text-gray-400">$0</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-center">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                                    operacion.tipo === 'Automática'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : 'bg-purple-100 text-purple-800'
-                                                }`}>
-                                                    {operacion.tipo}
-                                                </span>
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-center">
+                                            <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-bold ${
+                                                operacion.tipo === 'Automática'
+                                                    ? 'bg-blue-100 text-blue-800'
+                                                    : 'bg-red-100 text-red-800'
+                                            }`}>
+                                                {operacion.tipo}
+                                            </span>
                                         </td>
                                     </motion.tr>
                                 ))

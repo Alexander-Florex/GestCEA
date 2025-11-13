@@ -48,7 +48,7 @@ function Notifications({ notifications, remove }) {
                         initial={{ opacity: 0, x: 50 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 50 }}
-                        className={`px-6 py-4 rounded-lg shadow-xl text-white font-semibold ${
+                        className={`px-4 py-3 rounded-lg shadow-xl text-white font-semibold text-sm ${
                             n.type === 'success' ? 'bg-green-600' :
                                 n.type === 'error' ? 'bg-red-600' :
                                     n.type === 'warning' ? 'bg-yellow-600' :
@@ -88,27 +88,27 @@ function CursoCard({ curso }) {
     return (
         <div className="border-2 border-gray-300 rounded-xl overflow-hidden bg-gradient-to-br from-white to-gray-50 shadow-md hover:shadow-lg transition-shadow">
             <div
-                className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 cursor-pointer hover:from-purple-600 hover:to-purple-700 transition-colors"
+                className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-3 lg:p-4 cursor-pointer hover:from-red-700 hover:to-blue-700 transition-colors"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 <div className="flex items-center justify-between">
                     <div className="flex-1">
-                        <h3 className="text-lg font-bold mb-1">{curso.courseName}</h3>
-                        <div className="flex items-center gap-3 text-sm text-purple-100">
+                        <h3 className="text-base lg:text-lg font-bold mb-1">{curso.courseName}</h3>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs lg:text-sm text-blue-100">
                             <span className="flex items-center gap-1">
                                 <FiCalendar className="w-3 h-3" />
                                 {formatDate(curso.fechaInscripcion)}
                             </span>
-                            <span className={`px-2 py-1 rounded border ${estadoBadge.color} text-xs font-semibold`}>
+                            <span className={`px-2 py-1 rounded border ${estadoBadge.color} text-xs font-semibold w-fit`}>
                                 {estadoBadge.text}
                             </span>
                         </div>
                     </div>
-                    <div className="text-right mr-4">
-                        <div className="text-2xl font-bold">
+                    <div className="text-right mr-2 lg:mr-4">
+                        <div className="text-lg lg:text-2xl font-bold">
                             ${formatNumber(totalCurso)}
                         </div>
-                        <div className="text-xs text-purple-100">
+                        <div className="text-xs text-blue-100">
                             {curso.cuotas.length} cuota{curso.cuotas.length !== 1 ? 's' : ''}
                         </div>
                         {cuotasVencidas > 0 && (
@@ -122,7 +122,7 @@ function CursoCard({ curso }) {
                         animate={{ rotate: isExpanded ? 180 : 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        <FiChevronDown className="w-6 h-6" />
+                        <FiChevronDown className="w-5 h-5 lg:w-6 lg:h-6" />
                     </motion.div>
                 </div>
             </div>
@@ -136,7 +136,7 @@ function CursoCard({ curso }) {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                     >
-                        <div className="p-4 space-y-3 bg-gray-50">
+                        <div className="p-3 lg:p-4 space-y-3 bg-gray-50">
                             {curso.cuotas
                                 .sort((a, b) => (a.installmentNumber || 0) - (b.installmentNumber || 0))
                                 .map((cuota, idx) => {
@@ -150,7 +150,7 @@ function CursoCard({ curso }) {
                                             initial={{ opacity: 0, y: -10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: idx * 0.05 }}
-                                            className={`p-4 rounded-lg border-2 ${
+                                            className={`p-3 lg:p-4 rounded-lg border-2 ${
                                                 isVencida
                                                     ? 'bg-red-50 border-red-400'
                                                     : esMesActual
@@ -158,9 +158,9 @@ function CursoCard({ curso }) {
                                                         : 'bg-white border-gray-300'
                                             } shadow-sm hover:shadow-md transition-shadow`}
                                         >
-                                            <div className="flex items-center justify-between mb-2">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-gray-800">
+                                                    <span className="font-bold text-gray-800 text-sm lg:text-base">
                                                         Cuota #{cuota.installmentNumber}
                                                     </span>
                                                     {isVencida && (
@@ -175,7 +175,7 @@ function CursoCard({ curso }) {
                                                     )}
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <div className="text-xl font-bold text-red-700">
+                                                    <div className="text-lg lg:text-xl font-bold text-red-700">
                                                         ${formatNumber(cuota.pending)}
                                                     </div>
                                                     {cuota.isOverdue && cuota.amountEnFecha !== cuota.amountVencido && (
@@ -185,7 +185,7 @@ function CursoCard({ curso }) {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between text-sm text-gray-600">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs lg:text-sm text-gray-600 gap-1">
                                                 <div className="flex items-center gap-1">
                                                     <FiCalendar className="w-3 h-3" />
                                                     <span>Vencimiento: {formatDate(cuota.dueDate)}</span>
@@ -235,42 +235,43 @@ function AlumnoCard({ alumno, showNotification }) {
         >
             <div
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 cursor-pointer hover:from-indigo-700 hover:to-purple-700 transition-colors"
+                className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 lg:p-6 cursor-pointer hover:from-red-700 hover:to-blue-700 transition-colors"
             >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex-1">
-                        <h2 className="text-2xl font-bold mb-2">{alumno.studentName}</h2>
-                        <div className="flex flex-wrap gap-3 text-sm">
+                        <h2 className="text-xl lg:text-2xl font-bold mb-2">{alumno.studentName}</h2>
+                        <div className="flex flex-wrap gap-2 text-sm">
                             {alumno.contact.email && (
-                                <div className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
+                                <div className="flex items-center gap-1 bg-white/20 px-2 lg:px-3 py-1 rounded-full">
                                     <FiMail className="w-3 h-3" />
-                                    <span>{alumno.contact.email}</span>
+                                    <span className="text-xs lg:text-sm">{alumno.contact.email}</span>
                                 </div>
                             )}
                             {alumno.contact.telefono && (
-                                <div className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
+                                <div className="flex items-center gap-1 bg-white/20 px-2 lg:px-3 py-1 rounded-full">
                                     <FiPhone className="w-3 h-3" />
-                                    <span>{alumno.contact.telefono}</span>
+                                    <span className="text-xs lg:text-sm">{alumno.contact.telefono}</span>
                                 </div>
                             )}
                         </div>
                     </div>
-                    <div className="text-right mr-6">
-                        <div className="text-4xl font-bold mb-1">
+                    <div className="text-right">
+                        <div className="text-2xl lg:text-4xl font-bold mb-1">
                             ${formatNumber(alumno.totalPending)}
                         </div>
-                        <div className="text-sm text-indigo-100">
+                        <div className="text-xs lg:text-sm text-blue-100">
                             {alumno.cursos.length} curso{alumno.cursos.length !== 1 ? 's' : ''}
                         </div>
-                        <div className="text-sm text-indigo-100">
+                        <div className="text-xs lg:text-sm text-blue-100">
                             {alumno.cuotas.length} cuota{alumno.cuotas.length !== 1 ? 's' : ''} pendiente{alumno.cuotas.length !== 1 ? 's' : ''}
                         </div>
                     </div>
                     <motion.div
                         animate={{ rotate: isExpanded ? 180 : 0 }}
                         transition={{ duration: 0.3 }}
+                        className="hidden lg:block"
                     >
-                        <FiChevronDown className="w-8 h-8" />
+                        <FiChevronDown className="w-6 h-6 lg:w-8 lg:h-8" />
                     </motion.div>
                 </div>
             </div>
@@ -284,49 +285,52 @@ function AlumnoCard({ alumno, showNotification }) {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                     >
-                        <div className="p-6 space-y-6">
-                            <div className="flex flex-wrap gap-3">
+                        <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+                            <div className="flex flex-wrap gap-2 lg:gap-3">
                                 <button
                                     onClick={handleSendEmail}
                                     disabled={!alumno.contact.email}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2 rounded-lg font-semibold transition-colors text-sm lg:text-base ${
                                         alumno.contact.email
                                             ? 'bg-blue-500 hover:bg-blue-600 text-white'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     }`}
                                 >
                                     <FiMail className="w-4 h-4" />
-                                    Enviar Email
+                                    <span className="hidden sm:inline">Enviar Email</span>
+                                    <span className="sm:hidden">Email</span>
                                 </button>
                                 <button
                                     onClick={handleSendWhatsApp}
                                     disabled={!alumno.contact.telefono}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2 rounded-lg font-semibold transition-colors text-sm lg:text-base ${
                                         alumno.contact.telefono
                                             ? 'bg-green-500 hover:bg-green-600 text-white'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     }`}
                                 >
                                     <FiMessageSquare className="w-4 h-4" />
-                                    WhatsApp
+                                    <span className="hidden sm:inline">WhatsApp</span>
+                                    <span className="sm:hidden">WA</span>
                                 </button>
                                 <button
                                     onClick={handleSendSMS}
                                     disabled={!alumno.contact.telefono}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2 rounded-lg font-semibold transition-colors text-sm lg:text-base ${
                                         alumno.contact.telefono
                                             ? 'bg-orange-500 hover:bg-orange-600 text-white'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     }`}
                                 >
                                     <FiBell className="w-4 h-4" />
-                                    SMS
+                                    <span className="hidden sm:inline">SMS</span>
+                                    <span className="sm:hidden">SMS</span>
                                 </button>
                             </div>
 
                             <div className="space-y-4">
-                                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                                    <FiDollarSign className="w-5 h-5 text-purple-600" />
+                                <h3 className="text-base lg:text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <FiDollarSign className="w-4 h-4 lg:w-5 lg:h-5 text-red-600" />
                                     Detalle por Curso
                                 </h3>
                                 {alumno.cursos.map((curso, idx) => (
@@ -532,20 +536,20 @@ export default function Deudores() {
     }, [deudoresFiltrados]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 lg:p-6">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-2xl p-8 text-white"
+                    className="bg-gradient-to-r from-red-600 to-blue-600 rounded-2xl shadow-2xl p-6 lg:p-8 text-white"
                 >
-                    <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-                        <FiAlertCircle className="w-10 h-10" />
+                    <h1 className="text-2xl lg:text-4xl font-bold mb-2 flex items-center gap-3">
+                        <FiAlertCircle className="w-6 h-6 lg:w-10 lg:h-10" />
                         Gestión de Deudores
                     </h1>
-                    <p className="text-purple-100">
+                    <p className="text-red-100 text-sm lg:text-base">
                         Control y seguimiento de cuotas pendientes de pago
                     </p>
                 </motion.div>
@@ -553,38 +557,38 @@ export default function Deudores() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="grid grid-cols-1 md:grid-cols-4 gap-4"
+                    className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4"
                 >
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
-                        <div className="text-3xl font-bold text-purple-700 mb-1">
+                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-red-500">
+                        <div className="text-xl lg:text-3xl font-bold text-red-700 mb-1">
                             {stats.totalDeudores}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs lg:text-sm text-gray-600">
                             {stats.totalDeudores === 1 ? 'Deudor' : 'Deudores'}
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
-                        <div className="text-3xl font-bold text-red-700 mb-1">
+                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-blue-500">
+                        <div className="text-xl lg:text-3xl font-bold text-blue-700 mb-1">
                             ${formatNumber(stats.totalDeuda)}
                         </div>
-                        <div className="text-sm text-gray-600">Total Pendiente</div>
+                        <div className="text-xs lg:text-sm text-gray-600">Total Pendiente</div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
-                        <div className="text-3xl font-bold text-orange-700 mb-1">
+                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-red-400">
+                        <div className="text-xl lg:text-3xl font-bold text-red-700 mb-1">
                             {stats.totalCuotas}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs lg:text-sm text-gray-600">
                             {stats.totalCuotas === 1 ? 'Cuota Pendiente' : 'Cuotas Pendientes'}
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
-                        <div className="text-3xl font-bold text-yellow-700 mb-1">
+                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-blue-400">
+                        <div className="text-xl lg:text-3xl font-bold text-blue-700 mb-1">
                             {stats.cuotasVencidas}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs lg:text-sm text-gray-600">
                             {stats.cuotasVencidas === 1 ? 'Cuota Vencida' : 'Cuotas Vencidas'}
                         </div>
                     </div>
@@ -593,18 +597,18 @@ export default function Deudores() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl shadow-lg p-6 space-y-4"
+                    className="bg-white rounded-xl shadow-lg p-4 lg:p-6 space-y-4"
                 >
                     <div className="flex flex-col lg:flex-row gap-4">
                         <div className="flex-1">
                             <div className="relative">
-                                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 lg:w-5 lg:h-5" />
                                 <input
                                     type="text"
                                     placeholder="Buscar por nombre, email o teléfono..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors text-black"
+                                    className="w-full pl-9 lg:pl-10 pr-4 py-2 lg:py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none transition-colors text-black text-sm lg:text-base"
                                 />
                             </div>
                         </div>
@@ -613,7 +617,7 @@ export default function Deudores() {
                             <select
                                 value={filtroTipo}
                                 onChange={(e) => setFiltroTipo(e.target.value)}
-                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition-colors text-black bg-white"
+                                className="w-full px-4 py-2 lg:py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-black bg-white text-sm lg:text-base"
                             >
                                 <option value="todos">Todas las cuotas</option>
                                 <option value="mesActual">Mes actual</option>
@@ -623,8 +627,8 @@ export default function Deudores() {
                     </div>
 
                     {(search || filtroTipo !== 'todos') && (
-                        <div className="flex items-center justify-between bg-purple-50 px-4 py-2 rounded-lg">
-                            <span className="text-sm text-purple-700">
+                        <div className="flex items-center justify-between bg-red-50 px-3 lg:px-4 py-2 rounded-lg">
+                            <span className="text-xs lg:text-sm text-red-700">
                                 Mostrando {deudoresFiltrados.length} de {debtors.length} deudores
                             </span>
                             <button
@@ -632,7 +636,7 @@ export default function Deudores() {
                                     setSearch('');
                                     setFiltroTipo('todos');
                                 }}
-                                className="text-sm text-purple-600 hover:text-purple-800 font-semibold"
+                                className="text-xs lg:text-sm text-red-600 hover:text-red-800 font-semibold"
                             >
                                 Limpiar filtros
                             </button>
@@ -640,18 +644,18 @@ export default function Deudores() {
                     )}
                 </motion.div>
 
-                <div className="space-y-6">
+                <div className="space-y-4 lg:space-y-6">
                     {deudoresFiltrados.length === 0 ? (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="bg-white rounded-xl shadow-lg p-12 text-center"
+                            className="bg-white rounded-xl shadow-lg p-8 lg:p-12 text-center"
                         >
-                            <FiAlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-2xl font-bold text-gray-700 mb-2">
+                            <FiAlertCircle className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-xl lg:text-2xl font-bold text-gray-700 mb-2">
                                 No hay deudores
                             </h3>
-                            <p className="text-gray-500">
+                            <p className="text-gray-500 text-sm lg:text-base">
                                 {search || filtroTipo !== 'todos'
                                     ? 'No se encontraron deudores con los filtros aplicados'
                                     : '¡Todos los alumnos están al día con sus pagos!'}

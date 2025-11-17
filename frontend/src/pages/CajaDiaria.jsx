@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiDollarSign, FiArrowUpRight, FiPlus, FiX, FiArrowDownLeft,
     FiArrowUpLeft, FiFilter, FiPrinter, FiCalendar, FiUser,
-    FiLock, FiUnlock
+    FiLock, FiUnlock, FiCreditCard
 } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB";
 
@@ -37,7 +37,8 @@ function Notifications({ notifications, remove }) {
 function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual }) {
     const [formData, setFormData] = useState({
         descripcion: '',
-        salida: ''
+        tipoOperacion: 'entrada', // 'entrada' o 'salida'
+        monto: '',
     });
 
     const handleChange = (e) => {
@@ -56,8 +57,8 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
             return;
         }
 
-        if (!formData.salida || Number(formData.salida) <= 0) {
-            alert('Por favor ingrese un monto válido para la salida');
+        if (!formData.monto || Number(formData.monto) <= 0) {
+            alert('Por favor ingrese un monto válido');
             return;
         }
 
@@ -65,8 +66,8 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
             id: nextId,
             usuario: usuarioActual,
             operacion: formData.descripcion,
-            entrada: 0,
-            salida: Number(formData.salida),
+            entrada: formData.tipoOperacion === 'entrada' ? Number(formData.monto) : 0,
+            salida: formData.tipoOperacion === 'salida' ? Number(formData.monto) : 0,
             tipo: 'Manual',
             fechaHora: new Date().toISOString()
         };
@@ -75,14 +76,16 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
 
         setFormData({
             descripcion: '',
-            salida: ''
+            tipoOperacion: 'entrada',
+            monto: '',
         });
     };
 
     const handleCancel = () => {
         setFormData({
             descripcion: '',
-            salida: ''
+            tipoOperacion: 'entrada',
+            monto: '',
         });
         onClose();
     };
@@ -111,8 +114,8 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                             <div className="flex items-center space-x-3">
                                 <FiPlus className="w-6 h-6 lg:w-8 lg:h-8" />
                                 <div>
-                                    <h2 className="text-xl lg:text-2xl font-bold">Nueva Operación (Egreso)</h2>
-                                    <p className="text-blue-100 text-sm lg:text-base">Registrar salida de efectivo</p>
+                                    <h2 className="text-xl lg:text-2xl font-bold">Nueva Operación</h2>
+                                    <p className="text-blue-100 text-sm lg:text-base">Registrar entrada o salida de efectivo</p>
                                 </div>
                             </div>
                             <button
@@ -148,6 +151,43 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                             </div>
                         </div>
 
+                        {/* Tipo de Operación */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Tipo de Operación <span className="text-red-500">*</span>
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, tipoOperacion: 'entrada' }))}
+                                    className={`p-4 rounded-lg border-2 transition-all ${
+                                        formData.tipoOperacion === 'entrada'
+                                            ? 'border-green-500 bg-green-50 text-green-700 font-bold'
+                                            : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        <FiArrowDownLeft className="w-5 h-5" />
+                                        <span>Entrada</span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, tipoOperacion: 'salida' }))}
+                                    className={`p-4 rounded-lg border-2 transition-all ${
+                                        formData.tipoOperacion === 'salida'
+                                            ? 'border-red-500 bg-red-50 text-red-700 font-bold'
+                                            : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        <FiArrowUpLeft className="w-5 h-5" />
+                                        <span>Salida</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Descripción de la operación */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -159,15 +199,15 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                                 onChange={handleChange}
                                 rows="3"
                                 required
-                                placeholder="Ej: Compra de materiales, Gastos administrativos, etc."
+                                placeholder="Ej: Pago de cuota, Venta de materiales, Gastos administrativos, etc."
                                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none transition-colors text-black"
                             />
                         </div>
 
-                        {/* Monto de Salida */}
+                        {/* Monto */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Monto de Salida (Egreso) <span className="text-red-500">*</span>
+                                Monto {formData.tipoOperacion === 'entrada' ? '(Entrada)' : '(Salida)'} <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold text-lg">
@@ -175,14 +215,18 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                                 </span>
                                 <input
                                     type="number"
-                                    name="salida"
-                                    value={formData.salida}
+                                    name="monto"
+                                    value={formData.monto}
                                     onChange={handleChange}
                                     min="0"
                                     step="0.01"
                                     required
                                     placeholder="0.00"
-                                    className="w-full pl-10 pr-4 py-3 border-2 border-red-300 bg-red-50 rounded-lg focus:border-red-500 focus:outline-none transition-colors font-semibold text-red-700 text-lg"
+                                    className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none transition-colors font-semibold text-lg ${
+                                        formData.tipoOperacion === 'entrada'
+                                            ? 'border-green-300 bg-green-50 text-green-700 focus:border-green-500'
+                                            : 'border-red-300 bg-red-50 text-red-700 focus:border-red-500'
+                                    }`}
                                 />
                             </div>
                         </div>
@@ -190,7 +234,7 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                         {/* Información adicional */}
                         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
                             <p className="text-sm text-blue-800">
-                                <strong>Nota:</strong> El campo "Entrada" está bloqueado porque esta operación es únicamente para registrar egresos/gastos de la caja. Las entradas se registran automáticamente desde el sistema.
+                                <strong>Nota:</strong> Seleccione el tipo de operación (Entrada o Salida) y complete todos los campos requeridos. Las operaciones automáticas del sistema seguirán registrándose independientemente.
                             </p>
                         </div>
 
@@ -205,9 +249,13 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                             </button>
                             <button
                                 type="submit"
-                                className="flex-1 px-4 lg:px-6 py-3 rounded-lg font-semibold text-white transition-colors bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-700 hover:to-blue-700 shadow-lg"
+                                className={`flex-1 px-4 lg:px-6 py-3 rounded-lg font-semibold text-white transition-colors shadow-lg ${
+                                    formData.tipoOperacion === 'entrada'
+                                        ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+                                        : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+                                }`}
                             >
-                                Registrar Salida
+                                {formData.tipoOperacion === 'entrada' ? 'Registrar Entrada' : 'Registrar Salida'}
                             </button>
                         </div>
                     </form>
@@ -313,9 +361,10 @@ export default function CajaDiaria() {
     const [filtroFechaHasta, setFiltroFechaHasta] = useState(new Date().toISOString().split('T')[0]);
     const [filtroTipo, setFiltroTipo] = useState('Todos');
     const [filtroUsuario, setFiltroUsuario] = useState('Todos');
+    const [filtroMetodo, setFiltroMetodo] = useState('Todos'); // Nuevo filtro por método
 
-    // Usuario actual
-    const usuarioActual = "Administrador";
+    // Usuario actual - Aquí deberías obtener el nombre del usuario desde tu sistema de autenticación
+    const usuarioActual = "Lucas Pérez"; // Cambia esto por el nombre real del usuario
 
     // Notificaciones
     const showNotification = (type, message) => {
@@ -342,6 +391,7 @@ export default function CajaDiaria() {
                     operacion: mov.operacion,
                     entrada: Number(mov.entrada || 0),
                     salida: Number(mov.salida || 0),
+                    metodo: mov.metodo || 'Automática', // Para operaciones automáticas
                     tipo: mov.tipo || 'Automática',
                     fechaHora: mov.fechaHora || new Date().toISOString()
                 };
@@ -353,6 +403,7 @@ export default function CajaDiaria() {
                 operacion: `${mov.pago} - ${mov.cursoNombre || 'Curso'} (${mov.estudianteNombre || 'Estudiante'})`,
                 entrada: Number(mov.monto || 0),
                 salida: 0,
+                metodo: 'Automática', // Para operaciones automáticas
                 tipo: 'Automática',
                 fechaHora: mov.fechaHora || new Date().toISOString()
             };
@@ -373,15 +424,22 @@ export default function CajaDiaria() {
             const cumpleFecha = fechaOp >= filtroFechaDesde && fechaOp <= filtroFechaHasta;
             const cumpleTipo = filtroTipo === 'Todos' || op.tipo === filtroTipo;
             const cumpleUsuario = filtroUsuario === 'Todos' || op.usuario === filtroUsuario;
+            const cumpleMetodo = filtroMetodo === 'Todos' || op.metodo === filtroMetodo; // Nuevo filtro
 
-            return cumpleFecha && cumpleTipo && cumpleUsuario;
+            return cumpleFecha && cumpleTipo && cumpleUsuario && cumpleMetodo;
         });
-    }, [todasLasOperaciones, filtroFechaDesde, filtroFechaHasta, filtroTipo, filtroUsuario]);
+    }, [todasLasOperaciones, filtroFechaDesde, filtroFechaHasta, filtroTipo, filtroUsuario, filtroMetodo]);
 
     // Usuarios únicos para el filtro
     const usuariosUnicos = useMemo(() => {
         const usuarios = new Set(todasLasOperaciones.map(op => op.usuario));
         return ['Todos', ...Array.from(usuarios)];
+    }, [todasLasOperaciones]);
+
+    // Métodos únicos para el filtro
+    const metodosUnicos = useMemo(() => {
+        const metodos = new Set(todasLasOperaciones.map(op => op.metodo));
+        return ['Todos', ...Array.from(metodos)].filter(metodo => metodo && metodo !== 'Automática');
     }, [todasLasOperaciones]);
 
     // Calcular totales
@@ -537,7 +595,7 @@ export default function CajaDiaria() {
                         <h3 className="text-lg font-bold text-gray-800">Filtros y Acciones</h3>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         {/* Filtro Fecha Desde */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -579,6 +637,24 @@ export default function CajaDiaria() {
                                 <option value="Todos">Todos</option>
                                 <option value="Automática">Automática</option>
                                 <option value="Manual">Manual</option>
+                            </select>
+                        </div>
+
+                        {/* Filtro Método - NUEVO */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                <FiCreditCard className="w-4 h-4 text-blue-600" />
+                                Método de Pago:
+                            </label>
+                            <select
+                                value={filtroMetodo}
+                                onChange={(e) => setFiltroMetodo(e.target.value)}
+                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
+                            >
+                                <option value="Todos">Todos</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Transferencia">Transferencia</option>
+                                <option value="Tarjeta">Tarjeta</option>
                             </select>
                         </div>
 
@@ -643,6 +719,9 @@ export default function CajaDiaria() {
                                     Salida
                                 </th>
                                 <th className="px-4 lg:px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                    Método
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Tipo
                                 </th>
                             </tr>
@@ -650,7 +729,7 @@ export default function CajaDiaria() {
                             <tbody className="divide-y divide-gray-200">
                             {operacionesFiltradas.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-8 lg:py-12 text-center text-gray-500">
+                                    <td colSpan="8" className="px-6 py-8 lg:py-12 text-center text-gray-500">
                                         <div className="flex flex-col items-center space-y-3">
                                             <FiDollarSign className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300" />
                                             <p className="text-base lg:text-lg font-medium">No hay operaciones registradas</p>
@@ -708,6 +787,19 @@ export default function CajaDiaria() {
                                             ) : (
                                                 <span className="text-gray-400">$0</span>
                                             )}
+                                        </td>
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-center">
+                                            <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-bold ${
+                                                operacion.metodo === 'Efectivo'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : operacion.metodo === 'Transferencia'
+                                                        ? 'bg-blue-100 text-blue-800'
+                                                        : operacion.metodo === 'Tarjeta'
+                                                            ? 'bg-purple-100 text-purple-800'
+                                                            : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {operacion.metodo}
+                                            </span>
                                         </td>
                                         <td className="px-4 lg:px-6 py-3 text-sm text-center">
                                             <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-bold ${

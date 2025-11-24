@@ -280,14 +280,41 @@ const validateCashMovement = (mov) => {
     if (Number(mov?.monto) <= 0) throw new Error("El monto debe ser mayor a 0.");
 };
 
-const ensureNotOverpay = (inscription, number, monto) => {
-    const cuota = (inscription.installments || []).find(c => Number(c.number) === Number(number));
-    if (!cuota) throw new Error("Cuota inexistente.");
-    const pend = Number(cuota.amount) - Number(cuota.amountPaid || 0);
-    if (Number(monto) > pend) {
+const ensureNotOverpay = (inscription, number, monto, formaPago = null) => {
+    const cuotaMain = (inscription.installments || []).find(c => Number(c.number) === Number(number));
+    if (!cuotaMain) throw new Error("Cuota inexistente.");
+
+    let amountDue = Number(cuotaMain.amountEnFecha ?? cuotaMain.amount ?? 0);
+
+    if (formaPago && inscription.installmentsByMethod) {
+        const key =
+            formaPago === "Efectivo" ? "efectivo" :
+                formaPago === "Transferencia" ? "transferencia" :
+                    "tarjeta";
+
+        const lista = inscription.installmentsByMethod[key];
+        const cuotaAlt = Array.isArray(lista)
+            ? lista.find(c => Number(c.number) === Number(number))
+            : null;
+
+        if (cuotaAlt) {
+            const today = new Date();
+            const dueDate = new Date(cuotaAlt.dueDate ?? cuotaMain.dueDate);
+            const isOverdue = !cuotaMain.frozen && today > dueDate;
+
+            const enFecha = Number(cuotaAlt.amountEnFecha ?? cuotaAlt.amount ?? amountDue);
+            const vencido = Number(cuotaAlt.amountVencido ?? enFecha);
+
+            amountDue = isOverdue ? vencido : enFecha;
+        }
+    }
+
+    const pend = amountDue - Number(cuotaMain.amountPaid || 0);
+    if (Number(monto) > pend + 0.000001) {
         throw new Error(`El pago excede lo pendiente ($${pend.toFixed(2)}).`);
     }
 };
+
 
 /** ======================= DEFAULT DB (ESCALABLE) ======================= */
 export const INSCRIPTION_STATUS = {
@@ -1608,7 +1635,7 @@ export const AppDBProvider = ({ children }) => {
 
     // ========================== OPERACIONES ESPECÍFICAS ==========================
 
-    // ✅ INSCRIPCIONES
+    // ✅ INSCRIPCIONES - GENERA installmentsByMethod
     const inscribirAlumno = useCallback((studentId, courseId, paymentType) => {
         const curso = db.courses.find(c => c.id === courseId);
         if (!curso) throw new Error("Curso no encontrado.");
@@ -1634,7 +1661,7 @@ export const AppDBProvider = ({ children }) => {
                 throw new Error("Forma de pago no válida.");
         }
 
-        // ✅ Generar cuotas
+        // ✅ Generar cuotas PRINCIPALES (según método elegido)
         const installments = Array.from({ length: cuotas }, (_, i) => {
             const installmentNumber = i + 1;
             let amount = 0;
@@ -1658,10 +1685,54 @@ export const AppDBProvider = ({ children }) => {
                 number: installmentNumber,
                 dueDate: dueDate.toISOString().split('T')[0],
                 amount,
+                amountEnFecha: amount, // ✅ Precio en fecha
+                amountVencido: paymentType === "Efectivo"
+                    ? Number(curso.pagoVencidoEfectivo)
+                    : paymentType === "Tarjeta"
+                        ? Number(curso.pagoVencidoTarjeta)
+                        : Number(curso.pagoVencidoTransferencia), // ✅ Precio vencido
                 amountPaid: 0,
-                status: "Pendiente"
+                status: "Pendiente",
+                frozen: false
             };
         });
+
+        // ✅ CRÍTICO: Generar installmentsByMethod para TODOS los métodos
+        const installmentsByMethod = {
+            efectivo: Array.from({ length: curso.cuotasEfectivo }, (_, i) => {
+                const dueDate = new Date(curso.inicio);
+                dueDate.setMonth(dueDate.getMonth() + i);
+                return {
+                    number: i + 1,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    amount: Number(curso.pagoFechaEfectivo),
+                    amountEnFecha: Number(curso.pagoFechaEfectivo),
+                    amountVencido: Number(curso.pagoVencidoEfectivo)
+                };
+            }),
+            transferencia: Array.from({ length: curso.cuotasTransferencia }, (_, i) => {
+                const dueDate = new Date(curso.inicio);
+                dueDate.setMonth(dueDate.getMonth() + i);
+                return {
+                    number: i + 1,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    amount: Number(curso.pagoFechaTransferencia),
+                    amountEnFecha: Number(curso.pagoFechaTransferencia),
+                    amountVencido: Number(curso.pagoVencidoTransferencia)
+                };
+            }),
+            tarjeta: Array.from({ length: curso.cuotasTarjeta }, (_, i) => {
+                const dueDate = new Date(curso.inicio);
+                dueDate.setMonth(dueDate.getMonth() + i);
+                return {
+                    number: i + 1,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    amount: Number(curso.pagoFechaTarjeta),
+                    amountEnFecha: Number(curso.pagoFechaTarjeta),
+                    amountVencido: Number(curso.pagoVencidoTarjeta)
+                };
+            })
+        };
 
         const inscriptionData = {
             studentId,
@@ -1670,75 +1741,171 @@ export const AppDBProvider = ({ children }) => {
             paymentType,
             total,
             status: INSCRIPTION_STATUS.CURSANDO,
-            installments
+            installments,
+            installmentsByMethod // ✅ AGREGADO: Precios por todos los métodos
         };
 
         return create('inscriptions', inscriptionData);
     }, [db, create]);
 
-    // ✅ PAGOS
-    const registrarPago = useCallback((inscriptionId, installmentNumber, monto, formaPago, observaciones = "") => {
-        const inscription = db.inscriptions.find(i => i.id === inscriptionId);
-        if (!inscription) throw new Error("Inscripción no encontrada.");
+    // ✅ PAGOS (ACTUALIZADO sin romper nada)
+    const registrarPago = useCallback(
+        (inscriptionId, installmentNumber, monto, formaPago, observaciones = "") => {
+            const inscription = db.inscriptions.find((i) => i.id === inscriptionId);
+            if (!inscription) throw new Error("Inscripción no encontrada.");
 
-        const installment = inscription.installments.find(i => i.number === installmentNumber);
-        if (!installment) throw new Error("Cuota no encontrada.");
-
-        ensureNotOverpay(inscription, installmentNumber, monto);
-
-        const updatedInstallments = inscription.installments.map(i =>
-            i.number === installmentNumber
-                ? {
-                    ...i,
-                    amountPaid: (i.amountPaid || 0) + Number(monto),
-                    paidAt: (i.amountPaid || 0) + Number(monto) >= i.amount ? nowISO() : i.paidAt ?? null,
-                    status: (i.amountPaid || 0) + Number(monto) >= i.amount ? "Pagado" : "Parcial"
-                }
-                : i
-        );
-
-        // ✅ Actualizar inscripción
-        update('inscriptions', inscriptionId, { installments: updatedInstallments });
-
-        // ✅ Registrar en caja
-        const movimientoCaja = {
-            id: getNextId(db.caja),
-            fecha: nowISO(),
-            tipo: "Ingreso",
-            concepto: `Pago cuota ${installmentNumber} - Inscripción #${inscriptionId}`,
-            monto: Number(monto),
-            formaPago,
-            observaciones,
-            inscriptionId,
-            studentId: inscription.studentId,
-            courseId: inscription.courseId,
-            createdAt: nowISO()
-        };
-
-        const updatedCaja = [...db.caja, movimientoCaja];
-        const updatedDB = { ...db, caja: updatedCaja };
-
-        // ✅ Auditoría
-        if (db.settings?.enableAudit && user) {
-            const auditLog = createAuditLog(
-                AUDIT_ACTIONS.PAYMENT,
-                'inscriptions',
-                inscriptionId,
-                {
-                    installmentNumber,
-                    monto,
-                    formaPago,
-                    previousAmountPaid: installment.amountPaid || 0,
-                    newAmountPaid: (installment.amountPaid || 0) + Number(monto)
-                },
-                user.id,
-                `${user.nombre} ${user.apellido}`
+            const installment = inscription.installments.find(
+                (i) => i.number === installmentNumber
             );
-            saveAuditLog(auditLog);
-        }
+            if (!installment) throw new Error("Cuota no encontrada.");
 
-        return saveDB(updatedDB);
-    }, [db, update, saveDB, user]);
+            const course = db.courses.find((c) => c.id === inscription.courseId);
+
+            // Método real a usar (si no viene, uso el de la inscripción)
+            const metodo = formaPago || inscription.paymentType || "Efectivo";
+
+            // =============== MONTO ACTUAL COMPATIBLE =================
+            const today = new Date();
+            const dueDate = new Date(installment.dueDate);
+            const isOverdue = !installment.frozen && today > dueDate;
+
+            let montoActual = 0;
+
+            // 1) Si la cuota ya trae valores fijos, usarlos
+            if (
+                installment.amountEnFecha !== undefined &&
+                installment.amountVencido !== undefined
+            ) {
+                montoActual = isOverdue
+                    ? Number(installment.amountVencido) || 0
+                    : Number(installment.amountEnFecha) || 0;
+            } else {
+                // 2) Fallback TOTALMENTE retrocompatible con cuotas viejas
+                if (!course) {
+                    montoActual = Number(installment.amount) || 0;
+                } else if (isOverdue) {
+                    switch (metodo) {
+                        case "Efectivo":
+                            montoActual =
+                                Number(course.pagoVencidoEfectivo) ||
+                                Number(installment.amount) ||
+                                0;
+                            break;
+                        case "Transferencia":
+                            montoActual =
+                                Number(course.pagoVencidoTransferencia) ||
+                                Number(installment.amount) ||
+                                0;
+                            break;
+                        case "Tarjeta":
+                            montoActual =
+                                Number(course.pagoVencidoTarjeta) ||
+                                Number(installment.amount) ||
+                                0;
+                            break;
+                        default:
+                            montoActual = Number(installment.amount) || 0;
+                    }
+                } else {
+                    switch (metodo) {
+                        case "Efectivo":
+                            montoActual =
+                                Number(course.pagoFechaEfectivo) ||
+                                Number(installment.amount) ||
+                                0;
+                            break;
+                        case "Transferencia":
+                            montoActual =
+                                Number(course.pagoFechaTransferencia) ||
+                                Number(installment.amount) ||
+                                0;
+                            break;
+                        case "Tarjeta":
+                            montoActual =
+                                Number(course.pagoFechaTarjeta) ||
+                                Number(installment.amount) ||
+                                0;
+                            break;
+                        default:
+                            montoActual = Number(installment.amount) || 0;
+                    }
+                }
+            }
+
+            const pending = Math.max(
+                montoActual - Number(installment.amountPaid || 0),
+                0
+            );
+
+            const montoNum = Number(monto);
+            if (montoNum <= 0) throw new Error("El monto debe ser mayor a 0.");
+            if (montoNum > pending) {
+                throw new Error(`El pago excede lo pendiente ($${pending.toFixed(2)}).`);
+            }
+
+            const nuevoAmountPaid = Number(installment.amountPaid || 0) + montoNum;
+            const quedaCompleto = nuevoAmountPaid >= montoActual;
+
+            const updatedInstallments = inscription.installments.map((i) =>
+                i.number === installmentNumber
+                    ? {
+                        ...i,
+                        amountPaid: nuevoAmountPaid,
+                        paidAt: quedaCompleto ? nowISO() : i.paidAt ?? null,
+                        status: quedaCompleto ? "Pagado" : "Parcial",
+                    }
+                    : i
+            );
+
+            // ✅ Actualizar inscripción
+            update("inscriptions", inscriptionId, {
+                installments: updatedInstallments,
+            });
+
+            // ✅ Registrar en caja (misma estructura que ya usabas)
+            const movimientoCaja = {
+                id: getNextId(db.caja),
+                fecha: nowISO(),
+                tipo: "Ingreso",
+                concepto: `Pago cuota ${installmentNumber} - Inscripción #${inscriptionId}`,
+                monto: montoNum,
+                formaPago: metodo,
+                observaciones,
+                inscriptionId,
+                studentId: inscription.studentId,
+                courseId: inscription.courseId,
+                createdAt: nowISO(),
+            };
+
+            const updatedCaja = [...db.caja, movimientoCaja];
+            const updatedDB = { ...db, caja: updatedCaja };
+
+            // ✅ Auditoría
+            if (db.settings?.enableAudit && user) {
+                const auditLog = createAuditLog(
+                    AUDIT_ACTIONS.PAYMENT,
+                    "inscriptions",
+                    inscriptionId,
+                    {
+                        installmentNumber,
+                        monto: montoNum,
+                        formaPago: metodo,
+                        previousAmountPaid: installment.amountPaid || 0,
+                        newAmountPaid: nuevoAmountPaid,
+                        montoActual,
+                        isOverdue,
+                    },
+                    user.id,
+                    `${user.nombre} ${user.apellido}`
+                );
+                saveAuditLog(auditLog);
+            }
+
+            return saveDB(updatedDB);
+        },
+        [db, update, saveDB, user]
+    );
+
 
     // ✅ BECAS
     const asignarBeca = useCallback((studentId, becaId, cursoId, observaciones = "") => {
@@ -1778,16 +1945,72 @@ export const AppDBProvider = ({ children }) => {
             if (!student) throw new Error('Alumno no encontrado');
             if (!course) throw new Error('Curso no encontrado');
 
-            // Calcular cuánto falta pagar
+            // ✅ CALCULAR MONTO ACTUAL SEGÚN MÉTODO DE PAGO
             const today = new Date();
             const dueDate = new Date(installment.dueDate);
             const isOverdue = !installment.frozen && today > dueDate;
 
-            const montoActual = isOverdue
-                ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
-                : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
+            let montoActual = 0;
 
-            const montoPendiente = montoActual - Number(installment.amountPaid || 0);
+            // Determinar la key del método
+            const methodKey = formaPago === "Efectivo" ? "efectivo"
+                : formaPago === "Transferencia" ? "transferencia"
+                    : "tarjeta";
+
+            // 1) Intentar usar installmentsByMethod si existe
+            if (inscription.installmentsByMethod && inscription.installmentsByMethod[methodKey]) {
+                const instByMethod = inscription.installmentsByMethod[methodKey].find(
+                    i => Number(i.number) === Number(installmentNumber)
+                );
+
+                if (instByMethod) {
+                    const enFecha = Number(instByMethod.amountEnFecha ?? instByMethod.amount) || 0;
+                    const vencido = Number(instByMethod.amountVencido ?? enFecha) || enFecha;
+                    montoActual = isOverdue ? vencido : enFecha;
+                } else {
+                    // Fallback si no existe en installmentsByMethod
+                    montoActual = isOverdue
+                        ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
+                        : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
+                }
+            } else {
+                // 2) Fallback: usar valores del curso según método
+                if (!course) {
+                    montoActual = Number(installment.amount) || 0;
+                } else {
+                    if (isOverdue) {
+                        switch (formaPago) {
+                            case "Efectivo":
+                                montoActual = Number(course.pagoVencidoEfectivo) || Number(installment.amount) || 0;
+                                break;
+                            case "Transferencia":
+                                montoActual = Number(course.pagoVencidoTransferencia) || Number(installment.amount) || 0;
+                                break;
+                            case "Tarjeta":
+                                montoActual = Number(course.pagoVencidoTarjeta) || Number(installment.amount) || 0;
+                                break;
+                            default:
+                                montoActual = Number(installment.amount) || 0;
+                        }
+                    } else {
+                        switch (formaPago) {
+                            case "Efectivo":
+                                montoActual = Number(course.pagoFechaEfectivo) || Number(installment.amount) || 0;
+                                break;
+                            case "Transferencia":
+                                montoActual = Number(course.pagoFechaTransferencia) || Number(installment.amount) || 0;
+                                break;
+                            case "Tarjeta":
+                                montoActual = Number(course.pagoFechaTarjeta) || Number(installment.amount) || 0;
+                                break;
+                            default:
+                                montoActual = Number(installment.amount) || 0;
+                        }
+                    }
+                }
+            }
+
+            const montoPendiente = Math.max(montoActual - Number(installment.amountPaid || 0), 0);
 
             if (monto <= 0) throw new Error('El monto debe ser mayor a cero');
             if (monto > montoPendiente) throw new Error(`El monto no puede superar lo pendiente: $${Math.round(montoPendiente)}`);
@@ -1799,7 +2022,7 @@ export const AppDBProvider = ({ children }) => {
             const updatedInstallment = {
                 ...installment,
                 amountPaid: nuevoAmountPaid,
-                status: quedaCompleto ? 'Pagado' : 'Parcial',
+                status: quedaCompleto ? 'Pagada' : 'Parcial',
                 paidAt: quedaCompleto ? new Date().toISOString() : installment.paidAt
             };
 
@@ -1817,16 +2040,21 @@ export const AppDBProvider = ({ children }) => {
             const nextCajaId = getNextId(db.caja || []);
             const cajaMovimiento = {
                 id: nextCajaId,
-                usuario: `${student.nombre} ${student.apellido}`,
+                usuario: `${student.nombre} ${student.apellido}`, // ✅ Estudiante
+                personal:
+                    user?.name ||
+                    `${user?.nombre ?? ''} ${user?.apellido ?? ''}`.trim() ||
+                    'Personal desconocido', // ✅ Personal que cobró
                 operacion: `${quedaCompleto ? 'Pago completo' : 'Pago parcial'} cuota ${installmentNumber} - ${course.nombre}${observaciones ? ` (${observaciones})` : ''}`,
                 entrada: Number(monto),
                 salida: 0,
-                tipo: formaPago,
+                tipo: 'Automática',
+                metodo: formaPago, // ✅ Efectivo | Transferencia | Tarjeta
                 fechaHora: new Date().toISOString(),
                 studentId: student.id,
                 courseId: course.id,
                 inscriptionId: inscription.id,
-                installmentNumber: installmentNumber
+                installmentNumber
             };
 
             // Actualizar DB
@@ -1846,7 +2074,7 @@ export const AppDBProvider = ({ children }) => {
                         AUDIT_ACTIONS.PAYMENT,
                         'inscription',
                         inscriptionId,
-                        { installmentNumber, monto, formaPago, quedaCompleto },
+                        { installmentNumber, monto, formaPago, quedaCompleto, montoActual, isOverdue }, // ✅ Agregado montoActual e isOverdue
                         user.id,
                         user.name || `${user.nombre} ${user.apellido}`
                     );

@@ -280,203 +280,300 @@ export default function Inscripciones() {
     const coursesWithEmpty = [{ id: '', nombre: '' }, ...courses];
     const professorsWithEmpty = [{ id: '', nombre: '', apellido: '' }, ...availableCourseProfessors];
 
-    // ✅ SUBMIT MEJORADO - SNAPSHOT DEL CURSO + CÁLCULO CORRECTO
-    const handleSubmit = e => {
+// ✅ SUBMIT NUEVO - SIN PORCENTAJES, CON 2 PRECIOS FIJOS (EN FECHA / VENCIDO)
+// y cálculo para EFECTIVO y TRANSFERENCIA
+    const handleSubmit = (e) => {
         e.preventDefault();
         try {
-            console.log('🔍 [INSCRIPCIÓN] Iniciando proceso...');
+            if (!form.studentId || !form.courseId || !form.professorId) {
+                throw new Error("Completa los campos obligatorios: Alumno, Curso y Profesor");
+            }
 
-            if (!form.studentId || !form.courseId || !form.professorId)
-                throw new Error('Completa los campos obligatorios: Alumno, Curso y Profesor');
+            const student = students.find((s) => s.id === Number(form.studentId));
+            const course = courses.find((c) => c.id === Number(form.courseId));
+            const professor = professors.find((p) => p.id === Number(form.professorId));
 
-            const student = students.find(s => s.id === Number(form.studentId));
-            const course = courses.find(c => c.id === Number(form.courseId));
-            const professor = professors.find(p => p.id === Number(form.professorId));
+            if (!student) throw new Error("Alumno no encontrado");
+            if (!course) throw new Error("Curso no encontrado");
+            if (!professor) throw new Error("Profesor no encontrado");
 
-            if (!student) throw new Error('Alumno no encontrado');
-            if (!course) throw new Error('Curso no encontrado');
-            if (!professor) throw new Error('Profesor no encontrado');
+            // -------------------------------
+            // Helpers
+            // -------------------------------
+            const readNumber = (...vals) => {
+                for (const v of vals) {
+                    const n = Number(v);
+                    if (!Number.isNaN(n) && n > 0) return n;
+                }
+                return 0;
+            };
 
-            // ═══════════════════════════════════════════════════════════════
-            // 1. SNAPSHOT DEL CURSO - Guardar toda la información al momento
-            // ═══════════════════════════════════════════════════════════════
+            // Dado total y cuotas, y opcionalmente valores fijos por cuota,
+            // devuelve cuotaEnFecha y cuotaVencido (si rawVencido parece total, lo divide).
+            const getCuotaValues = (totalEnFecha, cuotas, rawEnFecha, rawVencido) => {
+                const cuotasSafe = cuotas > 0 ? cuotas : 1;
+
+                const cuotaEnFecha =
+                    rawEnFecha > 0 ? rawEnFecha : Math.round(totalEnFecha / cuotasSafe);
+
+                let cuotaVencido = cuotaEnFecha;
+                if (rawVencido > 0) {
+                    // Si rawVencido parece ser TOTAL vencido del curso, lo dividimos por cuotas
+                    cuotaVencido =
+                        rawVencido > totalEnFecha && cuotasSafe > 1
+                            ? Math.round(rawVencido / cuotasSafe)
+                            : rawVencido;
+                }
+
+                return { cuotaEnFecha, cuotaVencido };
+            };
+
+            // -------------------------------
+            // 1) SNAPSHOT DEL CURSO (FIJO)
+            // -------------------------------
+
+            // cuotas compartidas para efectivo/transferencia
+            const cuotasCompartidas = course.cuotasEnabled
+                ? Number(
+                    course.cuotasCompartidas ||
+                    course.cuotasEfectivo ||
+                    course.cuotasTransferencia ||
+                    1
+                )
+                : 1;
+
+            // Totales base por método (curso completo)
+            const totalEfectivo = readNumber(course.totalEfectivo);
+            const totalTransferencia = readNumber(course.totalTransferencia);
+            const totalTarjeta = readNumber(course.totalTarjeta);
+
+            // Valores FIJOS por cuota
+            // (poné acá los nombres reales de tus campos si difieren.
+            // Si no existen, hace fallback automático dividiendo el total)
+            const efRawEnFecha = readNumber(
+                course.pagoEnFechaEfectivo,
+                course.pagoFechaEfectivo,
+                course.efectivoEnFecha,
+                course.cuotaEfectivoEnFecha
+            );
+            const efRawVencido = readNumber(
+                course.pagoVencidoEfectivo,
+                course.efectivoVencido,
+                course.cuotaEfectivoVencido,
+                course.totalEfectivoVencido
+            );
+
+            const trRawEnFecha = readNumber(
+                course.pagoEnFechaTransferencia,
+                course.pagoFechaTransferencia,
+                course.transferenciaEnFecha,
+                course.cuotaTransferenciaEnFecha
+            );
+            const trRawVencido = readNumber(
+                course.pagoVencidoTransferencia,
+                course.transferenciaVencido,
+                course.cuotaTransferenciaVencido,
+                course.totalTransferenciaVencido
+            );
+
+            const tarRawEnFecha = readNumber(
+                course.pagoEnFechaTarjeta,
+                course.totalTarjeta
+            );
+            const tarRawVencido = readNumber(
+                course.pagoVencidoTarjeta,
+                course.totalTarjetaVencido
+            );
+
+            const { cuotaEnFecha: efCuotaEnFecha, cuotaVencido: efCuotaVencido } =
+                getCuotaValues(totalEfectivo, cuotasCompartidas, efRawEnFecha, efRawVencido);
+
+            const { cuotaEnFecha: trCuotaEnFecha, cuotaVencido: trCuotaVencido } =
+                getCuotaValues(
+                    totalTransferencia,
+                    cuotasCompartidas,
+                    trRawEnFecha,
+                    trRawVencido
+                );
+
+            const { cuotaEnFecha: tarCuotaEnFecha, cuotaVencido: tarCuotaVencido } =
+                getCuotaValues(totalTarjeta, 1, tarRawEnFecha, tarRawVencido);
+
             const cursoSnapshot = {
-                // Información básica
                 cursoId: course.id,
                 cursoNombre: course.nombre,
 
-                // Costos por forma de pago
                 efectivo: {
-                    total: Number(course.totalEfectivo) || 0,
-                    cuotas: Number(course.cuotasEfectivo) || 1,
-                    valorEnFecha: Number(course.totalEfectivo) || 0,
-                    valorVencido: Number(course.totalEfectivoVencido) || Number(course.totalEfectivo) || 0
+                    cuotas: cuotasCompartidas,
+                    cuotaEnFecha: efCuotaEnFecha,
+                    cuotaVencido: efCuotaVencido,
                 },
                 transferencia: {
-                    total: Number(course.totalTransferencia) || 0,
-                    cuotas: Number(course.cuotasTransferencia) || 1,
-                    valorEnFecha: Number(course.totalTransferencia) || 0,
-                    valorVencido: Number(course.totalTransferenciaVencido) || Number(course.totalTransferencia) || 0
+                    cuotas: cuotasCompartidas,
+                    cuotaEnFecha: trCuotaEnFecha,
+                    cuotaVencido: trCuotaVencido,
                 },
                 tarjeta: {
-                    total: Number(course.totalTarjeta) || 0,
-                    cuotas: 1, // ✅ SIEMPRE 1 cuota para tarjeta
-                    valorEnFecha: Number(course.totalTarjeta) || 0,
-                    valorVencido: Number(course.totalTarjetaVencido) || Number(course.totalTarjeta) || 0
+                    cuotas: 1,
+                    cuotaEnFecha: tarCuotaEnFecha,
+                    cuotaVencido: tarCuotaVencido,
                 },
-
-                // Recargo por vencimiento (porcentaje)
-                porcentajeRecargo: Number(course.porcentajeRecargoCuotaVencida) || 10
             };
 
-            console.log('📸 Snapshot del curso guardado:', cursoSnapshot);
-
-            // ═══════════════════════════════════════════════════════════════
-            // 2. OBTENER VALORES SEGÚN FORMA DE PAGO SELECCIONADA
-            // ═══════════════════════════════════════════════════════════════
-            let datosFormaPago = {};
-
-            if (form.paymentType === 'Efectivo') {
-                datosFormaPago = cursoSnapshot.efectivo;
-            } else if (form.paymentType === 'Transferencia') {
-                datosFormaPago = cursoSnapshot.transferencia;
-            } else if (form.paymentType === 'Tarjeta') {
-                datosFormaPago = cursoSnapshot.tarjeta;
-            }
-
-            const precioBaseCurso = datosFormaPago.total;
-            let numCuotas = datosFormaPago.cuotas;
-
-            // ✅ Tarjeta SIEMPRE es 1 cuota
-            if (form.paymentType === 'Tarjeta') {
-                numCuotas = 1;
-            }
-
-            console.log('💰 Forma de pago:', form.paymentType);
-            console.log('   Precio base curso: $', precioBaseCurso);
-            console.log('   Número de cuotas:', numCuotas);
-            console.log('   Valor en fecha: $', datosFormaPago.valorEnFecha);
-            console.log('   Valor vencido: $', datosFormaPago.valorVencido);
-
-            // ═══════════════════════════════════════════════════════════════
-            // 3. CALCULAR TOTAL DE CERTIFICADOS
-            // ═══════════════════════════════════════════════════════════════
-            const selectedCertificados = (form.certificados || []).filter(c => c.selected);
+            // -------------------------------
+            // 2) CERTIFICADOS
+            // -------------------------------
+            const selectedCertificados = (form.certificados || []).filter((c) => c.selected);
             const totalCertificados = selectedCertificados.reduce(
                 (sum, cert) => sum + (Number(cert.costo) || 0),
                 0
             );
-            console.log('📄 Certificados seleccionados:', selectedCertificados.length, 'Total: $', totalCertificados);
 
-            // ═══════════════════════════════════════════════════════════════
-            // 4. CALCULAR TOTAL BRUTO (Curso + Certificados)
-            // ═══════════════════════════════════════════════════════════════
-            const totalBruto = precioBaseCurso + totalCertificados;
-            console.log('💰 Total Bruto (curso + certificados): $', totalBruto);
-
-            // ═══════════════════════════════════════════════════════════════
-            // 5. CALCULAR DESCUENTOS (Beca + Bonificación)
-            // ═══════════════════════════════════════════════════════════════
+            // -------------------------------
+            // 3) DESCUENTOS (FIJOS)
+            // -------------------------------
             let descuentoBeca = 0;
             let becaInfo = null;
+
             if (form.hasBeca && form.becaId) {
-                const beca = becas.find(b => b.id === Number(form.becaId));
+                const beca = becas.find((b) => b.id === Number(form.becaId));
                 if (beca) {
                     descuentoBeca = Number(beca.monto) || 0;
                     becaInfo = { id: beca.id, tipo: beca.tipo, monto: descuentoBeca };
-                    console.log('🎓 Beca aplicada:', beca.tipo, '| Descuento: $', descuentoBeca);
                 }
             }
 
-            const descuentoBonificacion = form.hasBonus ? Number(form.bonusAmount) || 0 : 0;
-            if (descuentoBonificacion > 0) {
-                console.log('🎁 Bonificación: $', descuentoBonificacion);
-            }
+            const descuentoBonificacion = form.hasBonus
+                ? Number(form.bonusAmount) || 0
+                : 0;
 
             const descuentoTotal = descuentoBeca + descuentoBonificacion;
-            console.log('🎁 Descuento Total: $', descuentoTotal);
 
-            // ═══════════════════════════════════════════════════════════════
-            // 6. CALCULAR TOTAL FINAL
-            // ═══════════════════════════════════════════════════════════════
-            const totalFinal = totalBruto - descuentoTotal;
-            console.log('💵 TOTAL FINAL = (curso + certificados) - descuentos');
-            console.log(`   💵 TOTAL FINAL = (${precioBaseCurso} + ${totalCertificados}) - ${descuentoTotal} = $${totalFinal}`);
+            // -------------------------------
+            // 4) FUNCIÓN PARA CALCULAR TODO POR MÉTODO
+            // -------------------------------
+            const buildFor = (forma) => {
+                if (!forma || forma.cuotaEnFecha <= 0) return null;
 
-            if (totalFinal <= 0) {
-                throw new Error('El total final debe ser mayor a 0');
-            }
+                const numCuotas = form.fullPayment ? 1 : (forma.cuotas || 1);
 
-            // ═══════════════════════════════════════════════════════════════
-            // 7. GENERAR CUOTAS MANTENIENDO PROPORCIONES (SIN CENTAVOS)
-            // ═══════════════════════════════════════════════════════════════
-            let installments = [];
+                // Totales del curso (sin certificados)
+                const totalCursoEnFecha = forma.cuotaEnFecha * numCuotas;
+                const totalCursoVencido = forma.cuotaVencido * numCuotas;
 
-            if (!form.fullPayment) {
-                const fechaInicio = form.fechaInicio ? new Date(form.fechaInicio) : new Date();
+                // Brutos
+                const totalBrutoEnFecha = totalCursoEnFecha + totalCertificados;
+                const totalBrutoVencido = totalCursoVencido + totalCertificados;
 
-                // 7.1. Calcular proporción de recargo del curso original
-                const valorEnFechaCurso = datosFormaPago.valorEnFecha;
-                const valorVencidoCurso = datosFormaPago.valorVencido;
-                const proporcionRecargo = valorVencidoCurso / valorEnFechaCurso;
+                // Reparto de descuento proporcional al bruto EN FECHA
+                const proporcionCurso =
+                    totalBrutoEnFecha > 0 ? totalCursoEnFecha / totalBrutoEnFecha : 1;
 
-                console.log('📊 Proporción de recargo:', ((proporcionRecargo - 1) * 100).toFixed(2) + '%');
+                const descuentoCurso = Math.round(descuentoTotal * proporcionCurso);
+                const descuentoCert = descuentoTotal - descuentoCurso; // asegura suma exacta
 
-                // 7.2. Calcular monto por cuota del total final (REDONDEADO)
-                const montoPorCuotaBase = Math.round(totalFinal / numCuotas);
-                console.log('📊 Monto base por cuota: $', montoPorCuotaBase);
+                // El mismo descuento de curso se resta para enFecha y vencido
+                const totalCursoFinalEnFecha = totalCursoEnFecha - descuentoCurso;
+                const totalCursoFinalVencido = totalCursoVencido - descuentoCurso;
+                const totalCertFinal = totalCertificados - descuentoCert;
 
-                // 7.3. Generar cuotas distribuyendo el total final (TODO EN ENTEROS)
-                let totalAcumulado = 0;
+                const totalFinalEnFecha = totalCursoFinalEnFecha + totalCertFinal;
+                const totalFinalVencido = totalCursoFinalVencido + totalCertFinal;
 
-                for (let i = 0; i < numCuotas; i++) {
-                    const fechaVencimiento = new Date(fechaInicio);
-                    fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i);
+                if (totalFinalEnFecha <= 0) {
+                    throw new Error("El total final debe ser mayor a 0");
+                }
 
-                    // Calcular monto en fecha para esta cuota (ENTERO)
-                    let montoEnFecha;
-                    if (i === numCuotas - 1) {
-                        // Última cuota: ajustar para que el total sea exacto
-                        montoEnFecha = totalFinal - totalAcumulado;
-                    } else {
-                        montoEnFecha = montoPorCuotaBase;
-                        totalAcumulado += montoEnFecha;
+                // Cuotas
+                let installments = [];
+
+                if (!form.fullPayment && numCuotas > 1) {
+                    const fechaInicio = form.fechaInicio
+                        ? new Date(form.fechaInicio)
+                        : new Date();
+
+                    // ✅ REPARTIR EL TOTAL FINAL (curso + certificados netos)
+// para que sum(installments) == totalFinal
+
+                    const totalFinalEnFechaRound = Math.round(totalFinalEnFecha);
+                    const totalFinalVencidoRound = Math.round(totalFinalVencido);
+
+                    const baseEnFecha = Math.round(totalFinalEnFechaRound / numCuotas);
+                    const baseVencido = Math.round(totalFinalVencidoRound / numCuotas);
+
+                    let accEnFecha = 0;
+                    let accVencido = 0;
+
+                    for (let i = 0; i < numCuotas; i++) {
+                        const fechaVenc = new Date(fechaInicio);
+                        fechaVenc.setMonth(fechaVenc.getMonth() + i);
+
+                        let montoEnFecha, montoVencido;
+
+                        if (i === numCuotas - 1) {
+                            // última cuota se ajusta para cerrar exacto
+                            montoEnFecha = totalFinalEnFechaRound - accEnFecha;
+                            montoVencido = totalFinalVencidoRound - accVencido;
+                        } else {
+                            montoEnFecha = baseEnFecha;
+                            montoVencido = baseVencido;
+                            accEnFecha += montoEnFecha;
+                            accVencido += montoVencido;
+                        }
+
+                        installments.push({
+                            number: i + 1,
+                            dueDate: fechaVenc.toISOString().split("T")[0],
+
+                            // amount y amountEnFecha son lo mismo: lo que se cobra en fecha
+                            amount: montoEnFecha,
+                            amountEnFecha: montoEnFecha,
+
+                            // amountVencido es el valor fijo vencido de ESA cuota
+                            amountVencido: montoVencido,
+
+                            amountPaid: 0,
+                            status: "Pendiente",
+                            paidAt: null,
+                            frozen: false,
+                        });
                     }
 
-                    // Calcular monto vencido aplicando la misma proporción del curso (ENTERO)
-                    const montoVencido = Math.round(montoEnFecha * proporcionRecargo);
-
-                    installments.push({
-                        number: i + 1,
-                        dueDate: fechaVencimiento.toISOString().split('T')[0],
-                        amount: montoEnFecha, // Monto base (ENTERO)
-                        amountEnFecha: montoEnFecha, // Monto si paga en fecha (ENTERO)
-                        amountVencido: montoVencido, // Monto si paga vencido (ENTERO)
-                        amountPaid: 0,
-                        status: 'Pendiente',
-                        paidAt: null,
-                        frozen: false // Para el sistema de freezar
-                    });
-
-                    console.log(`   Cuota ${i + 1}: EnFecha=$${montoEnFecha} | Vencido=$${montoVencido}`);
                 }
 
-                console.log('✅ Cuotas generadas:', installments.length);
-                console.log('💯 Total distribuido: $', installments.reduce((s, c) => s + c.amountEnFecha, 0));
+                return {
+                    numCuotas,
+                    installments,
+                    totalCursoEnFecha,
+                    totalCursoVencido,
+                    totalBrutoEnFecha,
+                    totalBrutoVencido,
+                    totalFinalEnFecha,
+                    totalFinalVencido,
+                };
+            };
 
-                // Verificación
-                const totalCuotas = installments.reduce((s, c) => s + c.amountEnFecha, 0);
-                const diferencia = Math.abs(totalCuotas - totalFinal);
-                if (diferencia > 1) {
-                    console.warn('⚠️ Diferencia de redondeo:', diferencia);
-                }
-            } else {
-                console.log('💳 Pago completo - No se generan cuotas');
-            }
+            // Calculamos TODO para los 3 métodos
+            const builds = {
+                efectivo: buildFor(cursoSnapshot.efectivo),
+                transferencia: buildFor(cursoSnapshot.transferencia),
+                tarjeta: buildFor(cursoSnapshot.tarjeta),
+            };
 
-            // ═══════════════════════════════════════════════════════════════
-            // 8. PREPARAR DATOS FINALES CON SNAPSHOT DEL CURSO
-            // ═══════════════════════════════════════════════════════════════
+            // Método principal (lo que eligió el usuario en la inscripción)
+            const mainKey =
+                form.paymentType === "Efectivo"
+                    ? "efectivo"
+                    : form.paymentType === "Transferencia"
+                        ? "transferencia"
+                        : "tarjeta";
+
+            const main = builds[mainKey];
+            if (!main) throw new Error("La forma de pago seleccionada no tiene precio válido.");
+
+            // -------------------------------
+            // 5) ARMAR DATA FINAL
+            // -------------------------------
             const data = {
                 studentId: student.id,
                 studentName: `${student.nombre} ${student.apellido}`,
@@ -485,67 +582,90 @@ export default function Inscripciones() {
                 professorId: professor.id,
                 professorName: `${professor.nombre} ${professor.apellido}`,
 
-                // ✅ SNAPSHOT DEL CURSO (información completa al momento de inscripción)
-                cursoSnapshot: cursoSnapshot,
-
-                // Forma de pago
+                cursoSnapshot,
                 paymentType: form.paymentType,
                 fullPayment: form.fullPayment,
 
-                // Certificados
                 certificados: selectedCertificados,
-                totalCertificados: totalCertificados,
+                totalCertificados,
 
-                // Beneficios (descuentos)
                 hasBonus: form.hasBonus,
                 bonusAmount: descuentoBonificacion,
                 hasBeca: form.hasBeca,
                 becaId: form.hasBeca ? Number(form.becaId) : null,
                 becaMonto: descuentoBeca,
-                becaInfo: becaInfo,
+                becaInfo,
 
-                // Facturación
                 hasFactura: form.hasFactura,
                 tipoFactura: form.hasFactura ? form.tipoFactura : null,
 
-                // Fechas y otros
                 fechaInscripcion: new Date().toISOString(),
                 inicio: form.fechaInicio,
                 fin: form.fechaFin,
                 observaciones: form.observaciones,
-                status: 'Cursando',
+                status: "Cursando",
 
-                // ✅ TOTALES Y CUOTAS (TODO REDONDEADO, SIN CENTAVOS)
-                precioBaseCurso: precioBaseCurso,
-                totalBruto: totalBruto, // curso + certificados
-                descuentoTotal: descuentoTotal, // beca + bonificación
-                totalFinal: totalFinal, // Ya es entero
-                total: totalFinal, // Campo legacy (mismo que totalFinal)
-                installments: installments,
-                numCuotas: numCuotas,
+                // Totales PRINCIPALES según método elegido
+                precioBaseCurso: main.totalCursoEnFecha,
+                totalBruto: main.totalBrutoEnFecha,
+                descuentoTotal,
+                totalFinal: main.totalFinalEnFecha,
+                totalFinalVencido: main.totalFinalVencido,
+                total: main.totalFinalEnFecha,
 
-                // Info adicional del curso
+                installments: main.installments,
+                numCuotas: main.numCuotas,
+
+                // ✅ NUEVO: totales y cuotas por método (para Cobros dinámico)
+                totalsByMethod: {
+                    efectivo: builds.efectivo
+                        ? {
+                            totalFinal: builds.efectivo.totalFinalEnFecha,
+                            totalFinalVencido: builds.efectivo.totalFinalVencido,
+                            numCuotas: builds.efectivo.numCuotas,
+                        }
+                        : null,
+                    transferencia: builds.transferencia
+                        ? {
+                            totalFinal: builds.transferencia.totalFinalEnFecha,
+                            totalFinalVencido: builds.transferencia.totalFinalVencido,
+                            numCuotas: builds.transferencia.numCuotas,
+                        }
+                        : null,
+                    tarjeta: builds.tarjeta
+                        ? {
+                            totalFinal: builds.tarjeta.totalFinalEnFecha,
+                            totalFinalVencido: builds.tarjeta.totalFinalVencido,
+                            numCuotas: builds.tarjeta.numCuotas,
+                        }
+                        : null,
+                },
+
+                installmentsByMethod: {
+                    efectivo: builds.efectivo?.installments || [],
+                    transferencia: builds.transferencia?.installments || [],
+                    tarjeta: builds.tarjeta?.installments || [],
+                },
+
                 horarios: course.horarios || [],
-                vacantes: course.vacantes || 0
+                vacantes: course.vacantes || 0,
             };
 
-            console.log('📤 Enviando a AppDB:', data);
-
-            // 9. Guardar
+            // -------------------------------
+            // 6) Guardar
+            // -------------------------------
             if (editing) {
                 updateInscription(editing.id, data);
-                console.log('✅ Inscripción actualizada');
-                showNotification('success', 'Inscripción actualizada correctamente');
+                showNotification("success", "Inscripción actualizada correctamente");
             } else {
                 addInscription(data);
-                console.log('✅ Inscripción creada');
-                showNotification('success', 'Inscripción creada correctamente');
+                showNotification("success", "Inscripción creada correctamente");
             }
 
             closeForm();
         } catch (err) {
-            console.error('❌ ERROR:', err);
-            showNotification('error', err.message);
+            console.error("❌ ERROR:", err);
+            showNotification("error", err.message);
         }
     };
 

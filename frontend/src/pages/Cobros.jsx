@@ -1,10 +1,11 @@
 // src/pages/Cobros.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    FiSearch, FiChevronDown, FiChevronUp, FiShoppingCart, FiDollarSign,
-    FiCreditCard, FiTrendingUp, FiEye, FiMail, FiTrash2, FiFileText,
-    FiCalendar, FiFilter, FiDownload, FiX
+    FiSearch, FiChevronDown, FiDollarSign,
+    FiCreditCard, FiTrendingUp, FiX, FiArrowLeft,
+    FiUser, FiMail, FiFileText, FiCalendar, FiCheck,
+    FiMoreVertical, FiTrash2
 } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 
@@ -21,17 +22,82 @@ const formatDate = d => {
     return `${day}/${month}/${date.getFullYear()}`;
 };
 
-const formatDateTime = d => {
-    if (!d) return '';
-    const date = new Date(d);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
+/* ================== FUNCIÓN CRÍTICA: CALCULAR PRECIO SEGÚN MÉTODO ================== */
+/**
+ * Esta función es el CORAZÓN del sistema dinámico.
+ * Calcula el precio correcto según:
+ * 1. Método de pago actual (Efectivo/Transferencia/Tarjeta)
+ * 2. Si está vencida o en fecha
+ * 3. Prioridad: installmentsByMethod > curso > cuota estática
+ */
+const calcularPrecioPorMetodo = (inscription, course, installment, metodo, isOverdue) => {
+    // Mapeo de método a key
+    const methodKey = metodo === "Efectivo" ? "efectivo"
+        : metodo === "Transferencia" ? "transferencia"
+            : "tarjeta";
+
+    let precio = 0;
+
+    // PRIORIDAD 1: installmentsByMethod (sistema nuevo)
+    if (inscription?.installmentsByMethod?.[methodKey]) {
+        const cuotaPorMetodo = inscription.installmentsByMethod[methodKey].find(
+            c => Number(c.number) === Number(installment.number)
+        );
+
+        if (cuotaPorMetodo) {
+            precio = isOverdue
+                ? (Number(cuotaPorMetodo.amountVencido) || Number(cuotaPorMetodo.amountEnFecha) || 0)
+                : (Number(cuotaPorMetodo.amountEnFecha) || Number(cuotaPorMetodo.amount) || 0);
+
+            console.log(`✅ Precio desde installmentsByMethod[${methodKey}]:`, precio);
+            return precio;
+        }
+    }
+
+    // PRIORIDAD 2: Curso (fallback para inscripciones viejas)
+    if (course) {
+        if (isOverdue) {
+            switch (metodo) {
+                case "Efectivo":
+                    precio = Number(course.pagoVencidoEfectivo) || 0;
+                    break;
+                case "Transferencia":
+                    precio = Number(course.pagoVencidoTransferencia) || 0;
+                    break;
+                case "Tarjeta":
+                    precio = Number(course.pagoVencidoTarjeta) || 0;
+                    break;
+            }
+        } else {
+            switch (metodo) {
+                case "Efectivo":
+                    precio = Number(course.pagoFechaEfectivo) || 0;
+                    break;
+                case "Transferencia":
+                    precio = Number(course.pagoFechaTransferencia) || 0;
+                    break;
+                case "Tarjeta":
+                    precio = Number(course.pagoFechaTarjeta) || 0;
+                    break;
+            }
+        }
+
+        if (precio > 0) {
+            console.log(`✅ Precio desde curso[${metodo}]:`, precio);
+            return precio;
+        }
+    }
+
+    // PRIORIDAD 3: Cuota estática (último recurso)
+    precio = isOverdue
+        ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
+        : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
+
+    console.log(`⚠️ Precio desde cuota estática:`, precio);
+    return precio;
 };
 
+/* ================== NOTIFICACIONES ================== */
 function Notifications({ notifications, remove }) {
     return (
         <div className="fixed top-4 right-4 flex flex-col space-y-2 z-50">
@@ -42,12 +108,17 @@ function Notifications({ notifications, remove }) {
                         initial={{ opacity: 0, x: 50 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 50 }}
-                        className={`px-4 py-2 rounded shadow-md cursor-pointer ${
-                            n.type === 'success' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'
+                        className={`px-6 py-4 rounded-xl shadow-lg cursor-pointer border-l-4 ${
+                            n.type === 'success'
+                                ? 'bg-green-50 text-green-800 border-green-500'
+                                : 'bg-red-50 text-red-800 border-red-500'
                         }`}
                         onClick={() => remove(n.id)}
                     >
-                        {n.message}
+                        <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${n.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className="font-medium">{n.message}</span>
+                        </div>
                     </motion.div>
                 ))}
             </AnimatePresence>
@@ -55,9 +126,9 @@ function Notifications({ notifications, remove }) {
     );
 }
 
-/* ==================== MODAL DE DEPÓSITO ==================== */
+/* ================== MODAL DE DEPÓSITO INDIVIDUAL ================== */
 function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }) {
-    const { depositarCuota, findCourse, findInscription } = useDB();
+    const { depositarCuota, inscriptions, courses } = useDB();
     const [formData, setFormData] = useState({
         monto: '',
         formaPago: 'Efectivo',
@@ -65,105 +136,55 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
     });
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Obtener información del curso para calcular precios
-    const inscription = findInscription(inscriptionId);
-    const course = inscription ? findCourse(inscription.courseId) : null;
+    const inscription = inscriptions.find(ins => ins.id === inscriptionId);
+    const course = inscription ? courses.find(c => c.id === inscription.courseId) : null;
 
-    // Calcular montos según forma de pago y estado
     const today = new Date();
     const dueDate = new Date(installment.dueDate);
     const isOverdue = !installment.frozen && today > dueDate;
 
-    // ✅ CORREGIDO: Usar los montos correctos de la cuota (amountEnFecha y amountVencido)
-    const getMontoActual = (formaPago) => {
-        // Si la cuota tiene amountEnFecha y amountVencido, usarlos directamente
-        if (installment.amountEnFecha !== undefined && installment.amountVencido !== undefined) {
-            return isOverdue ? Number(installment.amountVencido) || 0 : Number(installment.amountEnFecha) || 0;
-        }
+    // ✅ CRÍTICO: Este cálculo se ejecuta CADA VEZ que cambia formData.formaPago
+    const precioActual = useMemo(() => {
+        const precio = calcularPrecioPorMetodo(inscription, course, installment, formData.formaPago, isOverdue);
+        console.log(`🔄 [DepositModal] Recalculando precio para ${formData.formaPago}:`, precio);
+        return precio;
+    }, [formData.formaPago, inscription, course, installment, isOverdue]);
 
-        // Fallback: usar los precios del curso si existen
-        if (!course) return Number(installment.amount) || 0;
-
-        if (isOverdue) {
-            // Precio vencido
-            switch (formaPago) {
-                case 'Efectivo': return Number(course.pagoVencidoEfectivo) || Number(installment.amount) || 0;
-                case 'Transferencia': return Number(course.pagoVencidoTransferencia) || Number(installment.amount) || 0;
-                case 'Tarjeta': return Number(course.pagoVencidoTarjeta) || Number(installment.amount) || 0;
-                default: return Number(installment.amount) || 0;
-            }
-        } else {
-            // Precio en fecha
-            switch (formaPago) {
-                case 'Efectivo': return Number(course.pagoFechaEfectivo) || Number(installment.amount) || 0;
-                case 'Transferencia': return Number(course.pagoFechaTransferencia) || Number(installment.amount) || 0;
-                case 'Tarjeta': return Number(course.pagoFechaTarjeta) || Number(installment.amount) || 0;
-                default: return Number(installment.amount) || 0;
-            }
-        }
-    };
-
-    const montoActual = getMontoActual(formData.formaPago);
-    const montoPendiente = Math.max(montoActual - Number(installment.amountPaid || 0), 0);
-
-    // Calcular recargo si existe diferencia entre precios
-    const montoEnFecha = installment.amountEnFecha !== undefined ?
-        Number(installment.amountEnFecha) || 0 :
-        (course ? Number(course.pagoFechaEfectivo) || Number(installment.amount) || 0 : 0);
-
-    const tieneRecargo = isOverdue && montoActual !== montoEnFecha;
-    const montoRecargo = tieneRecargo ? (montoActual - montoEnFecha) : 0;
+    const montoPendiente = Math.max(precioActual - Number(installment.amountPaid || 0), 0);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!formData.monto || Number(formData.monto) <= 0) {
+            alert('Por favor ingrese un monto válido');
+            return;
+        }
+
+        if (Number(formData.monto) > montoPendiente) {
+            if (!window.confirm(`El monto ($${formatNumber(formData.monto)}) es mayor al pendiente ($${formatNumber(montoPendiente)}). ¿Continuar?`)) {
+                return;
+            }
+        }
+
         setIsProcessing(true);
 
         try {
-            const monto = Number(formData.monto);
-
-            if (monto <= 0) {
-                throw new Error('El monto debe ser mayor a cero');
-            }
-
-            if (monto > montoPendiente) {
-                throw new Error(`El monto no puede superar lo pendiente: $${formatNumber(montoPendiente)}`);
-            }
-
-            const success = depositarCuota(
+            await depositarCuota(
                 inscriptionId,
                 installment.number,
-                monto,
+                Number(formData.monto),
                 formData.formaPago,
                 formData.observaciones
             );
 
-            if (success) {
-                onSuccess(`Depósito de $${formatNumber(monto)} registrado exitosamente`);
-                onClose();
-                setFormData({ monto: '', formaPago: 'Efectivo', observaciones: '' });
-            } else {
-                throw new Error('Error al procesar el depósito');
-            }
+            onSuccess(`Depósito de $${formatNumber(formData.monto)} registrado exitosamente`);
+            onClose();
         } catch (error) {
-            alert(error.message);
+            alert(error.message || 'Error al procesar el depósito');
         } finally {
             setIsProcessing(false);
         }
     };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value,
-            // Resetear monto cuando cambia la forma de pago
-            ...(name === 'formaPago' && { monto: '' })
-        }));
-    };
-
-    // Actualizar monto pendiente cuando cambia la forma de pago
-    const montoParaFormaPago = getMontoActual(formData.formaPago);
-    const pendienteParaFormaPago = Math.max(montoParaFormaPago - Number(installment.amountPaid || 0), 0);
 
     if (!isOpen) return null;
 
@@ -173,7 +194,7 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                 onClick={onClose}
             >
                 <motion.div
@@ -181,14 +202,22 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                    className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border-2 border-blue-100"
                 >
-                    {/* Header con gradiente rojo-azul */}
-                    <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6">
+                    <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 rounded-t-2xl">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl font-bold">Depositar Pago</h2>
-                                <p className="text-red-100 text-sm mt-1">Cuota #{installment.number}</p>
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <FiDollarSign className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold">Depositar Cuota #{installment.number}</h2>
+                                    <p className="text-blue-100 text-sm mt-1 flex items-center gap-2">
+                                        <FiCalendar className="w-4 h-4" />
+                                        Vencimiento: {formatDate(installment.dueDate)}
+                                        {installment.frozen && ' (Freeze)'}
+                                    </p>
+                                </div>
                             </div>
                             <button
                                 onClick={onClose}
@@ -199,124 +228,126 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                         </div>
                     </div>
 
-                    {/* Body */}
                     <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                        {/* Información de estado */}
-                        <div className={`p-3 rounded-lg border-2 ${
-                            installment.frozen
-                                ? 'bg-purple-50 border-purple-300 text-purple-800'
-                                : isOverdue
-                                    ? 'bg-red-50 border-red-300 text-red-800'
-                                    : 'bg-green-50 border-green-300 text-green-800'
-                        }`}>
-                            <div className="font-semibold flex items-center gap-2">
-                                {installment.frozen && '❄️ Cuota Congelada'}
-                                {!installment.frozen && isOverdue && '⚠️ Cuota Vencida'}
-                                {!installment.frozen && !isOverdue && '✓ En Fecha'}
-                            </div>
-                            {tieneRecargo && (
-                                <div className="text-sm mt-1">
-                                    Incluye recargo por mora: <span className="font-bold">${formatNumber(montoRecargo)}</span>
+                        {/* Estado de la Cuota */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200">
+                            <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2 text-lg">
+                                <FiFileText className="w-5 h-5" />
+                                Estado de la Cuota
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                    <div className="text-gray-600">Precio {formData.formaPago}:</div>
+                                    <div className="font-bold text-blue-900 text-lg">${formatNumber(precioActual)}</div>
                                 </div>
-                            )}
+                                <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                    <div className="text-gray-600">Ya Pagado:</div>
+                                    <div className="font-bold text-green-700 text-lg">${formatNumber(installment.amountPaid || 0)}</div>
+                                </div>
+                                <div className="col-span-2 bg-white p-4 rounded-lg border-2 border-red-200">
+                                    <div className="text-gray-600">Monto Pendiente:</div>
+                                    <div className="font-bold text-red-700 text-2xl">${formatNumber(montoPendiente)}</div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Forma de pago */}
+                        {/* Forma de Pago */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Forma de pago <span className="text-red-500">*</span>
+                            <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <FiCreditCard className="w-4 h-4" />
+                                Forma de Pago
                             </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {['Efectivo', 'Transferencia', 'Tarjeta'].map(forma => (
+                            <div className="grid grid-cols-3 gap-3">
+                                {['Efectivo', 'Transferencia', 'Tarjeta'].map(metodo => (
                                     <button
-                                        key={forma}
+                                        key={metodo}
                                         type="button"
-                                        onClick={() => setFormData(prev => ({
-                                            ...prev,
-                                            formaPago: forma,
-                                            monto: '' // Resetear monto al cambiar forma de pago
-                                        }))}
-                                        className={`p-3 rounded-lg border-2 font-semibold transition-colors ${
-                                            formData.formaPago === forma
-                                                ? 'border-blue-600 bg-blue-50 text-blue-900'
-                                                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                                        onClick={() => {
+                                            console.log('🔄 Cambiando método a:', metodo);
+                                            setFormData(prev => ({ ...prev, formaPago: metodo }));
+                                        }}
+                                        className={`p-4 rounded-xl border-2 font-semibold transition-all ${
+                                            formData.formaPago === metodo
+                                                ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-md'
+                                                : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400'
                                         }`}
                                     >
-                                        {forma}
+                                        {metodo}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Información de precios */}
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Precio {formData.formaPago.toLowerCase()} {isOverdue ? 'vencido:' : 'en fecha:'}</span>
-                                <span className="font-bold">${formatNumber(montoParaFormaPago)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Ya pagado:</span>
-                                <span className="font-semibold text-green-600">${formatNumber(installment.amountPaid || 0)}</span>
-                            </div>
-                            <div className="flex justify-between border-t pt-2">
-                                <span className="font-semibold text-gray-800">Pendiente:</span>
-                                <span className="font-bold text-red-600">${formatNumber(pendienteParaFormaPago)}</span>
-                            </div>
-                        </div>
-
-                        {/* Monto a depositar */}
+                        {/* Monto a Depositar */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Monto a depositar <span className="text-red-500">*</span>
+                            <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <FiDollarSign className="w-4 h-4" />
+                                Monto a Depositar
                             </label>
-                            <input
-                                type="number"
-                                name="monto"
-                                value={formData.monto}
-                                onChange={handleChange}
-                                step="0.01"
-                                min="0.01"
-                                max={pendienteParaFormaPago}
-                                placeholder="0.00"
-                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-black text-lg font-semibold"
-                                required
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                Máximo: ${formatNumber(pendienteParaFormaPago)}
-                            </p>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold">$</span>
+                                <input
+                                    type="number"
+                                    name="monto"
+                                    value={formData.monto}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, monto: e.target.value }))}
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    min="0"
+                                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-black font-medium"
+                                    required
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, monto: montoPendiente.toString() }))}
+                                className="mt-3 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded-lg font-semibold transition-colors"
+                            >
+                                Pagar monto pendiente completo
+                            </button>
                         </div>
 
                         {/* Observaciones */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Observaciones (opcional)
+                            <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <FiFileText className="w-4 h-4" />
+                                Observaciones (Opcional)
                             </label>
                             <textarea
                                 name="observaciones"
                                 value={formData.observaciones}
-                                onChange={handleChange}
+                                onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
                                 rows={3}
-                                placeholder="Comentarios adicionales..."
-                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-black resize-none"
+                                placeholder="Notas adicionales sobre este pago..."
+                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none resize-none text-black"
                             />
                         </div>
 
                         {/* Botones */}
-                        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                        <div className="flex gap-3 pt-4">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-                                disabled={isProcessing}
+                                className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold hover:border-red-400 hover:text-red-700"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="submit"
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={isProcessing}
+                                className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-red-600 text-white rounded-xl hover:from-blue-700 hover:to-red-700 transition-colors font-bold disabled:opacity-50 shadow-lg flex items-center justify-center gap-2"
                             >
-                                {isProcessing ? 'Procesando...' : 'Confirmar Depósito'}
+                                {isProcessing ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Procesando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FiCheck className="w-5 h-5" />
+                                        Confirmar Depósito
+                                    </>
+                                )}
                             </button>
                         </div>
                     </form>
@@ -326,279 +357,90 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
     );
 }
 
-/* ==================== COMPONENTE INSTALLMENT CARD ACTUALIZADO ==================== */
-function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelection, showNotification }) {
-    const { freezarCuota, findCourse, findInscription } = useDB();
-    const [showActions, setShowActions] = useState(false);
-    const [showDepositModal, setShowDepositModal] = useState(false);
-
-    // Obtener información del curso para calcular precios
-    const inscription = findInscription(inscriptionId);
-    const course = inscription ? findCourse(inscription.courseId) : null;
-
-    const today = new Date();
-    const dueDate = new Date(installment.dueDate);
-    const isOverdue = !installment.frozen && today > dueDate;
-
-    // ✅ CORREGIDO: Usar amountEnFecha y amountVencido directamente de la cuota
-    const montoEnFecha = installment.amountEnFecha !== undefined ?
-        Number(installment.amountEnFecha) || 0 :
-        (course ? Number(course.pagoFechaEfectivo) || Number(installment.amount) || 0 : 0);
-
-    const montoVencido = installment.amountVencido !== undefined ?
-        Number(installment.amountVencido) || 0 :
-        (course ? Number(course.pagoVencidoEfectivo) || Number(installment.amount) || 0 : 0);
-
-    const montoActual = isOverdue ? montoVencido : montoEnFecha;
-    const pending = Math.max(montoActual - Number(installment.amountPaid || 0), 0);
-
-    const tieneRecargo = isOverdue && montoVencido !== montoEnFecha;
-    const montoRecargo = tieneRecargo ? (montoVencido - montoEnFecha) : 0;
-
-    const handleDepositar = () => {
-        setShowDepositModal(true);
-        setShowActions(false);
-    };
-
-    const handleFreezar = () => {
-        try {
-            const nuevoEstado = !installment.frozen;
-            const success = freezarCuota(inscriptionId, installment.number, nuevoEstado);
-
-            if (success) {
-                showNotification('success', `Cuota #${installment.number} ${nuevoEstado ? 'congelada' : 'descongelada'}`);
-                setShowActions(false);
-            } else {
-                throw new Error('Error al cambiar el estado de la cuota');
-            }
-        } catch (error) {
-            showNotification('error', error.message);
-        }
-    };
-
-    const handleDepositSuccess = (message) => {
-        showNotification('success', message);
-        setShowDepositModal(false);
-    };
-
-    return (
-        <>
-            <motion.div
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                    isSelected
-                        ? 'border-blue-500 bg-blue-50'
-                        : installment.frozen
-                            ? 'border-purple-300 bg-purple-50 hover:border-purple-400'
-                            : isOverdue
-                                ? 'border-red-300 bg-red-50 hover:border-red-400'
-                                : 'border-gray-300 bg-white hover:border-blue-300'
-                }`}
-            >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center space-x-4">
-                        <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={onToggleSelection}
-                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <div>
-                            <div className="font-bold text-gray-800 flex flex-col sm:flex-row sm:items-center gap-2">
-                                Cuota #{installment.number}
-                                {installment.frozen && (
-                                    <span className="text-xs px-2 py-0.5 bg-purple-500 text-white rounded-full flex items-center gap-1 w-fit">
-                                        ❄️ CONGELADA
-                                    </span>
-                                )}
-                                {!installment.frozen && isOverdue && (
-                                    <span className="text-xs px-2 py-0.5 bg-red-500 text-white rounded-full w-fit">
-                                        VENCIDA
-                                    </span>
-                                )}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                                Vencimiento: {formatDate(installment.dueDate)}
-                            </div>
-                            {installment.amountPaid > 0 && (
-                                <div className="text-xs text-green-600">
-                                    Pagado: ${formatNumber(installment.amountPaid)}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                        <div className="text-right">
-                            <div className="text-2xl font-bold text-blue-900">
-                                ${formatNumber(pending)}
-                            </div>
-                            {tieneRecargo && (
-                                <div className="text-xs text-red-600 font-semibold mt-1">
-                                    ⚠️ Incluye recargo: ${formatNumber(montoRecargo)}
-                                </div>
-                            )}
-                            {!isOverdue && !installment.frozen && (
-                                <div className="text-xs text-green-600 font-semibold mt-1">
-                                    ✓ Pago en fecha: ${formatNumber(montoEnFecha)}
-                                </div>
-                            )}
-                            {installment.frozen && (
-                                <div className="text-xs text-purple-600 font-semibold mt-1">
-                                    ❄️ Sin recargo
-                                </div>
-                            )}
-                            <span className={`text-xs px-2 py-1 rounded-full inline-block mt-1 ${
-                                installment.status === 'Parcial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                                {installment.status}
-                            </span>
-                        </div>
-
-                        <button
-                            onClick={() => setShowActions(!showActions)}
-                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors font-semibold w-full sm:w-auto"
-                        >
-                            Acciones
-                        </button>
-                    </div>
-                </div>
-
-                <AnimatePresence>
-                    {showActions && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="mt-4 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3"
-                        >
-                            <button
-                                onClick={handleDepositar}
-                                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg transition-colors font-semibold flex items-center justify-center space-x-2"
-                            >
-                                <FiTrendingUp className="w-4 h-4" />
-                                <span>Depositar</span>
-                            </button>
-                            <button
-                                onClick={handleFreezar}
-                                className={`flex-1 ${installment.frozen ? 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800' : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800'} text-white px-4 py-2 rounded-lg transition-colors font-semibold flex items-center justify-center space-x-2`}
-                            >
-                                <FiCreditCard className="w-4 h-4" />
-                                <span>{installment.frozen ? 'Descongelar' : 'Freezar'}</span>
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </motion.div>
-
-            {/* Modal de depósito */}
-            <DepositModal
-                isOpen={showDepositModal}
-                onClose={() => setShowDepositModal(false)}
-                installment={installment}
-                inscriptionId={inscriptionId}
-                onSuccess={handleDepositSuccess}
-            />
-        </>
-    );
-}
-
-/* ==================== PAYMENT MODAL ACTUALIZADO ==================== */
-function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotification, onSuccess }) {
-    const { registrarPago, findInscription, findCourse, findStudent } = useDB();
+/* ================== MODAL DE PAGO MÚLTIPLE ================== */
+function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification, onSuccess }) {
+    const { registrarPago, inscriptions, courses } = useDB();
     const [paymentMethod, setPaymentMethod] = useState('Efectivo');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    if (!isOpen) return null;
+    // ✅ CRÍTICO: Recalcula TODO cuando cambia paymentMethod
+    const cuotasConPrecio = useMemo(() => {
+        console.log(`🔄 [PaymentModal] Recalculando precios para ${paymentMethod}`);
 
-    // ✅ CORREGIDO: Calcular detalles de cada cuota usando amountEnFecha y amountVencido
-    const cuotasDetalle = selectedInstallments.map(inst => {
-        const inscription = findInscription(inst.inscriptionId);
-        const course = inscription ? findCourse(inscription.courseId) : null;
-        const student = inscription ? findStudent(inscription.studentId) : null;
+        return selectedInstallments.map(item => {
+            const inscription = inscriptions.find(ins => ins.id === item.inscriptionId);
+            const course = inscription ? courses.find(c => c.id === inscription.courseId) : null;
 
-        const today = new Date();
-        const dueDate = new Date(inst.dueDate);
-        const isOverdue = !inst.frozen && today > dueDate;
+            const today = new Date();
+            const dueDate = new Date(item.dueDate);
+            const isOverdue = !item.frozen && today > dueDate;
 
-        // ✅ CORREGIDO: Usar amountEnFecha y amountVencido directamente
-        let montoActual = 0;
-        if (inst.amountEnFecha !== undefined && inst.amountVencido !== undefined) {
-            montoActual = isOverdue ? Number(inst.amountVencido) || 0 : Number(inst.amountEnFecha) || 0;
-        } else {
-            // Fallback: usar precios del curso
-            if (course) {
-                if (isOverdue) {
-                    switch (paymentMethod) {
-                        case 'Efectivo': montoActual = Number(course.pagoVencidoEfectivo) || Number(inst.amount) || 0; break;
-                        case 'Transferencia': montoActual = Number(course.pagoVencidoTransferencia) || Number(inst.amount) || 0; break;
-                        case 'Tarjeta': montoActual = Number(course.pagoVencidoTarjeta) || Number(inst.amount) || 0; break;
-                        default: montoActual = Number(inst.amount) || 0;
-                    }
-                } else {
-                    switch (paymentMethod) {
-                        case 'Efectivo': montoActual = Number(course.pagoFechaEfectivo) || Number(inst.amount) || 0; break;
-                        case 'Transferencia': montoActual = Number(course.pagoFechaTransferencia) || Number(inst.amount) || 0; break;
-                        case 'Tarjeta': montoActual = Number(course.pagoFechaTarjeta) || Number(inst.amount) || 0; break;
-                        default: montoActual = Number(inst.amount) || 0;
-                    }
-                }
-            } else {
-                montoActual = Number(inst.amount) || 0;
-            }
+            const precio = calcularPrecioPorMetodo(inscription, course, item, paymentMethod, isOverdue);
+            const pending = Math.max(precio - Number(item.amountPaid || 0), 0);
+
+            console.log(`  Cuota #${item.number}: ${paymentMethod} = $${precio}, pendiente = $${pending}`);
+
+            return {
+                ...item,
+                precio,
+                pending,
+                isOverdue,
+                courseName: course?.nombre || 'Curso desconocido'
+            };
+        });
+    }, [selectedInstallments, paymentMethod, inscriptions, courses]);
+
+    const totalAmount = useMemo(() => {
+        const total = cuotasConPrecio.reduce((sum, c) => sum + c.pending, 0);
+        console.log(`💰 Total para ${paymentMethod}: $${total}`);
+        return total;
+    }, [cuotasConPrecio, paymentMethod]);
+
+    const handleConfirm = async () => {
+        if (!paymentMethod) {
+            showNotification('error', 'Debe seleccionar un método de pago');
+            return;
         }
 
-        const montoEnFecha = inst.amountEnFecha !== undefined ?
-            Number(inst.amountEnFecha) || 0 :
-            (course ? Number(course.pagoFechaEfectivo) || Number(inst.amount) || 0 : 0);
-
-        const pending = Math.max(montoActual - Number(inst.amountPaid || 0), 0);
-        const tieneRecargo = isOverdue && montoActual !== montoEnFecha;
-        const recargo = tieneRecargo ? (montoActual - montoEnFecha) : 0;
-
-        return {
-            ...inst,
-            montoActual,
-            pending,
-            isOverdue,
-            tieneRecargo,
-            recargo,
-            courseName: course?.nombre || 'Curso desconocido',
-            studentName: student ? `${student.nombre} ${student.apellido}` : 'Alumno desconocido'
-        };
-    });
-
-    const totalRecargos = cuotasDetalle.reduce((sum, c) => sum + c.recargo, 0);
-    const totalActual = cuotasDetalle.reduce((sum, c) => sum + c.pending, 0);
-
-    const handleConfirmPayment = async () => {
         setIsProcessing(true);
-        try {
-            // Procesar cada cuota seleccionada
-            for (const cuota of cuotasDetalle) {
-                const success = registrarPago(
-                    cuota.inscriptionId,
-                    cuota.number,
-                    cuota.pending,
-                    paymentMethod,
-                    `Pago completo mediante proceso masivo`
-                );
 
-                if (!success) {
-                    throw new Error(`Error procesando cuota #${cuota.number}`);
+        try {
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const cuota of cuotasConPrecio) {
+                try {
+                    await registrarPago(
+                        cuota.inscriptionId,
+                        cuota.number,
+                        cuota.pending,
+                        paymentMethod,
+                        `Pago completo de cuota #${cuota.number}`
+                    );
+                    successCount++;
+                } catch (error) {
+                    console.error('Error procesando pago:', error);
+                    errorCount++;
                 }
             }
 
-            showNotification('success', `Pago de $${formatNumber(totalActual)} procesado con ${paymentMethod}`);
-            onSuccess();
+            if (successCount > 0) {
+                showNotification('success', `${successCount} cuota(s) cobrada(s) exitosamente`);
+                onSuccess();
+                onClose();
+            }
+
+            if (errorCount > 0) {
+                showNotification('error', `${errorCount} cuota(s) tuvieron errores`);
+            }
         } catch (error) {
-            showNotification('error', error.message);
+            showNotification('error', 'Error al procesar los pagos');
         } finally {
             setIsProcessing(false);
         }
     };
+
+    if (!isOpen) return null;
 
     return (
         <AnimatePresence>
@@ -606,102 +448,101 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                 onClick={onClose}
             >
                 <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    className="bg-white rounded-2xl max-w-2xl w-full relative text-black shadow-2xl max-h-[90vh] overflow-y-auto"
+                    initial={{ scale: 0.9, y: 50 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.9, y: 50 }}
                     onClick={(e) => e.stopPropagation()}
+                    className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border-2 border-red-100"
                 >
-                    <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 sticky top-0 z-10">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h2 className="text-2xl font-bold">Procesar Pago</h2>
-                                <p className="text-red-100 text-sm">
-                                    {selectedInstallments.length} cuota{selectedInstallments.length !== 1 ? 's' : ''} seleccionada{selectedInstallments.length !== 1 ? 's' : ''}
-                                </p>
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <FiCreditCard className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold">Procesar Pago Múltiple</h2>
+                                    <p className="text-blue-100 text-sm mt-1">
+                                        {selectedInstallments.length} cuota{selectedInstallments.length > 1 ? 's' : ''} seleccionada{selectedInstallments.length > 1 ? 's' : ''}
+                                    </p>
+                                </div>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors"
+                                className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors"
                             >
                                 <FiX className="w-6 h-6" />
                             </button>
                         </div>
                     </div>
 
+                    {/* Content */}
                     <div className="p-6 space-y-6">
-                        <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                            <h4 className="font-bold text-blue-900 mb-3">Detalle de Cuotas</h4>
-                            <div className="space-y-3">
-                                {cuotasDetalle.map((cuota, idx) => (
-                                    <div key={idx} className="bg-white p-3 rounded-lg border border-blue-300">
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
-                                            <div>
-                                                <span className="font-bold text-gray-900">Cuota #{cuota.number}</span>
-                                                {cuota.isOverdue && (
-                                                    <span className="ml-2 text-xs px-2 py-0.5 bg-red-500 text-white rounded-full">
-                                                        VENCIDA
-                                                    </span>
-                                                )}
-                                                {cuota.frozen && (
-                                                    <span className="ml-2 text-xs px-2 py-0.5 bg-purple-500 text-white rounded-full">
-                                                        CONGELADA
-                                                    </span>
-                                                )}
+                        {/* Detalle de Cuotas */}
+                        <div className="bg-gradient-to-br from-blue-50 to-red-50 p-5 rounded-xl border-2 border-blue-200">
+                            <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2 text-lg">
+                                <FiFileText className="w-5 h-5" />
+                                Detalle de Cuotas
+                            </h3>
+                            <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                                {cuotasConPrecio.map((cuota, index) => (
+                                    <div key={index} className="bg-white p-4 rounded-xl border-2 border-blue-100 shadow-sm">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="font-bold text-gray-800 bg-blue-100 text-blue-800 px-2 py-1 rounded-lg text-sm">
+                                                        Cuota #{cuota.number}
+                                                    </div>
+                                                    {cuota.isOverdue && (
+                                                        <div className="bg-red-100 text-red-800 px-2 py-1 rounded-lg text-xs font-bold">
+                                                            ⚠️ Vencida
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="text-gray-700 font-medium mb-1">{cuota.courseName}</div>
+                                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3" />
+                                                    Vencimiento: {formatDate(cuota.dueDate)}
+                                                </div>
+                                                <div className="text-sm text-blue-600 font-semibold mt-2">
+                                                    Precio {paymentMethod}: ${formatNumber(cuota.precio)}
+                                                </div>
                                             </div>
-                                            <span className="font-bold text-blue-900">
-                                                ${formatNumber(cuota.pending)}
-                                            </span>
-                                        </div>
-                                        <div className="text-xs text-gray-600 space-y-1">
-                                            <div>Curso: {cuota.courseName}</div>
-                                            <div>Vencimiento: {formatDate(cuota.dueDate)}</div>
-                                            <div>Precio {paymentMethod.toLowerCase()} {cuota.isOverdue ? 'vencido:' : 'en fecha:'} ${formatNumber(cuota.montoActual)}</div>
-                                            {cuota.tieneRecargo && (
-                                                <div className="text-red-600 font-semibold">
-                                                    ⚠️ Recargo por mora: ${formatNumber(cuota.recargo)}
+                                            <div className="text-right">
+                                                <div className="font-bold text-xl text-green-700">
+                                                    ${formatNumber(cuota.pending)}
                                                 </div>
-                                            )}
-                                            {!cuota.isOverdue && (
-                                                <div className="text-green-600 font-semibold">
-                                                    ✓ Pago en fecha
-                                                </div>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {totalRecargos > 0 && (
-                            <div className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-300">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-semibold text-yellow-900">Total Recargos:</span>
-                                    <span className="font-bold text-yellow-900 text-lg">
-                                        ${formatNumber(totalRecargos)}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-3">
-                            <label className="block text-sm font-bold text-gray-700">
+                        {/* Método de Pago */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-4 flex items-center gap-2 text-lg">
+                                <FiCreditCard className="w-5 h-5" />
                                 Método de Pago
                             </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-3 gap-3">
                                 {['Efectivo', 'Transferencia', 'Tarjeta'].map(method => (
                                     <button
                                         key={method}
                                         type="button"
-                                        onClick={() => setPaymentMethod(method)}
-                                        className={`p-3 rounded-lg border-2 font-semibold transition-colors ${
+                                        onClick={() => {
+                                            console.log('🔄 Cambiando método a:', method);
+                                            setPaymentMethod(method);
+                                        }}
+                                        className={`p-4 rounded-xl border-2 font-semibold transition-all ${
                                             paymentMethod === method
-                                                ? 'border-blue-600 bg-blue-50 text-blue-900'
-                                                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                                                ? 'bg-gradient-to-br from-blue-100 to-red-100 border-blue-500 text-blue-900 shadow-md'
+                                                : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400 hover:shadow-sm'
                                         }`}
                                     >
                                         {method}
@@ -710,34 +551,44 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
                             </div>
                         </div>
 
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-300">
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                                <span className="text-2xl font-bold text-green-900">TOTAL A COBRAR:</span>
-                                <span className="text-4xl font-bold text-green-700">
-                                    ${formatNumber(totalActual)}
-                                </span>
-                            </div>
-                            {totalRecargos > 0 && (
-                                <div className="text-sm text-green-700 mt-2">
-                                    Incluye ${formatNumber(totalRecargos)} en recargos
+                        {/* Total */}
+                        <div className="bg-gradient-to-r from-red-100 to-blue-100 p-6 rounded-xl border-2 border-red-300 shadow-lg">
+                            <div className="flex justify-between items-center">
+                                <div className="text-gray-800 font-bold text-lg flex items-center gap-2">
+                                    <FiDollarSign className="w-6 h-6" />
+                                    TOTAL A COBRAR:
                                 </div>
-                            )}
+                                <div className="text-gray-800 font-bold text-3xl">
+                                    ${formatNumber(totalAmount)}
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        {/* Botones */}
+                        <div className="flex gap-3 pt-4">
                             <button
+                                type="button"
                                 onClick={onClose}
-                                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold"
-                                disabled={isProcessing}
+                                className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold hover:border-red-400 hover:text-red-700"
                             >
                                 Cancelar
                             </button>
                             <button
-                                onClick={handleConfirmPayment}
+                                onClick={handleConfirm}
                                 disabled={isProcessing}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-colors font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-red-600 text-white rounded-xl hover:from-blue-700 hover:to-red-700 transition-colors font-bold disabled:opacity-50 shadow-lg flex items-center justify-center gap-2"
                             >
-                                {isProcessing ? 'Procesando...' : 'Confirmar Pago'}
+                                {isProcessing ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Procesando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FiCheck className="w-5 h-5" />
+                                        Confirmar Pago
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -747,121 +598,301 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, total, showNotifi
     );
 }
 
-/* ==================== COMPONENTE PRINCIPAL ==================== */
+/* ================== CARD DE CUOTA ================== */
+function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelection, showNotification }) {
+    const { freezarCuota, inscriptions, courses } = useDB();
+    const [showDepositModal, setShowDepositModal] = useState(false);
+    const [showActions, setShowActions] = useState(false);
+
+    const inscription = inscriptions.find(ins => ins.id === inscriptionId);
+    const course = inscription ? courses.find(c => c.id === inscription.courseId) : null;
+
+    const today = new Date();
+    const dueDate = new Date(installment.dueDate);
+    const isOverdue = !installment.frozen && today > dueDate;
+    const isPaid = installment.status === 'Pagada';
+
+    // Mostramos precio en Transferencia por defecto (o el método de la inscripción)
+    const defaultMethod = inscription?.paymentType || 'Transferencia';
+    const defaultPrice = calcularPrecioPorMetodo(inscription, course, installment, defaultMethod, isOverdue);
+    const pending = Math.max(defaultPrice - Number(installment.amountPaid || 0), 0);
+
+    const handleFreeze = async () => {
+        try {
+            const newStatus = !installment.frozen;
+            await freezarCuota(inscriptionId, installment.number, newStatus);
+            showNotification('success', `Cuota ${newStatus ? 'freeze aplicado' : 'freeze removido'} exitosamente`);
+            setShowActions(false);
+        } catch (error) {
+            showNotification('error', error.message || 'Error al cambiar estado de freeze');
+        }
+    };
+
+    const handleCardClick = (e) => {
+        // Evitar la selección cuando se hace clic en botones específicos
+        if (e.target.closest('button') || e.target.closest('.actions-container')) {
+            return;
+        }
+        if (!isPaid) {
+            onToggleSelection();
+        }
+    };
+
+    return (
+        <>
+            <div
+                className={`bg-white rounded-xl shadow-lg p-5 border-2 transition-all hover:shadow-md cursor-pointer ${
+                    isSelected ? 'border-blue-500 bg-blue-50 shadow-md' :
+                        isOverdue ? 'border-red-300 bg-red-50' :
+                            installment.frozen ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                }`}
+                onClick={handleCardClick}
+            >
+                <div className="flex items-start gap-4">
+                    {!isPaid && (
+                        <div className="flex items-center mt-1">
+                            <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                                isSelected
+                                    ? 'bg-blue-500 border-blue-500'
+                                    : 'border-gray-300'
+                            }`}>
+                                {isSelected && (
+                                    <FiCheck className="w-3 h-3 text-white" />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex-1">
+                        <div className="flex items-start justify-between mb-3">
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <h4 className="font-bold text-lg text-gray-800">
+                                        Cuota #{installment.number}
+                                    </h4>
+                                    <div className="flex gap-1">
+                                        {isOverdue && (
+                                            <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-bold">
+                                                Vencida
+                                            </span>
+                                        )}
+                                        {installment.frozen && (
+                                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
+                                                Freeze
+                                            </span>
+                                        )}
+                                        {isPaid && (
+                                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold">
+                                                Pagada
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="text-sm text-gray-600 flex items-center gap-1">
+                                    <FiCalendar className="w-4 h-4" />
+                                    Vencimiento: {formatDate(installment.dueDate)}
+                                </div>
+                            </div>
+
+                            <div className="text-right">
+                                <div className="text-sm text-gray-600">Pendiente</div>
+                                <div className="font-bold text-2xl text-red-700">
+                                    ${formatNumber(pending)}
+                                </div>
+                            </div>
+                        </div>
+
+                        {installment.amountPaid > 0 && (
+                            <div className="text-sm text-gray-600 mb-3 bg-gray-100 p-2 rounded-lg">
+                                <span className="font-medium">Pagado: ${formatNumber(installment.amountPaid)}</span>
+                                <span className="mx-2">•</span>
+                                <span className="font-medium">Total: ${formatNumber(defaultPrice)}</span>
+                            </div>
+                        )}
+
+                        {!isPaid && (
+                            <div className="flex gap-3 items-center">
+                                <button
+                                    onClick={() => setShowDepositModal(true)}
+                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-red-600 text-white rounded-xl hover:from-blue-700 hover:to-red-700 transition-colors font-semibold shadow-md flex items-center justify-center gap-2"
+                                >
+                                    <FiDollarSign className="w-4 h-4" />
+                                    Pago Parcial
+                                </button>
+
+                                <div className="relative actions-container">
+                                    <button
+                                        onClick={() => setShowActions(!showActions)}
+                                        className="p-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors shadow-sm flex items-center gap-2"
+                                    >
+                                        <FiMoreVertical className="w-4 h-4" />
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {showActions && (
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                className="absolute right-0 top-12 bg-white rounded-xl shadow-lg border border-gray-200 z-10 min-w-48"
+                                            >
+                                                <button
+                                                    onClick={handleFreeze}
+                                                    className={`w-full px-4 py-3 text-left flex items-center gap-2 transition-colors ${
+                                                        installment.frozen
+                                                            ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                                                    } first:rounded-t-xl last:rounded-b-xl`}
+                                                >
+                                                    {installment.frozen ? 'Quitar Freeze' : 'Aplicar Freeze'}
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <DepositModal
+                isOpen={showDepositModal}
+                onClose={() => setShowDepositModal(false)}
+                installment={installment}
+                inscriptionId={inscriptionId}
+                onSuccess={(msg) => {
+                    showNotification('success', msg);
+                    setShowDepositModal(false);
+                }}
+            />
+        </>
+    );
+}
+
+/* ================== PÁGINA PRINCIPAL ================== */
 export default function Cobros() {
-    const { students, inscriptions, courses, findCourse, findInscription } = useDB();
+    const { students = [], courses = [], inscriptions = [] } = useDB();
     const [search, setSearch] = useState('');
+    const [notifications, setNotifications] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedInstallments, setSelectedInstallments] = useState([]);
     const [expandedCourses, setExpandedCourses] = useState({});
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [notifications, setNotifications] = useState([]);
 
     const showNotification = (type, message) => {
         const id = Date.now();
-        setNotifications(n => [...n, { id, type, message }]);
-        setTimeout(() => removeNotification(id), 3000);
+        setNotifications(prev => [...prev, { id, type, message }]);
+        setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        }, 3000);
     };
 
-    const removeNotification = id => setNotifications(n => n.filter(x => x.id !== id));
+    const studentsWithDebt = useMemo(() => {
+        const today = new Date();
 
-    // ✅ CORREGIDO: Calcular deudores usando amountEnFecha y amountVencido
-    const debtors = useMemo(() => {
-        return students.map(student => {
-            const studentInscriptions = inscriptions.filter(ins => ins.studentId === student.id);
+        return students
+            .map(student => {
+                const studentInscriptions = inscriptions.filter(ins => ins.studentId === student.id);
 
-            let totalPending = 0;
-            const pendingInstallments = [];
+                let pendingInstallments = [];
 
-            studentInscriptions.forEach(inscription => {
-                (inscription.installments || []).forEach(inst => {
-                    const today = new Date();
-                    const dueDate = new Date(inst.dueDate);
-                    const isOverdue = !inst.frozen && today > dueDate;
+                studentInscriptions.forEach(inscription => {
+                    const course = courses.find(c => c.id === inscription.courseId);
 
-                    // ✅ CORREGIDO: Usar amountEnFecha y amountVencido directamente
-                    const montoEnFecha = inst.amountEnFecha !== undefined ?
-                        Number(inst.amountEnFecha) || 0 :
-                        (findCourse(inscription.courseId) ? Number(findCourse(inscription.courseId).pagoFechaEfectivo) || Number(inst.amount) || 0 : 0);
+                    (inscription.installments || []).forEach(inst => {
+                        if (inst.status !== 'Pagada') {
+                            const dueDate = new Date(inst.dueDate);
+                            const isOverdue = !inst.frozen && today > dueDate;
 
-                    const montoVencido = inst.amountVencido !== undefined ?
-                        Number(inst.amountVencido) || 0 :
-                        (findCourse(inscription.courseId) ? Number(findCourse(inscription.courseId).pagoVencidoEfectivo) || Number(inst.amount) || 0 : 0);
+                            // Usamos Transferencia por defecto para calcular deuda total
+                            const price = calcularPrecioPorMetodo(inscription, course, inst, 'Transferencia', isOverdue);
+                            const pending = Math.max(price - Number(inst.amountPaid || 0), 0);
 
-                    const montoActual = isOverdue ? montoVencido : montoEnFecha;
-                    const pending = Math.max(montoActual - Number(inst.amountPaid || 0), 0);
-
-                    if (pending > 0) {
-                        totalPending += pending;
-                        pendingInstallments.push({
-                            ...inst,
-                            inscriptionId: inscription.id,
-                            courseId: inscription.courseId,
-                            courseName: courses.find(c => c.id === inscription.courseId)?.nombre || 'Curso desconocido'
-                        });
-                    }
+                            if (pending > 0) {
+                                pendingInstallments.push({
+                                    ...inst,
+                                    courseName: course?.nombre || 'Sin curso',
+                                    inscriptionId: inscription.id,
+                                    pending,
+                                    isOverdue
+                                });
+                            }
+                        }
+                    });
                 });
-            });
 
-            if (totalPending > 0) {
+                if (pendingInstallments.length === 0) return null;
+
                 return {
                     ...student,
-                    totalPending,
-                    pendingInstallments
+                    pendingInstallments,
+                    totalPending: pendingInstallments.reduce((sum, i) => sum + i.pending, 0)
                 };
-            }
-            return null;
-        }).filter(Boolean);
-    }, [students, inscriptions, courses, findCourse]);
+            })
+            .filter(s => s !== null)
+            .sort((a, b) => b.totalPending - a.totalPending);
+    }, [students, inscriptions, courses]);
 
-    // Filtrar deudores por búsqueda
     const filteredStudents = useMemo(() => {
-        if (!search) return debtors;
-
-        const searchLower = search.toLowerCase();
-        return debtors.filter(student =>
-            student.nombre.toLowerCase().includes(searchLower) ||
-            student.apellido.toLowerCase().includes(searchLower) ||
-            student.dni.includes(search) ||
-            (student.email && student.email.toLowerCase().includes(searchLower))
+        if (!search) return studentsWithDebt;
+        const q = search.toLowerCase();
+        return studentsWithDebt.filter(s =>
+            s.nombre.toLowerCase().includes(q) ||
+            s.apellido.toLowerCase().includes(q) ||
+            s.dni?.toString().includes(q) ||
+            s.email?.toLowerCase().includes(q)
         );
-    }, [debtors, search]);
+    }, [studentsWithDebt, search]);
 
-    // ✅ CORREGIDO: Obtener cursos del estudiante usando amountEnFecha y amountVencido
     const studentCourses = useMemo(() => {
         if (!selectedStudent) return [];
 
-        return inscriptions
-            .filter(ins => ins.studentId === selectedStudent.id)
-            .map(ins => {
-                const course = courses.find(c => c.id === ins.courseId);
-                return {
-                    id: ins.id,
-                    courseId: ins.courseId,
-                    courseName: course?.nombre || 'Curso desconocido',
-                    inscriptionId: ins.id,
-                    fechaInscripcion: ins.fechaInscripcion,
-                    installments: (ins.installments || []).filter(inst => {
-                        const today = new Date();
-                        const dueDate = new Date(inst.dueDate);
-                        const isOverdue = !inst.frozen && today > dueDate;
+        const courseGroups = {};
 
-                        // ✅ CORREGIDO: Usar amountEnFecha y amountVencido directamente
-                        const montoEnFecha = inst.amountEnFecha !== undefined ?
-                            Number(inst.amountEnFecha) || 0 :
-                            (findCourse(ins.courseId) ? Number(findCourse(ins.courseId).pagoFechaEfectivo) || Number(inst.amount) || 0 : 0);
-
-                        const montoVencido = inst.amountVencido !== undefined ?
-                            Number(inst.amountVencido) || 0 :
-                            (findCourse(ins.courseId) ? Number(findCourse(ins.courseId).pagoVencidoEfectivo) || Number(inst.amount) || 0 : 0);
-
-                        const montoActual = isOverdue ? montoVencido : montoEnFecha;
-                        return Math.max(montoActual - Number(inst.amountPaid || 0), 0) > 0;
-                    })
+        selectedStudent.pendingInstallments.forEach(inst => {
+            if (!courseGroups[inst.courseName]) {
+                courseGroups[inst.courseName] = {
+                    id: inst.inscriptionId,
+                    courseName: inst.courseName,
+                    inscriptionId: inst.inscriptionId,
+                    installments: []
                 };
-            })
-            .filter(course => course.installments.length > 0);
-    }, [selectedStudent, inscriptions, courses, findCourse]);
+            }
+            courseGroups[inst.courseName].installments.push(inst);
+        });
+
+        return Object.values(courseGroups);
+    }, [selectedStudent]);
+
+    const totalCarrito = useMemo(() => {
+        return selectedInstallments.reduce((sum, item) => sum + item.pending, 0);
+    }, [selectedInstallments]);
+
+    const toggleInstallmentSelection = (courseId, installmentNumber, installment) => {
+        const key = `${courseId}-${installmentNumber}`;
+        const exists = selectedInstallments.find(i => `${i.courseId}-${i.number}` === key);
+
+        if (exists) {
+            setSelectedInstallments(prev =>
+                prev.filter(i => `${i.courseId}-${i.number}` !== key)
+            );
+        } else {
+            setSelectedInstallments(prev => [
+                ...prev,
+                {
+                    ...installment,
+                    courseId
+                }
+            ]);
+        }
+    };
+
+    const isInstallmentSelected = (courseId, installmentNumber) => {
+        return selectedInstallments.some(i =>
+            i.courseId === courseId && i.number === installmentNumber
+        );
+    };
 
     const toggleCourseExpansion = (courseId) => {
         setExpandedCourses(prev => ({
@@ -870,130 +901,100 @@ export default function Cobros() {
         }));
     };
 
-    const toggleInstallmentSelection = (inscriptionId, installmentNumber, installment) => {
-        const key = `${inscriptionId}-${installmentNumber}`;
-        setSelectedInstallments(prev => {
-            if (prev.some(item => item.key === key)) {
-                return prev.filter(item => item.key !== key);
-            } else {
-                return [...prev, {
-                    key,
-                    inscriptionId,
-                    installmentNumber,
-                    ...installment
-                }];
-            }
-        });
-    };
-
-    const isInstallmentSelected = (inscriptionId, installmentNumber) => {
-        return selectedInstallments.some(item => item.key === `${inscriptionId}-${installmentNumber}`);
-    };
-
-    // ✅ CORREGIDO: Calcular total del carrito usando amountEnFecha y amountVencido
-    const totalCarrito = useMemo(() => {
-        let total = 0;
-        selectedInstallments.forEach(item => {
-            const inscription = findInscription(item.inscriptionId);
-            const course = inscription ? findCourse(inscription.courseId) : null;
-
-            const today = new Date();
-            const dueDate = new Date(item.dueDate);
-            const isOverdue = !item.frozen && today > dueDate;
-
-            // ✅ CORREGIDO: Usar amountEnFecha y amountVencido directamente
-            const montoEnFecha = item.amountEnFecha !== undefined ?
-                Number(item.amountEnFecha) || 0 :
-                (course ? Number(course.pagoFechaEfectivo) || Number(item.amount) || 0 : 0);
-
-            const montoVencido = item.amountVencido !== undefined ?
-                Number(item.amountVencido) || 0 :
-                (course ? Number(course.pagoVencidoEfectivo) || Number(item.amount) || 0 : 0);
-
-            const montoActual = isOverdue ? montoVencido : montoEnFecha;
-            total += Math.max(montoActual - Number(item.amountPaid || 0), 0);
-        });
-        return total;
-    }, [selectedInstallments, findInscription, findCourse]);
-
     const handleProcessPayment = () => {
+        if (selectedInstallments.length === 0) {
+            showNotification('error', 'No hay cuotas seleccionadas');
+            return;
+        }
         setShowPaymentModal(true);
     };
 
     const handlePaymentSuccess = () => {
         setSelectedInstallments([]);
-        setShowPaymentModal(false);
-        showNotification('success', 'Pago procesado exitosamente');
+        setExpandedCourses({});
+    };
+
+    const clearAllSelections = () => {
+        setSelectedInstallments([]);
+        showNotification('success', 'Todas las selecciones han sido limpiadas');
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 sm:p-6">
-            <Notifications notifications={notifications} remove={removeNotification} />
+        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-6">
+            <Notifications notifications={notifications} remove={(id) =>
+                setNotifications(prev => prev.filter(n => n.id !== id))
+            } />
 
             <div className="max-w-7xl mx-auto space-y-6">
-                {/* Header con gradiente rojo-azul */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-red-600 to-blue-600 rounded-2xl shadow-2xl p-6 sm:p-8 text-white"
+                    className="bg-gradient-to-r from-red-600 to-blue-600 rounded-2xl shadow-2xl p-8 text-white border-2 border-white/20"
                 >
-                    <h1 className="text-3xl sm:text-4xl font-bold mb-2 flex items-center gap-3">
-                        <FiShoppingCart className="w-8 h-8 sm:w-10 sm:h-10" />
-                        Gestión de Cobros
-                    </h1>
-                    <p className="text-red-100 text-sm sm:text-base">
-                        Sistema de cobro de cuotas pendientes
-                    </p>
+                    <div className="flex items-center gap-4">
+                        <div className="bg-white/20 p-4 rounded-2xl">
+                            <FiDollarSign className="w-12 h-12" />
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-bold mb-2">Gestión de Cobros</h1>
+                            <p className="text-blue-100 text-lg">
+                                Sistema de cobro de cuotas pendientes con precios dinámicos
+                            </p>
+                        </div>
+                    </div>
                 </motion.div>
 
-                {/* Búsqueda */}
-                {!selectedStudent && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl shadow-lg p-4 sm:p-6"
-                    >
-                        <div className="relative">
-                            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="Buscar por nombre, email o DNI..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-black"
-                            />
-                        </div>
-                    </motion.div>
-                )}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-gray-100">
+                    <div className="relative mb-6">
+                        <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                            type="text"
+                            placeholder="Buscar alumno por nombre, DNI o email..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none transition-colors text-black text-lg shadow-sm"
+                        />
+                    </div>
 
-                {/* Lista de deudores o detalle del estudiante */}
-                <div className="space-y-4">
                     {!selectedStudent ? (
                         <div className="space-y-4">
-                            {filteredStudents.map((student) => (
+                            {filteredStudents.map(student => (
                                 <motion.div
                                     key={student.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow cursor-pointer border-l-4 border-red-500"
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
                                     onClick={() => setSelectedStudent(student)}
+                                    className="bg-gradient-to-r from-red-50 to-blue-50 rounded-2xl p-6 cursor-pointer hover:shadow-xl transition-all border-2 border-gray-200 hover:border-blue-300 hover:scale-[1.02]"
                                 >
-                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                                        <div>
-                                            <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                                                {student.nombre} {student.apellido}
-                                            </h3>
-                                            <div className="text-gray-600 mt-2 space-y-1">
-                                                <div className="text-sm">DNI: {student.dni}</div>
-                                                {student.email && <div className="text-sm">Email: {student.email}</div>}
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-start gap-4">
+                                            <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200">
+                                                <FiUser className="w-6 h-6 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                                                    {student.nombre} {student.apellido}
+                                                </h3>
+                                                <div className="text-gray-600 space-y-2">
+                                                    <div className="flex items-center gap-2 text-sm">
+                                                        <FiFileText className="w-4 h-4" />
+                                                        DNI: {student.dni}
+                                                    </div>
+                                                    {student.email && (
+                                                        <div className="flex items-center gap-2 text-sm">
+                                                            <FiMail className="w-4 h-4" />
+                                                            Email: {student.email}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="text-left sm:text-right">
-                                            <div className="text-sm text-gray-600">Deuda Total</div>
-                                            <div className="text-3xl sm:text-4xl font-bold text-red-700">
+                                        <div className="text-right">
+                                            <div className="text-sm text-gray-600 mb-1">Deuda Total</div>
+                                            <div className="text-4xl font-bold text-red-700">
                                                 ${formatNumber(student.totalPending)}
                                             </div>
-                                            <div className="text-sm text-gray-500 mt-1">
+                                            <div className="text-sm text-gray-500 mt-2 bg-white/80 px-3 py-1 rounded-full">
                                                 {student.pendingInstallments.length} cuotas pendientes
                                             </div>
                                         </div>
@@ -1002,12 +1003,14 @@ export default function Cobros() {
                             ))}
 
                             {filteredStudents.length === 0 && (
-                                <div className="bg-white rounded-xl shadow-lg p-8 sm:p-12 text-center">
-                                    <FiShoppingCart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                                    <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">
+                                <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-2 border-gray-200">
+                                    <div className="bg-gradient-to-r from-red-100 to-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <FiDollarSign className="w-10 h-10 text-gray-400" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-700 mb-2">
                                         No hay deudores
                                     </h3>
-                                    <p className="text-gray-500 text-sm sm:text-base">
+                                    <p className="text-gray-500 text-lg">
                                         {search ? 'No se encontraron alumnos con los filtros aplicados' : '¡Todos los alumnos están al día!'}
                                     </p>
                                 </div>
@@ -1015,31 +1018,55 @@ export default function Cobros() {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-                                <button
-                                    onClick={() => {
-                                        setSelectedStudent(null);
-                                        setSelectedInstallments([]);
-                                        setExpandedCourses({});
-                                    }}
-                                    className="mb-4 text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-2"
-                                >
-                                    ← Volver a la lista
-                                </button>
+                            <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-gray-200">
+                                <div className="flex justify-between items-center mb-6">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedStudent(null);
+                                            setSelectedInstallments([]);
+                                            setExpandedCourses({});
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-2 text-lg hover:bg-blue-50 px-4 py-2 rounded-xl transition-colors"
+                                    >
+                                        <FiArrowLeft className="w-5 h-5" />
+                                        Volver a la lista
+                                    </button>
 
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                                    <div>
-                                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                                            {selectedStudent.nombre} {selectedStudent.apellido}
-                                        </h2>
-                                        <div className="text-gray-600 mt-2 space-y-1">
-                                            <div className="text-sm">DNI: {selectedStudent.dni}</div>
-                                            <div className="text-sm">Email: {selectedStudent.email}</div>
+                                    {selectedInstallments.length > 0 && (
+                                        <button
+                                            onClick={clearAllSelections}
+                                            className="text-red-600 hover:text-red-800 font-semibold flex items-center gap-2 text-lg hover:bg-red-50 px-4 py-2 rounded-xl transition-colors"
+                                        >
+                                            <FiTrash2 className="w-5 h-5" />
+                                            Limpiar selecciones ({selectedInstallments.length})
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-4">
+                                        <div className="bg-gradient-to-r from-red-100 to-blue-100 p-4 rounded-2xl">
+                                            <FiUser className="w-8 h-8 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-3xl font-bold text-gray-800">
+                                                {selectedStudent.nombre} {selectedStudent.apellido}
+                                            </h2>
+                                            <div className="text-gray-600 mt-3 space-y-2">
+                                                <div className="flex items-center gap-2 text-sm">
+                                                    <FiFileText className="w-4 h-4" />
+                                                    DNI: {selectedStudent.dni}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm">
+                                                    <FiMail className="w-4 h-4" />
+                                                    Email: {selectedStudent.email}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="text-left sm:text-right">
-                                        <div className="text-sm text-gray-600">Deuda Total</div>
-                                        <div className="text-3xl sm:text-4xl font-bold text-red-700">
+                                    <div className="text-right">
+                                        <div className="text-sm text-gray-600 mb-2">Deuda Total</div>
+                                        <div className="text-4xl font-bold text-red-700">
                                             ${formatNumber(selectedStudent.totalPending)}
                                         </div>
                                     </div>
@@ -1047,34 +1074,40 @@ export default function Cobros() {
                             </div>
 
                             {studentCourses.map(course => (
-                                <div key={course.id} className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200">
+                                <div key={course.id} className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-gray-200 hover:shadow-xl transition-all">
                                     <div
-                                        className="bg-gradient-to-r from-red-500 to-blue-500 text-white p-4 cursor-pointer hover:from-red-600 hover:to-blue-600 transition-colors flex justify-between items-center"
+                                        className="bg-gradient-to-r from-red-500 to-blue-500 text-white p-6 cursor-pointer hover:from-red-600 hover:to-blue-600 transition-colors flex justify-between items-center"
                                         onClick={() => toggleCourseExpansion(course.id)}
                                     >
-                                        <div>
-                                            <h3 className="text-lg sm:text-xl font-bold">{course.courseName}</h3>
-                                            <div className="text-sm text-red-100">
-                                                {course.installments.length} cuotas pendientes
+                                        <div className="flex items-center gap-4">
+                                            <div className="bg-white/20 p-3 rounded-xl">
+                                                <FiFileText className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-bold">{course.courseName}</h3>
+                                                <div className="text-sm text-red-100 mt-1">
+                                                    {course.installments.length} cuotas pendientes
+                                                </div>
                                             </div>
                                         </div>
                                         <motion.div
                                             animate={{ rotate: expandedCourses[course.id] ? 180 : 0 }}
                                             transition={{ duration: 0.3 }}
+                                            className="bg-white/20 p-2 rounded-lg"
                                         >
-                                            <FiChevronDown className="w-6 h-6" />
+                                            <FiChevronDown className="w-5 h-5" />
                                         </motion.div>
                                     </div>
 
                                     <AnimatePresence>
                                         {expandedCourses[course.id] && (
                                             <motion.div
-                                                initial={{ height: 0 }}
-                                                animate={{ height: 'auto' }}
-                                                exit={{ height: 0 }}
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
                                                 className="overflow-hidden"
                                             >
-                                                <div className="p-4 space-y-3">
+                                                <div className="p-6 space-y-4 bg-gradient-to-b from-blue-50 to-red-50">
                                                     {course.installments.map(installment => (
                                                         <InstallmentCard
                                                             key={installment.number}
@@ -1095,39 +1128,37 @@ export default function Cobros() {
                     )}
                 </div>
 
-                {/* Carrito flotante responsive */}
                 {selectedInstallments.length > 0 && (
                     <motion.div
-                        initial={{ y: 100, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="fixed bottom-4 right-4 left-4 sm:left-auto bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl shadow-2xl p-4 sm:p-6 sm:min-w-80 z-40"
+                        initial={{ y: 100, opacity: 0, scale: 0.9 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        exit={{ y: 100, opacity: 0, scale: 0.9 }}
+                        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-red-600 text-white rounded-2xl shadow-2xl p-6 min-w-96 z-40 border-2 border-white/20"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <div className="text-sm text-green-100">Total a cobrar</div>
-                                <div className="text-2xl sm:text-3xl font-bold">${formatNumber(totalCarrito)}</div>
+                                <div className="text-sm text-blue-100">Total a cobrar</div>
+                                <div className="text-3xl font-bold">${formatNumber(totalCarrito)}</div>
                             </div>
                             <div className="text-right">
-                                <div className="text-sm text-green-100">Cuotas</div>
-                                <div className="text-xl sm:text-2xl font-bold">{selectedInstallments.length}</div>
+                                <div className="text-sm text-blue-100">Cuotas seleccionadas</div>
+                                <div className="text-2xl font-bold">{selectedInstallments.length}</div>
                             </div>
                         </div>
                         <button
                             onClick={handleProcessPayment}
-                            className="w-full bg-white text-green-700 font-bold py-3 rounded-xl hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-white text-blue-700 font-bold py-4 rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-3 shadow-lg hover:shadow-xl text-lg"
                         >
-                            <FiShoppingCart className="w-5 h-5" />
-                            Procesar Pago
+                            <FiCreditCard className="w-5 h-5" />
+                            Procesar Pago Múltiple
                         </button>
                     </motion.div>
                 )}
 
-                {/* Payment Modal */}
                 <PaymentModal
                     isOpen={showPaymentModal}
                     onClose={() => setShowPaymentModal(false)}
                     selectedInstallments={selectedInstallments}
-                    total={totalCarrito}
                     showNotification={showNotification}
                     onSuccess={handlePaymentSuccess}
                 />

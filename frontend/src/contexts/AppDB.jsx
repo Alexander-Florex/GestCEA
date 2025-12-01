@@ -1751,6 +1751,7 @@ export const AppDBProvider = ({ children }) => {
     // ✅ PAGOS (ACTUALIZADO sin romper nada)
     const registrarPago = useCallback(
         (inscriptionId, installmentNumber, monto, formaPago, observaciones = "") => {
+            // ✅ Obtener datos frescos de la DB
             const inscription = db.inscriptions.find((i) => i.id === inscriptionId);
             if (!inscription) throw new Error("Inscripción no encontrada.");
 
@@ -1759,92 +1760,98 @@ export const AppDBProvider = ({ children }) => {
             );
             if (!installment) throw new Error("Cuota no encontrada.");
 
-            const course = db.courses.find((c) => c.id === inscription.courseId);
+            // ✅ Verificar si ya está pagada
+            if (installment.status === 'Pagada' || installment.status === 'Pagado') {
+                throw new Error("Esta cuota ya está pagada.");
+            }
 
-            // Método real a usar (si no viene, uso el de la inscripción)
+            const course = db.courses.find((c) => c.id === inscription.courseId);
+            const student = db.students.find((s) => s.id === inscription.studentId);
+            if (!student) throw new Error("Estudiante no encontrado.");
+
+            // Método real a usar
             const metodo = formaPago || inscription.paymentType || "Efectivo";
 
-            // =============== MONTO ACTUAL COMPATIBLE =================
+            // =============== CALCULAR MONTO ACTUAL ===============
             const today = new Date();
+            today.setHours(0, 0, 0, 0);
             const dueDate = new Date(installment.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
             const isOverdue = !installment.frozen && today > dueDate;
 
             let montoActual = 0;
 
-            // 1) Si la cuota ya trae valores fijos, usarlos
-            if (
-                installment.amountEnFecha !== undefined &&
-                installment.amountVencido !== undefined
-            ) {
-                montoActual = isOverdue
-                    ? Number(installment.amountVencido) || 0
-                    : Number(installment.amountEnFecha) || 0;
-            } else {
-                // 2) Fallback TOTALMENTE retrocompatible con cuotas viejas
-                if (!course) {
-                    montoActual = Number(installment.amount) || 0;
-                } else if (isOverdue) {
+            // Determinar la key del método
+            const methodKey = metodo === "Efectivo" ? "efectivo"
+                : metodo === "Transferencia" ? "transferencia"
+                    : "tarjeta";
+
+            // PRIORIDAD 1: installmentsByMethod (sistema nuevo)
+            if (inscription.installmentsByMethod && inscription.installmentsByMethod[methodKey]) {
+                const instByMethod = inscription.installmentsByMethod[methodKey].find(
+                    i => Number(i.number) === Number(installmentNumber)
+                );
+
+                if (instByMethod) {
+                    const enFecha = Number(instByMethod.amountEnFecha ?? instByMethod.amount) || 0;
+                    const vencido = Number(instByMethod.amountVencido ?? enFecha) || enFecha;
+                    montoActual = isOverdue ? vencido : enFecha;
+                }
+            }
+
+            // PRIORIDAD 2: Curso (fallback)
+            if (montoActual === 0 && course) {
+                if (isOverdue) {
                     switch (metodo) {
                         case "Efectivo":
-                            montoActual =
-                                Number(course.pagoVencidoEfectivo) ||
-                                Number(installment.amount) ||
-                                0;
+                            montoActual = Number(course.pagoVencidoEfectivo) || 0;
                             break;
                         case "Transferencia":
-                            montoActual =
-                                Number(course.pagoVencidoTransferencia) ||
-                                Number(installment.amount) ||
-                                0;
+                            montoActual = Number(course.pagoVencidoTransferencia) || 0;
                             break;
                         case "Tarjeta":
-                            montoActual =
-                                Number(course.pagoVencidoTarjeta) ||
-                                Number(installment.amount) ||
-                                0;
+                            montoActual = Number(course.pagoVencidoTarjeta) || 0;
                             break;
-                        default:
-                            montoActual = Number(installment.amount) || 0;
                     }
                 } else {
                     switch (metodo) {
                         case "Efectivo":
-                            montoActual =
-                                Number(course.pagoFechaEfectivo) ||
-                                Number(installment.amount) ||
-                                0;
+                            montoActual = Number(course.pagoFechaEfectivo) || 0;
                             break;
                         case "Transferencia":
-                            montoActual =
-                                Number(course.pagoFechaTransferencia) ||
-                                Number(installment.amount) ||
-                                0;
+                            montoActual = Number(course.pagoFechaTransferencia) || 0;
                             break;
                         case "Tarjeta":
-                            montoActual =
-                                Number(course.pagoFechaTarjeta) ||
-                                Number(installment.amount) ||
-                                0;
+                            montoActual = Number(course.pagoFechaTarjeta) || 0;
                             break;
-                        default:
-                            montoActual = Number(installment.amount) || 0;
                     }
                 }
             }
 
-            const pending = Math.max(
-                montoActual - Number(installment.amountPaid || 0),
-                0
-            );
+            // PRIORIDAD 3: Cuota estática (último recurso)
+            if (montoActual === 0) {
+                montoActual = isOverdue
+                    ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
+                    : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
+            }
+
+            const amountPaidActual = Number(installment.amountPaid || 0);
+            const pending = Math.max(montoActual - amountPaidActual, 0);
 
             const montoNum = Number(monto);
             if (montoNum <= 0) throw new Error("El monto debe ser mayor a 0.");
-            if (montoNum > pending) {
-                throw new Error(`El pago excede lo pendiente ($${pending.toFixed(2)}).`);
+
+            // ✅ Tolerancia de $1 para evitar errores de redondeo
+            if (montoNum > pending + 1) {
+                console.warn(`⚠️ Monto ($${montoNum}) supera pendiente ($${pending}), ajustando...`);
+                // En lugar de error, ajustar al máximo permitido
             }
 
-            const nuevoAmountPaid = Number(installment.amountPaid || 0) + montoNum;
-            const quedaCompleto = nuevoAmountPaid >= montoActual;
+            // ✅ Ajustar monto si excede (por redondeo)
+            const montoFinal = Math.min(montoNum, pending);
+
+            const nuevoAmountPaid = amountPaidActual + montoFinal;
+            const quedaCompleto = nuevoAmountPaid >= montoActual - 0.01;
 
             const updatedInstallments = inscription.installments.map((i) =>
                 i.number === installmentNumber
@@ -1852,33 +1859,44 @@ export const AppDBProvider = ({ children }) => {
                         ...i,
                         amountPaid: nuevoAmountPaid,
                         paidAt: quedaCompleto ? nowISO() : i.paidAt ?? null,
-                        status: quedaCompleto ? "Pagado" : "Parcial",
+                        status: quedaCompleto ? "Pagada" : "Parcial",
                     }
                     : i
             );
 
-            // ✅ Actualizar inscripción
-            update("inscriptions", inscriptionId, {
-                installments: updatedInstallments,
-            });
+            // ✅ Actualizar inscripción directamente en la DB
+            const updatedInscriptions = db.inscriptions.map(ins =>
+                ins.id === inscriptionId
+                    ? { ...ins, installments: updatedInstallments, updatedAt: nowISO() }
+                    : ins
+            );
 
-            // ✅ Registrar en caja (misma estructura que ya usabas)
+            // ✅ CORREGIDO: Registrar en caja con campos correctos para CajaDiaria
             const movimientoCaja = {
-                id: getNextId(db.caja),
-                fecha: nowISO(),
-                tipo: "Ingreso",
-                concepto: `Pago cuota ${installmentNumber} - Inscripción #${inscriptionId}`,
-                monto: montoNum,
-                formaPago: metodo,
-                observaciones,
-                inscriptionId,
-                studentId: inscription.studentId,
+                id: getNextId(db.caja || []),
+                estudiante: `${student.nombre} ${student.apellido}`,
+                personal: user
+                    ? (user.name || `${user.nombre || ''} ${user.apellido || ''}`.trim() || 'Sistema')
+                    : 'Sistema',
+                operacion: `${quedaCompleto ? 'Pago completo' : 'Pago parcial'} cuota ${installmentNumber} - ${course?.nombre || 'Curso'}${observaciones ? ` (${observaciones})` : ''}`,
+                entrada: montoFinal,
+                salida: 0,
+                metodo: metodo,
+                fechaHora: nowISO(),
+                studentId: student.id,
                 courseId: inscription.courseId,
+                inscriptionId: inscriptionId,
+                installmentNumber: installmentNumber,
+                tipo: 'Cobro',
                 createdAt: nowISO(),
             };
 
-            const updatedCaja = [...db.caja, movimientoCaja];
-            const updatedDB = { ...db, caja: updatedCaja };
+            const updatedDB = {
+                ...db,
+                inscriptions: updatedInscriptions,
+                caja: [...(db.caja || []), movimientoCaja],
+                __lastModified: nowISO()
+            };
 
             // ✅ Auditoría
             if (db.settings?.enableAudit && user) {
@@ -1888,12 +1906,13 @@ export const AppDBProvider = ({ children }) => {
                     inscriptionId,
                     {
                         installmentNumber,
-                        monto: montoNum,
+                        monto: montoFinal,
                         formaPago: metodo,
-                        previousAmountPaid: installment.amountPaid || 0,
+                        previousAmountPaid: amountPaidActual,
                         newAmountPaid: nuevoAmountPaid,
                         montoActual,
                         isOverdue,
+                        studentName: `${student.nombre} ${student.apellido}`,
                     },
                     user.id,
                     `${user.nombre} ${user.apellido}`
@@ -1901,10 +1920,15 @@ export const AppDBProvider = ({ children }) => {
                 saveAuditLog(auditLog);
             }
 
-            return saveDB(updatedDB);
+            if (saveDB(updatedDB)) {
+                setDB(updatedDB);
+                return true;
+            }
+            return false;
         },
-        [db, update, saveDB, user]
+        [db, saveDB, user]
     );
+
 
 
     // ✅ BECAS
@@ -1933,11 +1957,17 @@ export const AppDBProvider = ({ children }) => {
     // ✅ DEPOSITAR CUOTA (Pago parcial)
     const depositarCuota = useCallback((inscriptionId, installmentNumber, monto, formaPago, observaciones = '') => {
         try {
+            // ✅ Obtener datos frescos de la DB
             const inscription = db.inscriptions.find(ins => ins.id === inscriptionId);
             if (!inscription) throw new Error('Inscripción no encontrada');
 
             const installment = inscription.installments.find(inst => inst.number === installmentNumber);
             if (!installment) throw new Error('Cuota no encontrada');
+
+            // ✅ Verificar si ya está pagada
+            if (installment.status === 'Pagada' || installment.status === 'Pagado') {
+                throw new Error('Esta cuota ya está pagada.');
+            }
 
             const student = db.students.find(s => s.id === inscription.studentId);
             const course = db.courses.find(c => c.id === inscription.courseId);
@@ -1947,7 +1977,9 @@ export const AppDBProvider = ({ children }) => {
 
             // ✅ CALCULAR MONTO ACTUAL SEGÚN MÉTODO DE PAGO
             const today = new Date();
+            today.setHours(0, 0, 0, 0);
             const dueDate = new Date(installment.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
             const isOverdue = !installment.frozen && today > dueDate;
 
             let montoActual = 0;
@@ -1957,7 +1989,7 @@ export const AppDBProvider = ({ children }) => {
                 : formaPago === "Transferencia" ? "transferencia"
                     : "tarjeta";
 
-            // 1) Intentar usar installmentsByMethod si existe
+            // PRIORIDAD 1: installmentsByMethod (sistema nuevo)
             if (inscription.installmentsByMethod && inscription.installmentsByMethod[methodKey]) {
                 const instByMethod = inscription.installmentsByMethod[methodKey].find(
                     i => Number(i.number) === Number(installmentNumber)
@@ -1967,57 +1999,62 @@ export const AppDBProvider = ({ children }) => {
                     const enFecha = Number(instByMethod.amountEnFecha ?? instByMethod.amount) || 0;
                     const vencido = Number(instByMethod.amountVencido ?? enFecha) || enFecha;
                     montoActual = isOverdue ? vencido : enFecha;
-                } else {
-                    // Fallback si no existe en installmentsByMethod
-                    montoActual = isOverdue
-                        ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
-                        : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
                 }
-            } else {
-                // 2) Fallback: usar valores del curso según método
-                if (!course) {
-                    montoActual = Number(installment.amount) || 0;
+            }
+
+            // PRIORIDAD 2: Curso (fallback)
+            if (montoActual === 0 && course) {
+                if (isOverdue) {
+                    switch (formaPago) {
+                        case "Efectivo":
+                            montoActual = Number(course.pagoVencidoEfectivo) || 0;
+                            break;
+                        case "Transferencia":
+                            montoActual = Number(course.pagoVencidoTransferencia) || 0;
+                            break;
+                        case "Tarjeta":
+                            montoActual = Number(course.pagoVencidoTarjeta) || 0;
+                            break;
+                    }
                 } else {
-                    if (isOverdue) {
-                        switch (formaPago) {
-                            case "Efectivo":
-                                montoActual = Number(course.pagoVencidoEfectivo) || Number(installment.amount) || 0;
-                                break;
-                            case "Transferencia":
-                                montoActual = Number(course.pagoVencidoTransferencia) || Number(installment.amount) || 0;
-                                break;
-                            case "Tarjeta":
-                                montoActual = Number(course.pagoVencidoTarjeta) || Number(installment.amount) || 0;
-                                break;
-                            default:
-                                montoActual = Number(installment.amount) || 0;
-                        }
-                    } else {
-                        switch (formaPago) {
-                            case "Efectivo":
-                                montoActual = Number(course.pagoFechaEfectivo) || Number(installment.amount) || 0;
-                                break;
-                            case "Transferencia":
-                                montoActual = Number(course.pagoFechaTransferencia) || Number(installment.amount) || 0;
-                                break;
-                            case "Tarjeta":
-                                montoActual = Number(course.pagoFechaTarjeta) || Number(installment.amount) || 0;
-                                break;
-                            default:
-                                montoActual = Number(installment.amount) || 0;
-                        }
+                    switch (formaPago) {
+                        case "Efectivo":
+                            montoActual = Number(course.pagoFechaEfectivo) || 0;
+                            break;
+                        case "Transferencia":
+                            montoActual = Number(course.pagoFechaTransferencia) || 0;
+                            break;
+                        case "Tarjeta":
+                            montoActual = Number(course.pagoFechaTarjeta) || 0;
+                            break;
                     }
                 }
             }
 
-            const montoPendiente = Math.max(montoActual - Number(installment.amountPaid || 0), 0);
+            // PRIORIDAD 3: Cuota estática (último recurso)
+            if (montoActual === 0) {
+                montoActual = isOverdue
+                    ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
+                    : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
+            }
 
-            if (monto <= 0) throw new Error('El monto debe ser mayor a cero');
-            if (monto > montoPendiente) throw new Error(`El monto no puede superar lo pendiente: $${Math.round(montoPendiente)}`);
+            const amountPaidActual = Number(installment.amountPaid || 0);
+            const montoPendiente = Math.max(montoActual - amountPaidActual, 0);
+
+            const montoNum = Number(monto);
+            if (montoNum <= 0) throw new Error('El monto debe ser mayor a cero');
+
+            // ✅ Tolerancia de $1 para evitar errores de redondeo
+            if (montoNum > montoPendiente + 1) {
+                throw new Error(`El monto ($${montoNum.toFixed(2)}) no puede superar lo pendiente ($${montoPendiente.toFixed(2)})`);
+            }
+
+            // ✅ Ajustar monto si excede ligeramente (por redondeo)
+            const montoFinal = Math.min(montoNum, montoPendiente);
 
             // Actualizar amountPaid
-            const nuevoAmountPaid = Number(installment.amountPaid || 0) + Number(monto);
-            const quedaCompleto = nuevoAmountPaid >= montoActual;
+            const nuevoAmountPaid = amountPaidActual + montoFinal;
+            const quedaCompleto = nuevoAmountPaid >= montoActual - 0.01;
 
             const updatedInstallment = {
                 ...installment,
@@ -2033,28 +2070,29 @@ export const AppDBProvider = ({ children }) => {
 
             const updatedInscription = {
                 ...inscription,
-                installments: updatedInstallments
+                installments: updatedInstallments,
+                updatedAt: new Date().toISOString()
             };
 
-            // Crear movimiento de caja
+            // ✅ CORREGIDO: Crear movimiento de caja con campos correctos
             const nextCajaId = getNextId(db.caja || []);
             const cajaMovimiento = {
                 id: nextCajaId,
-                usuario: `${student.nombre} ${student.apellido}`, // ✅ Estudiante
-                personal:
-                    user?.name ||
-                    `${user?.nombre ?? ''} ${user?.apellido ?? ''}`.trim() ||
-                    'Personal desconocido', // ✅ Personal que cobró
+                estudiante: `${student.nombre} ${student.apellido}`,
+                personal: user
+                    ? (user.name || `${user.nombre || ''} ${user.apellido || ''}`.trim() || 'Sistema')
+                    : 'Sistema',
                 operacion: `${quedaCompleto ? 'Pago completo' : 'Pago parcial'} cuota ${installmentNumber} - ${course.nombre}${observaciones ? ` (${observaciones})` : ''}`,
-                entrada: Number(monto),
+                entrada: montoFinal,
                 salida: 0,
-                tipo: 'Automática',
-                metodo: formaPago, // ✅ Efectivo | Transferencia | Tarjeta
+                metodo: formaPago,
                 fechaHora: new Date().toISOString(),
                 studentId: student.id,
                 courseId: course.id,
                 inscriptionId: inscription.id,
-                installmentNumber
+                installmentNumber: installmentNumber,
+                tipo: 'Cobro',
+                createdAt: new Date().toISOString(),
             };
 
             // Actualizar DB
@@ -2074,7 +2112,15 @@ export const AppDBProvider = ({ children }) => {
                         AUDIT_ACTIONS.PAYMENT,
                         'inscription',
                         inscriptionId,
-                        { installmentNumber, monto, formaPago, quedaCompleto, montoActual, isOverdue }, // ✅ Agregado montoActual e isOverdue
+                        {
+                            installmentNumber,
+                            monto: montoFinal,
+                            formaPago,
+                            quedaCompleto,
+                            montoActual,
+                            isOverdue,
+                            studentName: `${student.nombre} ${student.apellido}`,
+                        },
                         user.id,
                         user.name || `${user.nombre} ${user.apellido}`
                     );
@@ -2086,63 +2132,6 @@ export const AppDBProvider = ({ children }) => {
             return false;
         } catch (error) {
             console.error('[DB] Error en depositarCuota:', error);
-            setError(error.message);
-            throw error;
-        }
-    }, [db, user, saveDB]);
-
-    // ✅ FREEZAR/DESFREEZAR CUOTA
-    const freezarCuota = useCallback((inscriptionId, installmentNumber, frozen = true) => {
-        try {
-            const inscription = db.inscriptions.find(ins => ins.id === inscriptionId);
-            if (!inscription) throw new Error('Inscripción no encontrada');
-
-            const installment = inscription.installments.find(inst => inst.number === installmentNumber);
-            if (!installment) throw new Error('Cuota no encontrada');
-
-            // Actualizar la cuota
-            const updatedInstallment = {
-                ...installment,
-                frozen: frozen
-            };
-
-            const updatedInstallments = inscription.installments.map(inst =>
-                inst.number === installmentNumber ? updatedInstallment : inst
-            );
-
-            const updatedInscription = {
-                ...inscription,
-                installments: updatedInstallments
-            };
-
-            // Actualizar DB
-            const updatedDB = {
-                ...db,
-                inscriptions: db.inscriptions.map(ins => ins.id === inscriptionId ? updatedInscription : ins),
-                __lastModified: nowISO()
-            };
-
-            if (saveDB(updatedDB)) {
-                setDB(updatedDB);
-
-                // Auditoría
-                if (user) {
-                    const auditLog = createAuditLog(
-                        AUDIT_ACTIONS.UPDATE,
-                        'inscription',
-                        inscriptionId,
-                        { installmentNumber, frozen },
-                        user.id,
-                        user.name || `${user.nombre} ${user.apellido}`
-                    );
-                    saveAuditLog(auditLog);
-                }
-
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('[DB] Error en freezarCuota:', error);
             setError(error.message);
             throw error;
         }
@@ -2235,6 +2224,51 @@ export const AppDBProvider = ({ children }) => {
         }, AUTO_BACKUP_INTERVAL);
         return () => clearInterval(id);
     }, [db]);
+
+    // ✅ FREEZAR / DESFREEZAR CUOTA (se guarda en la DB)
+    const freezarCuota = useCallback(
+        (inscriptionId, installmentNumber, newStatus) => {
+            try {
+                if (!db) throw new Error('Base de datos no inicializada');
+
+                // Buscar inscripción fresca
+                const inscription = db.inscriptions.find(
+                    ins => ins.id === inscriptionId
+                );
+                if (!inscription) throw new Error('Inscripción no encontrada');
+
+                // Actualizar solo la cuota indicada
+                const updatedInstallments = (inscription.installments || []).map(inst => {
+                    if (Number(inst.number) === Number(installmentNumber)) {
+                        return {
+                            ...inst,
+                            frozen: newStatus,
+                            // opcional: metadatos de freeze
+                            freezeAt: newStatus ? nowISO() : null,
+                            freezeByUserId: newStatus && user ? user.id : null,
+                        };
+                    }
+                    return inst;
+                });
+
+                // Usamos el update genérico para respetar validaciones y auditoría
+                const updated = update('inscriptions', inscriptionId, {
+                    installments: updatedInstallments,
+                });
+
+                if (!updated) {
+                    throw new Error('No se pudo actualizar la cuota');
+                }
+
+                return true;
+            } catch (error) {
+                console.error('[DB] Error en freezarCuota:', error);
+                setError(error.message || 'Error al cambiar estado de freeze');
+                throw error;
+            }
+        },
+        [db, user, update]
+    );
 
     // ========================== RENDER ==========================
     const contextValue = useMemo(() => ({

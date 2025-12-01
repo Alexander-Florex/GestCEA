@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiDollarSign, FiArrowUpRight, FiPlus, FiX, FiArrowDownLeft,
     FiArrowUpLeft, FiFilter, FiPrinter, FiCalendar, FiUser,
-    FiLock, FiUnlock, FiCreditCard
+    FiLock, FiUnlock, FiCreditCard, FiTrendingUp
 } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB";
 
@@ -39,6 +39,7 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
         descripcion: '',
         tipoOperacion: 'entrada', // 'entrada' o 'salida'
         monto: '',
+        metodoPago: 'Efectivo' // Agregar método de pago
     });
 
     const handleChange = (e) => {
@@ -64,11 +65,12 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
 
         const nuevaOperacion = {
             id: nextId,
-            usuario: usuarioActual,
+            estudiante: 'N/A', // Para operaciones manuales
+            personal: usuarioActual, // Quien realizó la operación
             operacion: formData.descripcion,
             entrada: formData.tipoOperacion === 'entrada' ? Number(formData.monto) : 0,
             salida: formData.tipoOperacion === 'salida' ? Number(formData.monto) : 0,
-            tipo: 'Manual',
+            metodo: formData.metodoPago,
             fechaHora: new Date().toISOString()
         };
 
@@ -78,6 +80,7 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
             descripcion: '',
             tipoOperacion: 'entrada',
             monto: '',
+            metodoPago: 'Efectivo'
         });
     };
 
@@ -86,6 +89,7 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
             descripcion: '',
             tipoOperacion: 'entrada',
             monto: '',
+            metodoPago: 'Efectivo'
         });
         onClose();
     };
@@ -98,7 +102,7 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50"
                 onClick={handleCancel}
             >
                 <motion.div
@@ -143,7 +147,7 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                                     <FiLock className="w-4 h-4 text-gray-500" />
-                                    Usuario (Automático)
+                                    Personal (Automático)
                                 </label>
                                 <div className="px-4 py-3 bg-gray-100 rounded-lg text-gray-600 font-medium border-2 border-gray-300 cursor-not-allowed">
                                     {usuarioActual}
@@ -151,111 +155,114 @@ function ModalNuevaOperacion({ isOpen, onClose, onSubmit, nextId, usuarioActual 
                             </div>
                         </div>
 
-                        {/* Tipo de Operación */}
+                        {/* Tipo de operación */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Tipo de Operación <span className="text-red-500">*</span>
+                            <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                                <FiArrowUpRight className="w-4 h-4" />
+                                Tipo de Operación *
                             </label>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setFormData(prev => ({ ...prev, tipoOperacion: 'entrada' }))}
-                                    className={`p-4 rounded-lg border-2 transition-all ${
+                                    className={`p-4 rounded-lg border-2 font-semibold transition-all flex items-center justify-center gap-2 ${
                                         formData.tipoOperacion === 'entrada'
-                                            ? 'border-green-500 bg-green-50 text-green-700 font-bold'
-                                            : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-green-50 border-green-500 text-green-700'
+                                            : 'bg-gray-50 border-gray-300 text-gray-700 hover:border-green-400'
                                     }`}
                                 >
-                                    <div className="flex items-center justify-center gap-2">
-                                        <FiArrowDownLeft className="w-5 h-5" />
-                                        <span>Entrada</span>
-                                    </div>
+                                    <FiArrowDownLeft className="w-5 h-5" />
+                                    Entrada
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setFormData(prev => ({ ...prev, tipoOperacion: 'salida' }))}
-                                    className={`p-4 rounded-lg border-2 transition-all ${
+                                    className={`p-4 rounded-lg border-2 font-semibold transition-all flex items-center justify-center gap-2 ${
                                         formData.tipoOperacion === 'salida'
-                                            ? 'border-red-500 bg-red-50 text-red-700 font-bold'
-                                            : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-red-50 border-red-500 text-red-700'
+                                            : 'bg-gray-50 border-gray-300 text-gray-700 hover:border-red-400'
                                     }`}
                                 >
-                                    <div className="flex items-center justify-center gap-2">
-                                        <FiArrowUpLeft className="w-5 h-5" />
-                                        <span>Salida</span>
-                                    </div>
+                                    <FiArrowUpLeft className="w-5 h-5" />
+                                    Salida
                                 </button>
                             </div>
                         </div>
 
-                        {/* Descripción de la operación */}
+                        {/* Descripción */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Descripción de la Operación <span className="text-red-500">*</span>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                <FiUnlock className="w-4 h-4 text-green-500" />
+                                Descripción *
                             </label>
                             <textarea
                                 name="descripcion"
                                 value={formData.descripcion}
                                 onChange={handleChange}
-                                rows="3"
                                 required
-                                placeholder="Ej: Pago de cuota, Venta de materiales, Gastos administrativos, etc."
-                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none transition-colors text-black"
+                                rows={3}
+                                placeholder="Ej: Pago de servicios, venta de material, etc."
+                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none resize-none text-black"
                             />
                         </div>
 
                         {/* Monto */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Monto {formData.tipoOperacion === 'entrada' ? '(Entrada)' : '(Salida)'} <span className="text-red-500">*</span>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                <FiUnlock className="w-4 h-4 text-green-500" />
+                                Monto *
                             </label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold text-lg">
-                                    $
-                                </span>
-                                <input
-                                    type="number"
-                                    name="monto"
-                                    value={formData.monto}
-                                    onChange={handleChange}
-                                    min="0"
-                                    step="0.01"
-                                    required
-                                    placeholder="0.00"
-                                    className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none transition-colors font-semibold text-lg ${
-                                        formData.tipoOperacion === 'entrada'
-                                            ? 'border-green-300 bg-green-50 text-green-700 focus:border-green-500'
-                                            : 'border-red-300 bg-red-50 text-red-700 focus:border-red-500'
-                                    }`}
-                                />
+                            <input
+                                type="number"
+                                name="monto"
+                                value={formData.monto}
+                                onChange={handleChange}
+                                required
+                                min="0.01"
+                                step="0.01"
+                                placeholder="0.00"
+                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-black"
+                            />
+                        </div>
+
+                        {/* Método de Pago */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                                <FiCreditCard className="w-4 h-4" />
+                                Método de Pago *
+                            </label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {['Efectivo', 'Transferencia', 'Tarjeta'].map(method => (
+                                    <button
+                                        key={method}
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, metodoPago: method }))}
+                                        className={`p-3 rounded-lg border-2 font-semibold transition-all ${
+                                            formData.metodoPago === method
+                                                ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                                : 'bg-gray-50 border-gray-300 text-gray-700 hover:border-blue-400'
+                                        }`}
+                                    >
+                                        {method}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Información adicional */}
-                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                            <p className="text-sm text-blue-800">
-                                <strong>Nota:</strong> Seleccione el tipo de operación (Entrada o Salida) y complete todos los campos requeridos. Las operaciones automáticas del sistema seguirán registrándose independientemente.
-                            </p>
-                        </div>
-
                         {/* Botones */}
-                        <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-gray-200">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4">
                             <button
                                 type="button"
                                 onClick={handleCancel}
-                                className="flex-1 px-4 lg:px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="submit"
-                                className={`flex-1 px-4 lg:px-6 py-3 rounded-lg font-semibold text-white transition-colors shadow-lg ${
-                                    formData.tipoOperacion === 'entrada'
-                                        ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
-                                        : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
-                                }`}
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-lg hover:from-red-700 hover:to-blue-700 transition-colors font-bold"
                             >
-                                {formData.tipoOperacion === 'entrada' ? 'Registrar Entrada' : 'Registrar Salida'}
+                                Registrar Operación
                             </button>
                         </div>
                     </form>
@@ -275,7 +282,7 @@ function ModalEstadoCaja({ isOpen, onClose, cajaAbierta, onToggleCaja }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50"
                 onClick={onClose}
             >
                 <motion.div
@@ -283,60 +290,49 @@ function ModalEstadoCaja({ isOpen, onClose, cajaAbierta, onToggleCaja }) {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white rounded-2xl shadow-2xl max-w-md w-full border-2 border-gray-200"
+                    className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-gray-200"
                 >
-                    <div className={`bg-gradient-to-r ${cajaAbierta ? 'from-red-600 to-blue-600' : 'from-gray-600 to-gray-700'} text-white p-4 lg:p-6 rounded-t-2xl`}>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                                {cajaAbierta ? <FiUnlock className="w-6 h-6 lg:w-8 lg:h-8" /> : <FiLock className="w-6 h-6 lg:w-8 lg:h-8" />}
-                                <div>
-                                    <h2 className="text-xl lg:text-2xl font-bold">Estado de Caja</h2>
-                                    <p className={cajaAbierta ? 'text-blue-100' : 'text-gray-100'}>
-                                        {cajaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={onClose}
-                                className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors"
-                            >
-                                <FiX className="w-5 h-5 lg:w-6 lg:h-6" />
-                            </button>
+                    <div className="text-center space-y-6">
+                        <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center ${
+                            cajaAbierta ? 'bg-green-100' : 'bg-red-100'
+                        }`}>
+                            {cajaAbierta ? (
+                                <FiUnlock className="w-10 h-10 text-green-600" />
+                            ) : (
+                                <FiLock className="w-10 h-10 text-red-600" />
+                            )}
                         </div>
-                    </div>
 
-                    <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-                        <div className={`${cajaAbierta ? 'bg-gradient-to-r from-red-50 to-blue-50 border-red-200' : 'bg-gray-50 border-gray-200'} border-2 rounded-lg p-4`}>
-                            <p className={`text-center text-base lg:text-lg font-semibold ${cajaAbierta ? 'text-gray-800' : 'text-gray-800'}`}>
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                                Estado de Caja
+                            </h2>
+                            <p className="text-gray-600">
                                 La caja está actualmente <span className="font-bold">{cajaAbierta ? 'ABIERTA' : 'CERRADA'}</span>
                             </p>
                         </div>
 
-                        <div className="text-center">
-                            <p className="text-sm text-gray-600 mb-4">
-                                ¿Desea {cajaAbierta ? 'cerrar' : 'abrir'} la caja?
-                            </p>
+                        <div className="space-y-3">
                             <button
                                 onClick={() => {
                                     onToggleCaja();
                                     onClose();
                                 }}
-                                className={`w-full px-6 py-3 rounded-lg font-semibold text-white transition-colors shadow-lg ${
+                                className={`w-full px-6 py-3 rounded-lg font-bold transition-colors ${
                                     cajaAbierta
-                                        ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
-                                        : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                                        : 'bg-green-600 hover:bg-green-700 text-white'
                                 }`}
                             >
                                 {cajaAbierta ? 'Cerrar Caja' : 'Abrir Caja'}
                             </button>
-                        </div>
 
-                        <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
-                            <p className="text-xs text-red-700">
-                                <strong>Nota:</strong> {cajaAbierta
-                                ? 'Al cerrar la caja, se suspenderán los registros de nuevas operaciones hasta que se vuelva a abrir.'
-                                : 'Al abrir la caja, se habilitará el registro de operaciones nuevamente.'}
-                            </p>
+                            <button
+                                onClick={onClose}
+                                className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                            >
+                                Cancelar
+                            </button>
                         </div>
                     </div>
                 </motion.div>
@@ -345,311 +341,290 @@ function ModalEstadoCaja({ isOpen, onClose, cajaAbierta, onToggleCaja }) {
     );
 }
 
-/* ==================== Página Principal ==================== */
-export default function CajaDiaria() {
-    const { cajaMovimientos = [] } = useDB();
+/* ==================== Función auxiliar para manejar fechas ==================== */
+const safeDateConversion = (dateString) => {
+    try {
+        if (!dateString) return new Date();
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? new Date() : date;
+    } catch (error) {
+        console.warn('Error convirtiendo fecha:', dateString, error);
+        return new Date();
+    }
+};
 
-    // Estados principales
-    const [operaciones, setOperaciones] = useState([]);
+/* ==================== COMPONENTE PRINCIPAL ==================== */
+export default function CajaDiaria() {
+    const { cajaMovimientos = [], addCajaMovimiento } = useDB();
     const [notifications, setNotifications] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalCajaOpen, setModalCajaOpen] = useState(false);
     const [cajaAbierta, setCajaAbierta] = useState(true);
+    const [filtros, setFiltros] = useState({
+        fechaDesde: new Date().toISOString().split('T')[0],
+        fechaHasta: new Date().toISOString().split('T')[0],
+        tipoMovimiento: 'Todos', // 'Todos', 'Entradas', 'Salidas'
+        metodoPago: 'Todos',
+        personal: 'Todos'
+    });
 
-    // Filtros
-    const [filtroFechaDesde, setFiltroFechaDesde] = useState(new Date().toISOString().split('T')[0]);
-    const [filtroFechaHasta, setFiltroFechaHasta] = useState(new Date().toISOString().split('T')[0]);
-    const [filtroTipo, setFiltroTipo] = useState('Todos');
-    const [filtroUsuario, setFiltroUsuario] = useState('Todos');
-    const [filtroMetodo, setFiltroMetodo] = useState('Todos'); // Nuevo filtro por método
+    const usuarioActual = 'Sistema'; // Cambiar por el usuario logueado
 
-    // Usuario actual - Aquí deberías obtener el nombre del usuario desde tu sistema de autenticación
-    const usuarioActual = "Lucas Pérez"; // Cambia esto por el nombre real del usuario
+    // Calcular siguiente ID
+    const nextId = useMemo(() => {
+        if (cajaMovimientos.length === 0) return 1;
+        const ids = cajaMovimientos.map(op => Number(op.id) || 0).filter(id => !isNaN(id));
+        return ids.length > 0 ? Math.max(...ids) + 1 : 1;
+    }, [cajaMovimientos]);
+
+    // Filtrar operaciones con manejo seguro de fechas
+    const operacionesFiltradas = useMemo(() => {
+        return cajaMovimientos.filter(op => {
+            try {
+                const fechaOp = safeDateConversion(op.fechaHora).toISOString().split('T')[0];
+                const cumpleFecha = fechaOp >= filtros.fechaDesde && fechaOp <= filtros.fechaHasta;
+
+                // Filtro por tipo de movimiento
+                let cumpleTipo = true;
+                if (filtros.tipoMovimiento === 'Entradas') {
+                    cumpleTipo = (op.entrada || 0) > 0;
+                } else if (filtros.tipoMovimiento === 'Salidas') {
+                    cumpleTipo = (op.salida || 0) > 0;
+                }
+
+                const cumpleMetodo = filtros.metodoPago === 'Todos' || op.metodo === filtros.metodoPago;
+                const cumplePersonal = filtros.personal === 'Todos' || op.personal === filtros.personal;
+
+                return cumpleFecha && cumpleTipo && cumpleMetodo && cumplePersonal;
+            } catch (error) {
+                console.warn('Error filtrando operación:', op, error);
+                return false;
+            }
+        });
+    }, [cajaMovimientos, filtros]);
+
+    // Calcular totales
+    const totales = useMemo(() => {
+        const totalEntradas = operacionesFiltradas.reduce((sum, op) => sum + (Number(op.entrada) || 0), 0);
+        const totalSalidas = operacionesFiltradas.reduce((sum, op) => sum + (Number(op.salida) || 0), 0);
+        const balance = totalEntradas - totalSalidas;
+
+        return { totalEntradas, totalSalidas, balance };
+    }, [operacionesFiltradas]);
+
+    // Obtener lista única de personal
+    const listaPersonal = useMemo(() => {
+        const personalSet = new Set(cajaMovimientos.map(op => op.personal).filter(Boolean));
+        return ['Todos', ...Array.from(personalSet)];
+    }, [cajaMovimientos]);
 
     // Notificaciones
     const showNotification = (type, message) => {
         const id = Date.now();
-        setNotifications(n => [...n, { id, type, message }]);
+        setNotifications(prev => [...prev, { id, type, message }]);
         setTimeout(() => removeNotification(id), 3000);
     };
-    const removeNotification = id => setNotifications(n => n.filter(x => x.id !== id));
 
-    // Manejar nueva operación manual
-    const handleNuevaOperacion = (nuevaOp) => {
-        setOperaciones(prev => [...prev, nuevaOp]);
-        setModalOpen(false);
+    const removeNotification = (id) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    };
+
+    // Handlers
+    const handleNuevaOperacion = (operacion) => {
+        if (!cajaAbierta) {
+            showNotification('error', 'La caja está cerrada. No se pueden registrar operaciones.');
+            return;
+        }
+
+        addCajaMovimiento(operacion);
         showNotification('success', 'Operación registrada exitosamente');
+        setModalOpen(false);
     };
 
-    // Operaciones del sistema
-    const operacionesAutomaticas = useMemo(() => {
-        return cajaMovimientos.map((mov, index) => {
-            if (mov.usuario && mov.operacion) {
-                return {
-                    id: mov.id || `auto-${index}`,
-                    usuario: mov.usuario,
-                    operacion: mov.operacion,
-                    entrada: Number(mov.entrada || 0),
-                    salida: Number(mov.salida || 0),
-                    metodo: mov.metodo || 'Automática', // Para operaciones automáticas
-                    tipo: mov.tipo || 'Automática',
-                    fechaHora: mov.fechaHora || new Date().toISOString()
-                };
-            }
-
-            return {
-                id: `auto-${index}`,
-                usuario: mov.personal || 'Sistema',
-                operacion: `${mov.pago} - ${mov.cursoNombre || 'Curso'} (${mov.estudianteNombre || 'Estudiante'})`,
-                entrada: Number(mov.monto || 0),
-                salida: 0,
-                metodo: 'Automática', // Para operaciones automáticas
-                tipo: 'Automática',
-                fechaHora: mov.fechaHora || new Date().toISOString()
-            };
-        });
-    }, [cajaMovimientos]);
-
-    // Combinar operaciones automáticas y manuales
-    const todasLasOperaciones = useMemo(() => {
-        return [...operacionesAutomaticas, ...operaciones].sort((a, b) =>
-            new Date(b.fechaHora) - new Date(a.fechaHora)
-        );
-    }, [operacionesAutomaticas, operaciones]);
-
-    // Operaciones filtradas
-    const operacionesFiltradas = useMemo(() => {
-        return todasLasOperaciones.filter(op => {
-            const fechaOp = new Date(op.fechaHora).toISOString().split('T')[0];
-            const cumpleFecha = fechaOp >= filtroFechaDesde && fechaOp <= filtroFechaHasta;
-            const cumpleTipo = filtroTipo === 'Todos' || op.tipo === filtroTipo;
-            const cumpleUsuario = filtroUsuario === 'Todos' || op.usuario === filtroUsuario;
-            const cumpleMetodo = filtroMetodo === 'Todos' || op.metodo === filtroMetodo; // Nuevo filtro
-
-            return cumpleFecha && cumpleTipo && cumpleUsuario && cumpleMetodo;
-        });
-    }, [todasLasOperaciones, filtroFechaDesde, filtroFechaHasta, filtroTipo, filtroUsuario, filtroMetodo]);
-
-    // Usuarios únicos para el filtro
-    const usuariosUnicos = useMemo(() => {
-        const usuarios = new Set(todasLasOperaciones.map(op => op.usuario));
-        return ['Todos', ...Array.from(usuarios)];
-    }, [todasLasOperaciones]);
-
-    // Métodos únicos para el filtro
-    const metodosUnicos = useMemo(() => {
-        const metodos = new Set(todasLasOperaciones.map(op => op.metodo));
-        return ['Todos', ...Array.from(metodos)].filter(metodo => metodo && metodo !== 'Automática');
-    }, [todasLasOperaciones]);
-
-    // Calcular totales
-    const totales = useMemo(() => {
-        const totalEntradas = operacionesFiltradas.reduce((sum, op) => sum + (op.entrada || 0), 0);
-        const totalSalidas = operacionesFiltradas.reduce((sum, op) => sum + (op.salida || 0), 0);
-        const balance = totalEntradas - totalSalidas;
-
-        return { entradas: totalEntradas, salidas: totalSalidas, balance };
-    }, [operacionesFiltradas]);
-
-    // ID siguiente para nueva operación
-    const nextId = operaciones.length > 0
-        ? Math.max(...operaciones.map(op => Number(op.id) || 0)) + 1
-        : 1;
-
-    // Generar PDF
-    const handleImprimir = () => {
-        showNotification('success', 'Generando reporte PDF...');
-        console.log('Generando PDF con operaciones:', operacionesFiltradas);
-    };
-
-    // Toggle estado de caja
     const handleToggleCaja = () => {
-        setCajaAbierta(prev => !prev);
-        showNotification('success', cajaAbierta ? 'Caja cerrada exitosamente' : 'Caja abierta exitosamente');
+        setCajaAbierta(!cajaAbierta);
+        showNotification('success', `Caja ${!cajaAbierta ? 'abierta' : 'cerrada'} exitosamente`);
+    };
+
+    const handlePrintReport = () => {
+        window.print();
+    };
+
+    // Función segura para formatear fecha
+    const formatSafeDate = (dateString) => {
+        try {
+            const date = safeDateConversion(dateString);
+            return date.toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            console.warn('Error formateando fecha:', dateString, error);
+            return 'Fecha inválida';
+        }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 lg:p-6">
+        <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-blue-50 p-4 lg:p-8">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 lg:p-6 rounded-2xl shadow-lg">
+            {/* Header */}
+            <div className="max-w-7xl mx-auto mb-6 lg:mb-8">
+                <div className="bg-white rounded-2xl shadow-xl p-4 lg:p-6 border-2 border-gray-200">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <div>
-                            <h1 className="text-2xl lg:text-3xl font-bold">📊 Caja Diaria</h1>
-                            <p className="text-blue-100 mt-1 text-sm lg:text-base">Sistema de rastreo y auditoría de movimientos</p>
+                        <div className="flex items-center space-x-4">
+                            <div className="bg-gradient-to-r from-red-600 to-blue-600 p-3 lg:p-4 rounded-2xl">
+                                <FiDollarSign className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl lg:text-4xl font-bold text-gray-800">Caja Diaria</h1>
+                                <p className="text-gray-600 text-sm lg:text-base">Control de ingresos y egresos</p>
+                            </div>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
+
+                        <div className="flex flex-wrap gap-2 lg:gap-3">
                             <button
                                 onClick={() => setModalCajaOpen(true)}
-                                className={`flex items-center justify-center gap-2 px-4 lg:px-6 py-3 rounded-lg font-semibold transition-all shadow-md ${
+                                className={`px-4 lg:px-6 py-2 lg:py-3 rounded-xl font-bold transition-colors flex items-center gap-2 text-sm lg:text-base ${
                                     cajaAbierta
-                                        ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
-                                        : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800'
+                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
                                 }`}
                             >
                                 {cajaAbierta ? <FiUnlock className="w-4 h-4 lg:w-5 lg:h-5" /> : <FiLock className="w-4 h-4 lg:w-5 lg:h-5" />}
-                                <span className="text-sm lg:text-base">{cajaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}</span>
+                                Caja {cajaAbierta ? 'Abierta' : 'Cerrada'}
                             </button>
+
                             <button
                                 onClick={() => setModalOpen(true)}
                                 disabled={!cajaAbierta}
-                                className={`flex items-center justify-center gap-2 px-4 lg:px-6 py-3 rounded-lg font-semibold transition-all shadow-md ${
-                                    cajaAbierta
-                                        ? 'bg-white text-red-600 hover:bg-red-50'
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                }`}
+                                className="px-4 lg:px-6 py-2 lg:py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-xl hover:from-red-700 hover:to-blue-700 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm lg:text-base"
                             >
                                 <FiPlus className="w-4 h-4 lg:w-5 lg:h-5" />
-                                <span className="text-sm lg:text-base">Nueva Operación</span>
+                                Nueva Operación
                             </button>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Tarjetas de resumen */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Entradas */}
-                    <motion.div
-                        whileHover={{ y: -2 }}
-                        className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 lg:p-6 border-2 border-blue-200 shadow-md"
-                    >
+            {/* Resumen */}
+            <div className="max-w-7xl mx-auto mb-6 lg:mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+                    {/* Total Entradas */}
+                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-green-500 hover:shadow-xl transition-shadow">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-blue-700">Total Entradas</p>
-                                <p className="text-2xl lg:text-3xl font-bold text-blue-800 mt-1">
-                                    ${totales.entradas.toLocaleString('es-AR', {
-                                    minimumFractionDigits: 0,
-                                    maximumFractionDigits: 0
-                                })}
+                                <p className="text-gray-600 text-xs lg:text-sm font-medium">Total Entradas</p>
+                                <p className="text-2xl lg:text-3xl font-bold text-green-700">
+                                    ${totales.totalEntradas.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </p>
                             </div>
-                            <div className="bg-blue-200 rounded-full p-2 lg:p-3">
-                                <FiArrowDownLeft className="w-6 h-6 lg:w-8 lg:h-8 text-blue-700" />
+                            <div className="bg-green-100 p-3 lg:p-4 rounded-xl">
+                                <FiArrowDownLeft className="w-6 h-6 lg:w-8 lg:h-8 text-green-600" />
                             </div>
                         </div>
-                    </motion.div>
-
-                    {/* Salidas */}
-                    <motion.div
-                        whileHover={{ y: -2 }}
-                        className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 lg:p-6 border-2 border-red-200 shadow-md"
-                    >
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-red-700">Total Salidas</p>
-                                <p className="text-2xl lg:text-3xl font-bold text-red-800 mt-1">
-                                    ${totales.salidas.toLocaleString('es-AR', {
-                                    minimumFractionDigits: 0,
-                                    maximumFractionDigits: 0
-                                })}
-                                </p>
-                            </div>
-                            <div className="bg-red-200 rounded-full p-2 lg:p-3">
-                                <FiArrowUpLeft className="w-6 h-6 lg:w-8 lg:h-8 text-red-700" />
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Balance */}
-                    <motion.div
-                        whileHover={{ y: -2 }}
-                        className={`bg-gradient-to-br rounded-xl p-4 lg:p-6 border-2 shadow-md ${
-                            totales.balance >= 0
-                                ? 'from-green-50 to-green-100 border-green-200'
-                                : 'from-orange-50 to-orange-100 border-orange-200'
-                        }`}
-                    >
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className={`text-sm font-medium ${
-                                    totales.balance >= 0 ? 'text-green-700' : 'text-orange-700'
-                                }`}>
-                                    Balance
-                                </p>
-                                <p className={`text-2xl lg:text-3xl font-bold mt-1 ${
-                                    totales.balance >= 0 ? 'text-green-800' : 'text-orange-800'
-                                }`}>
-                                    ${totales.balance.toLocaleString('es-AR', {
-                                    minimumFractionDigits: 0,
-                                    maximumFractionDigits: 0
-                                })}
-                                </p>
-                            </div>
-                            <div className={`rounded-full p-2 lg:p-3 ${
-                                totales.balance >= 0 ? 'bg-green-200' : 'bg-orange-200'
-                            }`}>
-                                <FiDollarSign className={`w-6 h-6 lg:w-8 lg:h-8 ${
-                                    totales.balance >= 0 ? 'text-green-700' : 'text-orange-700'
-                                }`} />
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
-
-                {/* Filtros y acciones */}
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 lg:p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <FiFilter className="w-5 h-5 text-red-600" />
-                        <h3 className="text-lg font-bold text-gray-800">Filtros y Acciones</h3>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                        {/* Filtro Fecha Desde */}
+                    {/* Total Salidas */}
+                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-red-500 hover:shadow-xl transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-600 text-xs lg:text-sm font-medium">Total Salidas</p>
+                                <p className="text-2xl lg:text-3xl font-bold text-red-700">
+                                    ${totales.totalSalidas.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                </p>
+                            </div>
+                            <div className="bg-red-100 p-3 lg:p-4 rounded-xl">
+                                <FiArrowUpLeft className="w-6 h-6 lg:w-8 lg:h-8 text-red-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Balance */}
+                    <div className={`bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 ${totales.balance >= 0 ? 'border-blue-500' : 'border-orange-500'} hover:shadow-xl transition-shadow`}>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-600 text-xs lg:text-sm font-medium">Balance</p>
+                                <p className={`text-2xl lg:text-3xl font-bold ${totales.balance >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+                                    ${Math.abs(totales.balance).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                </p>
+                            </div>
+                            <div className={`${totales.balance >= 0 ? 'bg-blue-100' : 'bg-orange-100'} p-3 lg:p-4 rounded-xl`}>
+                                <FiTrendingUp className={`w-6 h-6 lg:w-8 lg:h-8 ${totales.balance >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filtros */}
+            <div className="max-w-7xl mx-auto mb-6 lg:mb-8">
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 lg:p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <FiFilter className="w-5 h-5 lg:w-6 lg:h-6 text-red-600" />
+                        <h2 className="text-lg lg:text-xl font-bold text-gray-800">Filtros y Acciones</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Fecha Desde */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                <FiCalendar className="w-4 h-4 text-red-600" />
+                                <FiCalendar className="w-4 h-4" />
                                 Fecha Desde:
                             </label>
                             <input
                                 type="date"
-                                value={filtroFechaDesde}
-                                onChange={(e) => setFiltroFechaDesde(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
+                                value={filtros.fechaDesde}
+                                onChange={(e) => setFiltros({ ...filtros, fechaDesde: e.target.value })}
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none text-black"
                             />
                         </div>
 
-                        {/* Filtro Fecha Hasta */}
+                        {/* Fecha Hasta */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                <FiCalendar className="w-4 h-4 text-blue-600" />
+                                <FiCalendar className="w-4 h-4" />
                                 Fecha Hasta:
                             </label>
                             <input
                                 type="date"
-                                value={filtroFechaHasta}
-                                onChange={(e) => setFiltroFechaHasta(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
+                                value={filtros.fechaHasta}
+                                onChange={(e) => setFiltros({ ...filtros, fechaHasta: e.target.value })}
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-black"
                             />
                         </div>
 
-                        {/* Filtro Tipo */}
+                        {/* Tipo de Movimiento */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Tipo de Operación:
+                            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                <FiArrowUpRight className="w-4 h-4" />
+                                Tipo de Movimiento:
                             </label>
                             <select
-                                value={filtroTipo}
-                                onChange={(e) => setFiltroTipo(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
+                                value={filtros.tipoMovimiento}
+                                onChange={(e) => setFiltros({ ...filtros, tipoMovimiento: e.target.value })}
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none bg-white text-black"
                             >
                                 <option value="Todos">Todos</option>
-                                <option value="Automática">Automática</option>
-                                <option value="Manual">Manual</option>
+                                <option value="Entradas">Entradas</option>
+                                <option value="Salidas">Salidas</option>
                             </select>
                         </div>
 
-                        {/* Filtro Método - NUEVO */}
+                        {/* Método de Pago */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                <FiCreditCard className="w-4 h-4 text-blue-600" />
+                                <FiCreditCard className="w-4 h-4" />
                                 Método de Pago:
                             </label>
                             <select
-                                value={filtroMetodo}
-                                onChange={(e) => setFiltroMetodo(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
+                                value={filtros.metodoPago}
+                                onChange={(e) => setFiltros({ ...filtros, metodoPago: e.target.value })}
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none bg-white text-black"
                             >
                                 <option value="Todos">Todos</option>
                                 <option value="Efectivo">Efectivo</option>
@@ -658,37 +633,39 @@ export default function CajaDiaria() {
                             </select>
                         </div>
 
-                        {/* Filtro Usuario */}
+                        {/* Personal */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                <FiUser className="w-4 h-4 text-blue-600" />
-                                Usuario:
+                                <FiUser className="w-4 h-4" />
+                                Personal:
                             </label>
                             <select
-                                value={filtroUsuario}
-                                onChange={(e) => setFiltroUsuario(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
+                                value={filtros.personal}
+                                onChange={(e) => setFiltros({ ...filtros, personal: e.target.value })}
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none bg-white text-black"
                             >
-                                {usuariosUnicos.map(usuario => (
-                                    <option key={usuario} value={usuario}>{usuario}</option>
+                                {listaPersonal.map(p => (
+                                    <option key={p} value={p}>{p}</option>
                                 ))}
                             </select>
                         </div>
-                    </div>
 
-                    {/* Botón Imprimir */}
-                    <div className="mt-4 flex justify-end">
-                        <button
-                            onClick={handleImprimir}
-                            className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-blue-600 text-white px-4 lg:px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:from-red-700 hover:to-blue-700 w-full sm:w-auto"
-                        >
-                            <FiPrinter className="w-4 h-4 lg:w-5 lg:h-5" />
-                            <span className="text-sm lg:text-base">Imprimir Reporte PDF</span>
-                        </button>
+                        {/* Botón Imprimir */}
+                        <div className="flex items-end">
+                            <button
+                                onClick={handlePrintReport}
+                                className="w-full px-4 py-2 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-lg hover:from-red-700 hover:to-blue-700 transition-colors font-bold flex items-center justify-center gap-2"
+                            >
+                                <FiPrinter className="w-4 h-4" />
+                                Imprimir Reporte PDF
+                            </button>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Tabla de movimientos */}
+            {/* Tabla de operaciones */}
+            <div className="max-w-7xl mx-auto">
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
                     <div className="bg-gradient-to-r from-red-50 to-blue-50 p-4 border-b border-gray-200">
                         <h3 className="text-lg font-bold text-gray-800">
@@ -707,7 +684,10 @@ export default function CajaDiaria() {
                                     Fecha/Hora
                                 </th>
                                 <th className="px-4 lg:px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                    Usuario
+                                    Estudiante
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                    Personal
                                 </th>
                                 <th className="px-4 lg:px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Operación
@@ -720,9 +700,6 @@ export default function CajaDiaria() {
                                 </th>
                                 <th className="px-4 lg:px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     Método
-                                </th>
-                                <th className="px-4 lg:px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                    Tipo
                                 </th>
                             </tr>
                             </thead>
@@ -740,34 +717,31 @@ export default function CajaDiaria() {
                             ) : (
                                 operacionesFiltradas.map((operacion, index) => (
                                     <motion.tr
-                                        key={operacion.id}
+                                        key={operacion.id || index}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ delay: index * 0.05 }}
                                         className="hover:bg-gray-50 transition-colors"
                                     >
                                         <td className="px-4 lg:px-6 py-3 text-sm font-bold text-red-600">
-                                            #{operacion.id}
+                                            #{operacion.id || 'N/A'}
                                         </td>
                                         <td className="px-4 lg:px-6 py-3 text-sm text-gray-600">
-                                            {new Date(operacion.fechaHora).toLocaleString('es-AR', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                year: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
+                                            {formatSafeDate(operacion.fechaHora)}
                                         </td>
                                         <td className="px-4 lg:px-6 py-3 text-sm text-gray-900 font-medium">
-                                            {operacion.usuario}
+                                            {operacion.estudiante || 'N/A'}
+                                        </td>
+                                        <td className="px-4 lg:px-6 py-3 text-sm text-gray-900 font-medium">
+                                            {operacion.personal || 'Sistema'}
                                         </td>
                                         <td className="px-4 lg:px-6 py-3 text-sm text-gray-700">
-                                            {operacion.operacion}
+                                            {operacion.operacion || 'N/A'}
                                         </td>
                                         <td className="px-4 lg:px-6 py-3 text-sm text-right">
-                                            {operacion.entrada > 0 ? (
+                                            {(operacion.entrada || 0) > 0 ? (
                                                 <span className="font-bold text-green-700">
-                                                    ${operacion.entrada.toLocaleString('es-AR', {
+                                                    ${Number(operacion.entrada || 0).toLocaleString('es-AR', {
                                                     minimumFractionDigits: 0,
                                                     maximumFractionDigits: 0
                                                 })}
@@ -777,9 +751,9 @@ export default function CajaDiaria() {
                                             )}
                                         </td>
                                         <td className="px-4 lg:px-6 py-3 text-sm text-right">
-                                            {operacion.salida > 0 ? (
+                                            {(operacion.salida || 0) > 0 ? (
                                                 <span className="font-bold text-red-700">
-                                                    ${operacion.salida.toLocaleString('es-AR', {
+                                                    ${Number(operacion.salida || 0).toLocaleString('es-AR', {
                                                     minimumFractionDigits: 0,
                                                     maximumFractionDigits: 0
                                                 })}
@@ -798,16 +772,7 @@ export default function CajaDiaria() {
                                                             ? 'bg-purple-100 text-purple-800'
                                                             : 'bg-gray-100 text-gray-800'
                                             }`}>
-                                                {operacion.metodo}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 lg:px-6 py-3 text-sm text-center">
-                                            <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-bold ${
-                                                operacion.tipo === 'Automática'
-                                                    ? 'bg-blue-100 text-blue-800'
-                                                    : 'bg-red-100 text-red-800'
-                                            }`}>
-                                                {operacion.tipo}
+                                                {operacion.metodo || 'N/A'}
                                             </span>
                                         </td>
                                     </motion.tr>

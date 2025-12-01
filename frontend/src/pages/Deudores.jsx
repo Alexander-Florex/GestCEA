@@ -55,6 +55,78 @@ const isSameDay = (date1, date2) => {
         d1.getFullYear() === d2.getFullYear();
 };
 
+/* ================== FUNCIÓN CRÍTICA: CALCULAR PRECIO SEGÚN MÉTODO ================== */
+/**
+ * Esta función es IDÉNTICA a la de Cobros.jsx
+ * Calcula el precio correcto según:
+ * 1. Método de pago (por defecto Transferencia para deudores)
+ * 2. Si está vencida o en fecha
+ * 3. Prioridad: installmentsByMethod > curso > cuota estática
+ */
+const calcularPrecioPorMetodo = (inscription, course, installment, metodo, isOverdue) => {
+    // Mapeo de método a key
+    const methodKey = metodo === "Efectivo" ? "efectivo"
+        : metodo === "Transferencia" ? "transferencia"
+            : "tarjeta";
+
+    let precio = 0;
+
+    // PRIORIDAD 1: installmentsByMethod (sistema nuevo)
+    if (inscription?.installmentsByMethod?.[methodKey]) {
+        const cuotaPorMetodo = inscription.installmentsByMethod[methodKey].find(
+            c => Number(c.number) === Number(installment.number)
+        );
+
+        if (cuotaPorMetodo) {
+            precio = isOverdue
+                ? (Number(cuotaPorMetodo.amountVencido) || Number(cuotaPorMetodo.amountEnFecha) || 0)
+                : (Number(cuotaPorMetodo.amountEnFecha) || Number(cuotaPorMetodo.amount) || 0);
+
+            return precio;
+        }
+    }
+
+    // PRIORIDAD 2: Curso (fallback para inscripciones viejas)
+    if (course) {
+        if (isOverdue) {
+            switch (metodo) {
+                case "Efectivo":
+                    precio = Number(course.pagoVencidoEfectivo) || 0;
+                    break;
+                case "Transferencia":
+                    precio = Number(course.pagoVencidoTransferencia) || 0;
+                    break;
+                case "Tarjeta":
+                    precio = Number(course.pagoVencidoTarjeta) || 0;
+                    break;
+            }
+        } else {
+            switch (metodo) {
+                case "Efectivo":
+                    precio = Number(course.pagoFechaEfectivo) || 0;
+                    break;
+                case "Transferencia":
+                    precio = Number(course.pagoFechaTransferencia) || 0;
+                    break;
+                case "Tarjeta":
+                    precio = Number(course.pagoFechaTarjeta) || 0;
+                    break;
+            }
+        }
+
+        if (precio > 0) {
+            return precio;
+        }
+    }
+
+    // PRIORIDAD 3: Cuota estática (último recurso)
+    precio = isOverdue
+        ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
+        : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
+
+    return precio;
+};
+
 /* ==================== Notificaciones ==================== */
 function Notifications({ notifications, remove }) {
     return (
@@ -115,7 +187,6 @@ function FiltroRangoFechas({ filtroFecha, setFiltroFecha, showNotification }) {
         }));
     };
 
-    // Función para manejar cambio de fecha directamente
     const manejarCambioFecha = (campo, valor) => {
         setFiltroFecha(prev => ({
             ...prev,
@@ -336,34 +407,40 @@ function CuotaSeleccionable({ cuota, curso, isSelected, onToggle, showCheckbox =
                             )}
                             {!isVencida && esMesActual && (
                                 <span className="px-2 py-0.5 bg-yellow-500 text-white text-xs rounded-full font-semibold">
-                                    VENCE ESTE MES
+                                    ESTE MES
                                 </span>
                             )}
                         </div>
-                        <div className="space-y-1">
-                            <div className="text-lg lg:text-xl font-bold text-red-700">
-                                ${formatNumber(cuota.pending)}
-                            </div>
-                            {cuota.isOverdue && cuota.amountEnFecha !== cuota.amountVencido && (
-                                <div className="text-xs text-gray-600">
-                                    En fecha hubiera sido: ${formatNumber(cuota.amountEnFecha - cuota.amountPaid)}
-                                </div>
-                            )}
-                        </div>
+                        <span className="text-lg lg:text-xl font-bold text-red-700">
+                            ${formatNumber(cuota.pending)}
+                        </span>
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs lg:text-sm text-gray-600 gap-1">
+
+                    <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-600">
                         <div className="flex items-center gap-1">
-                            <FiCalendar className="w-3 h-3" />
-                            <span>Vencimiento: {formatDate(cuota.dueDate)}</span>
+                            <FiCalendar className="w-3 h-3 lg:w-4 lg:h-4" />
+                            <span>Vence: {formatDate(cuota.dueDate)}</span>
                         </div>
                         {isVencida && (
                             <span className="text-red-600 font-semibold">
-                                {daysLate} día{daysLate !== 1 ? 's' : ''} de atraso
+                                ({daysLate} {daysLate === 1 ? 'día' : 'días'} de atraso)
+                            </span>
+                        )}
+                        {cuota.amountPaid > 0 && (
+                            <span className="text-green-600 font-semibold">
+                                Pagado: ${formatNumber(cuota.amountPaid)}
                             </span>
                         )}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                        Estado: {cuota.estado}
+
+                    {/* Mostrar precios en fecha y vencido */}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded">
+                            En fecha: ${formatNumber(cuota.amountEnFecha)}
+                        </span>
+                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded">
+                            Vencido: ${formatNumber(cuota.amountVencido)}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -373,73 +450,67 @@ function CuotaSeleccionable({ cuota, curso, isSelected, onToggle, showCheckbox =
 
 /* ==================== Card de Curso ==================== */
 function CursoCard({ curso, selectedCuotas, onToggleCuota, showCheckbox = true }) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
 
-    const totalCurso = curso.cuotas.reduce((sum, c) => sum + (Number(c.pending) || 0), 0);
+    const totalCurso = curso.cuotas.reduce((sum, c) => sum + c.pending, 0);
     const cuotasVencidas = curso.cuotas.filter(c => c.isOverdue).length;
-    const cuotasSeleccionadasEnCurso = curso.cuotas.filter(c =>
-        selectedCuotas.some(sc => sc.installmentNumber === c.installmentNumber && sc.dueDate === c.dueDate)
-    ).length;
 
-    const getEstadoBadge = () => {
-        if (curso.estadoCurso === 'Cursando') {
-            return { text: 'Cursando', color: 'bg-blue-100 text-blue-800 border-blue-300' };
-        } else if (curso.estadoCurso === 'Finalizado') {
-            return { text: 'Finalizado', color: 'bg-green-100 text-green-800 border-green-300' };
-        } else if (curso.estadoCurso === 'Baja') {
-            return { text: 'Baja', color: 'bg-gray-100 text-gray-800 border-gray-300' };
-        } else if (curso.estadoCurso === 'AbandonoNoNotificado') {
-            return { text: 'Abandono', color: 'bg-red-100 text-red-800 border-red-300' };
+    // ✅ Función de comparación para ordenar cuotas (igual que en Cobros.jsx)
+    const compararCuotas = (a, b) => {
+        // 1. Primero: vencidas vs no vencidas
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+
+        // 2. Si ambas vencidas: más días de atraso primero
+        if (a.isOverdue && b.isOverdue) {
+            const diasA = getDaysLate(a.dueDate);
+            const diasB = getDaysLate(b.dueDate);
+            return diasB - diasA; // Más días primero
         }
-        return { text: curso.estadoCurso, color: 'bg-gray-100 text-gray-800 border-gray-300' };
+
+        // 3. Si ninguna vencida: más próxima a vencer primero
+        const fechaA = new Date(a.dueDate);
+        const fechaB = new Date(b.dueDate);
+        return fechaA - fechaB;
     };
 
-    const estadoBadge = getEstadoBadge();
+    // ✅ Ordenar cuotas usando la misma lógica que Cobros.jsx
+    const cuotasOrdenadas = [...curso.cuotas].sort(compararCuotas);
 
     return (
-        <div className="border-2 border-gray-300 rounded-xl overflow-hidden bg-gradient-to-br from-white to-gray-50 shadow-md hover:shadow-lg transition-shadow">
+        <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-sm">
             <div
-                className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-3 lg:p-4 cursor-pointer hover:from-red-700 hover:to-blue-700 transition-colors"
                 onClick={() => setIsExpanded(!isExpanded)}
+                className="bg-gradient-to-r from-red-100 to-blue-100 p-3 lg:p-4 cursor-pointer hover:from-red-200 hover:to-blue-200 transition-colors"
             >
                 <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                        <h3 className="text-base lg:text-lg font-bold mb-1">{curso.courseName}</h3>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs lg:text-sm text-blue-100">
-                            <span className="flex items-center gap-1">
-                                <FiCalendar className="w-3 h-3" />
-                                {formatDate(curso.fechaInscripcion)}
-                            </span>
-                            <span className={`px-2 py-1 rounded border ${estadoBadge.color} text-xs font-semibold w-fit`}>
-                                {estadoBadge.text}
-                            </span>
-                            {showCheckbox && cuotasSeleccionadasEnCurso > 0 && (
-                                <span className="px-2 py-1 bg-green-500 text-white text-xs rounded-full font-semibold">
-                                    {cuotasSeleccionadasEnCurso} seleccionada{cuotasSeleccionadasEnCurso !== 1 ? 's' : ''}
-                                </span>
-                            )}
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-lg shadow-sm">
+                            <FiDollarSign className="w-4 h-4 lg:w-5 lg:h-5 text-red-600" />
                         </div>
-                    </div>
-                    <div className="text-right mr-2 lg:mr-4">
-                        <div className="text-lg lg:text-2xl font-bold">
-                            ${formatNumber(totalCurso)}
-                        </div>
-                        <div className="text-xs text-blue-100">
-                            {curso.cuotas.length} cuota{curso.cuotas.length !== 1 ? 's' : ''}
-                        </div>
-                        {cuotasVencidas > 0 && (
-                            <div className="text-xs text-red-200 font-semibold mt-1 flex items-center justify-end gap-1">
-                                <FiAlertCircle className="w-3 h-3" />
-                                {cuotasVencidas} vencida{cuotasVencidas !== 1 ? 's' : ''}
+                        <div>
+                            <h4 className="font-bold text-gray-800 text-sm lg:text-base">{curso.courseName}</h4>
+                            <div className="text-xs lg:text-sm text-gray-600">
+                                {curso.cuotas.length} cuota{curso.cuotas.length !== 1 ? 's' : ''} pendiente{curso.cuotas.length !== 1 ? 's' : ''}
+                                {cuotasVencidas > 0 && (
+                                    <span className="text-red-600 font-semibold ml-2">
+                                        ({cuotasVencidas} vencida{cuotasVencidas !== 1 ? 's' : ''})
+                                    </span>
+                                )}
                             </div>
-                        )}
+                        </div>
                     </div>
-                    <motion.div
-                        animate={{ rotate: isExpanded ? 180 : 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <FiChevronDown className="w-5 h-5 lg:w-6 lg:h-6" />
-                    </motion.div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-lg lg:text-xl font-bold text-red-700">
+                            ${formatNumber(totalCurso)}
+                        </span>
+                        <motion.div
+                            animate={{ rotate: isExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <FiChevronDown className="w-5 h-5 text-gray-600" />
+                        </motion.div>
+                    </div>
                 </div>
             </div>
 
@@ -453,21 +524,20 @@ function CursoCard({ curso, selectedCuotas, onToggleCuota, showCheckbox = true }
                         className="overflow-hidden"
                     >
                         <div className="p-3 lg:p-4 space-y-3 bg-gray-50">
-                            {curso.cuotas
-                                .sort((a, b) => (a.installmentNumber || 0) - (b.installmentNumber || 0))
-                                .map((cuota, idx) => (
-                                    <CuotaSeleccionable
-                                        key={idx}
-                                        cuota={cuota}
-                                        curso={curso}
-                                        isSelected={selectedCuotas.some(sc =>
-                                            sc.installmentNumber === cuota.installmentNumber &&
-                                            sc.dueDate === cuota.dueDate
-                                        )}
-                                        onToggle={onToggleCuota}
-                                        showCheckbox={showCheckbox}
-                                    />
-                                ))}
+                            {/* ✅ Usar cuotasOrdenadas en lugar de curso.cuotas */}
+                            {cuotasOrdenadas.map((cuota, idx) => (
+                                <CuotaSeleccionable
+                                    key={idx}
+                                    cuota={cuota}
+                                    curso={curso}
+                                    isSelected={selectedCuotas.some(sc =>
+                                        sc.installmentNumber === cuota.installmentNumber &&
+                                        sc.dueDate === cuota.dueDate
+                                    )}
+                                    onToggle={onToggleCuota}
+                                    showCheckbox={showCheckbox}
+                                />
+                            ))}
                         </div>
                     </motion.div>
                 )}
@@ -482,7 +552,25 @@ function AlumnoCard({ alumno, showNotification }) {
     const [selectedCuotas, setSelectedCuotas] = useState([]);
     const [isSending, setIsSending] = useState(false);
 
-    // Función para alternar selección de cuota
+    // ✅ Función de comparación para ordenar cuotas (igual que en Cobros.jsx)
+    const compararCuotas = (a, b) => {
+        // 1. Primero: vencidas vs no vencidas
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+
+        // 2. Si ambas vencidas: más días de atraso primero
+        if (a.isOverdue && b.isOverdue) {
+            const diasA = getDaysLate(a.dueDate);
+            const diasB = getDaysLate(b.dueDate);
+            return diasB - diasA; // Más días primero
+        }
+
+        // 3. Si ninguna vencida: más próxima a vencer primero
+        const fechaA = new Date(a.dueDate);
+        const fechaB = new Date(b.dueDate);
+        return fechaA - fechaB;
+    };
+
     const toggleCuota = (cuota) => {
         setSelectedCuotas(prev => {
             const exists = prev.some(c =>
@@ -500,7 +588,6 @@ function AlumnoCard({ alumno, showNotification }) {
         });
     };
 
-    // Función para seleccionar todas las cuotas
     const selectAllCuotas = () => {
         const allCuotas = alumno.cursos.flatMap(curso =>
             curso.cuotas.map(cuota => ({
@@ -511,18 +598,19 @@ function AlumnoCard({ alumno, showNotification }) {
         setSelectedCuotas(allCuotas);
     };
 
-    // Función para limpiar selección
     const clearSelection = () => {
         setSelectedCuotas([]);
     };
 
-    // Función para generar mensaje personalizado
     const generateMessage = () => {
         if (selectedCuotas.length === 0) return '';
 
         const total = selectedCuotas.reduce((sum, c) => sum + c.pending, 0);
-        const cuotasVencidas = selectedCuotas.filter(c => c.isOverdue);
-        const cuotasPorVencer = selectedCuotas.filter(c => !c.isOverdue);
+
+        // ✅ Ordenar cuotas seleccionadas antes de generar mensaje
+        const cuotasOrdenadas = [...selectedCuotas].sort(compararCuotas);
+        const cuotasVencidas = cuotasOrdenadas.filter(c => c.isOverdue);
+        const cuotasPorVencer = cuotasOrdenadas.filter(c => !c.isOverdue);
 
         let message = `Hola ${alumno.studentName}, te recordamos que tienes cuotas pendientes:\n\n`;
 
@@ -558,7 +646,6 @@ function AlumnoCard({ alumno, showNotification }) {
         const message = generateMessage();
         showNotification('info', `Enviando email a ${alumno.contact.email || 'Sin email'} con ${selectedCuotas.length} cuota${selectedCuotas.length !== 1 ? 's' : ''}`);
         console.log('Email message:', message);
-        // Aquí iría la lógica real de envío de email
     };
 
     const handleSendWhatsApp = () => {
@@ -588,7 +675,6 @@ function AlumnoCard({ alumno, showNotification }) {
         const message = generateMessage();
         showNotification('info', `Enviando SMS a ${alumno.contact.telefono || 'Sin teléfono'} con ${selectedCuotas.length} cuota${selectedCuotas.length !== 1 ? 's' : ''}`);
         console.log('SMS message:', message);
-        // Aquí iría la lógica real de envío de SMS
     };
 
     const hasSelectedCuotas = selectedCuotas.length > 0;
@@ -743,7 +829,7 @@ function AlumnoCard({ alumno, showNotification }) {
                             <div className="space-y-4">
                                 <h3 className="text-base lg:text-lg font-bold text-gray-800 flex items-center gap-2">
                                     <FiDollarSign className="w-4 h-4 lg:w-5 lg:h-5 text-red-600" />
-                                    Detalle por Curso - Selecciona las cuotas a notificar
+                                    Cursos con cuotas pendientes
                                 </h3>
                                 {alumno.cursos.map((curso, idx) => (
                                     <CursoCard
@@ -765,112 +851,106 @@ function AlumnoCard({ alumno, showNotification }) {
 
 /* ==================== Componente Principal ==================== */
 export default function Deudores() {
-    const { students, inscriptions, courses } = useDB();
-
+    const { students = [], inscriptions = [], courses = [] } = useDB();
+    const [notifications, setNotifications] = useState([]);
     const [search, setSearch] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('todos');
     const [filtroFecha, setFiltroFecha] = useState({ desde: null, hasta: null });
-    const [notifications, setNotifications] = useState([]);
 
     const showNotification = (type, message) => {
         const id = Date.now();
-        setNotifications(n => [...n, { id, type, message }]);
+        setNotifications(prev => [...prev, { id, type, message }]);
         setTimeout(() => removeNotification(id), 3000);
     };
 
     const removeNotification = (id) => {
-        setNotifications(n => n.filter(x => x.id !== id));
+        setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
-    // Función para verificar si una cuota coincide con el filtro de rango de fechas
-    const cuotaCoincideConFiltroFecha = (cuota) => {
-        const fechaVencimiento = new Date(cuota.dueDate);
+    // ✅ Función de comparación para ordenar cuotas (igual que en Cobros.jsx)
+    const compararCuotas = (a, b) => {
+        // 1. Primero: vencidas vs no vencidas
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
 
-        // Si no hay filtros de fecha, mostrar todas
+        // 2. Si ambas vencidas: más días de atraso primero
+        if (a.isOverdue && b.isOverdue) {
+            const diasA = getDaysLate(a.dueDate);
+            const diasB = getDaysLate(b.dueDate);
+            return diasB - diasA; // Más días primero
+        }
+
+        // 3. Si ninguna vencida: más próxima a vencer primero
+        const fechaA = new Date(a.dueDate);
+        const fechaB = new Date(b.dueDate);
+        return fechaA - fechaB;
+    };
+
+    // Función para verificar si una cuota coincide con el filtro de fecha
+    const cuotaCoincideConFiltroFecha = (cuota) => {
         if (!filtroFecha.desde && !filtroFecha.hasta) return true;
 
-        const desde = filtroFecha.desde ? new Date(filtroFecha.desde) : null;
-        const hasta = filtroFecha.hasta ? new Date(filtroFecha.hasta) : null;
+        const fechaCuota = new Date(cuota.dueDate);
+        fechaCuota.setHours(0, 0, 0, 0);
 
-        // Resetear horas para comparar solo fechas
-        if (desde) desde.setHours(0, 0, 0, 0);
-        if (hasta) hasta.setHours(23, 59, 59, 999); // Incluir todo el día
-        fechaVencimiento.setHours(0, 0, 0, 0); // Resetear horas de la fecha de vencimiento
+        if (filtroFecha.desde) {
+            const desde = new Date(filtroFecha.desde);
+            desde.setHours(0, 0, 0, 0);
+            if (fechaCuota < desde) return false;
+        }
 
-        // Lógica del filtro
-        if (desde && hasta) {
-            // Rango completo: desde X hasta Y
-            return fechaVencimiento >= desde && fechaVencimiento <= hasta;
-        } else if (desde && !hasta) {
-            // Solo desde: todas las cuotas desde X en adelante
-            return fechaVencimiento >= desde;
-        } else if (!desde && hasta) {
-            // Solo hasta: todas las cuotas hasta Y
-            return fechaVencimiento <= hasta;
+        if (filtroFecha.hasta) {
+            const hasta = new Date(filtroFecha.hasta);
+            hasta.setHours(23, 59, 59, 999);
+            if (fechaCuota > hasta) return false;
         }
 
         return true;
     };
 
-    // ✅ LÓGICA CORREGIDA CON LOGS DETALLADOS
+    // ✅ LÓGICA CORREGIDA: Usa calcularPrecioPorMetodo igual que Cobros.jsx
     const debtors = useMemo(() => {
-        console.log('🔍 [DEUDORES] Iniciando cálculo de deudores...');
-        console.log('📊 [DEUDORES] Total inscripciones:', inscriptions.length);
-        console.log('👥 [DEUDORES] Total estudiantes:', students.length);
-        console.log('📚 [DEUDORES] Total cursos:', courses.length);
+        console.log('\n🔍 [DEUDORES] Calculando deudores...');
+        console.log('   Estudiantes:', students.length);
+        console.log('   Inscripciones:', inscriptions.length);
+        console.log('   Cursos:', courses.length);
 
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const byStudent = new Map();
 
-        inscriptions.forEach((ins, insIndex) => {
-            console.log(`\n📝 [INSCRIPCIÓN ${insIndex + 1}/${inscriptions.length}]`, {
-                id: ins.id,
-                studentId: ins.studentId,
-                courseId: ins.courseId,
-                status: ins.status,
-                installments: ins.installments?.length || 0
-            });
-
+        inscriptions.forEach((ins) => {
             const student = students.find(s => s.id === ins.studentId);
             const course = courses.find(c => c.id === ins.courseId);
 
-            if (!student) {
-                console.warn('⚠️ [DEUDORES] Estudiante no encontrado:', ins.studentId);
-                return;
-            }
-            if (!course) {
-                console.warn('⚠️ [DEUDORES] Curso no encontrado:', ins.courseId);
-                return;
-            }
+            if (!student || !course) return;
 
-            // ✅ Filtrar cuotas con pending > 0
+            // ✅ Filtrar cuotas que NO estén pagadas y tengan pending > 0
             const cuotasPendientes = (ins.installments || []).filter(inst => {
+                // Si el status es "Pagada" o "Pagado", excluir
+                if (inst.status === 'Pagada' || inst.status === 'Pagado') {
+                    return false;
+                }
+
                 const dueDate = new Date(inst.dueDate);
-                const isOverdue = dueDate < today;
+                dueDate.setHours(0, 0, 0, 0);
+                const isOverdue = !inst.frozen && today > dueDate;
 
-                // ✅ Usar el monto correcto según si está vencida
-                const montoActual = isOverdue
-                    ? (Number(inst.amountVencido) || Number(inst.amount) || 0)
-                    : (Number(inst.amountEnFecha) || Number(inst.amount) || 0);
-
-                const pending = montoActual - Number(inst.amountPaid || 0);
-
-                console.log(`  💰 Cuota #${inst.number}: ${isOverdue ? 'VENCIDA' : 'EN FECHA'} - monto=${montoActual}, paid=${inst.amountPaid}, pending=${pending}`);
+                // ✅ USAR LA MISMA FUNCIÓN QUE COBROS.JSX
+                // Usamos Transferencia por defecto para mostrar deuda
+                const defaultMethod = ins.paymentType || 'Transferencia';
+                const montoActual = calcularPrecioPorMetodo(ins, course, inst, defaultMethod, isOverdue);
+                const pending = Math.max(montoActual - Number(inst.amountPaid || 0), 0);
 
                 return pending > 0;
             });
 
-            console.log(`✅ Cuotas pendientes: ${cuotasPendientes.length}/${ins.installments?.length || 0}`);
-
-            if (cuotasPendientes.length === 0) {
-                console.log('⏭️ No tiene cuotas pendientes, saltando...');
-                return;
-            }
+            if (cuotasPendientes.length === 0) return;
 
             if (!byStudent.has(ins.studentId)) {
                 byStudent.set(ins.studentId, {
                     studentId: ins.studentId,
-                    studentName: `${student.nombre} ${student.apellido}`,
+                    studentName: `${student.apellido} ${student.nombre}`,
                     contact: {
                         email: student.email || '',
                         telefono: student.telefono || ''
@@ -883,51 +963,57 @@ export default function Deudores() {
 
             const deudor = byStudent.get(ins.studentId);
 
-            // ✅ Procesar cada cuota con el monto correcto
+            // ✅ Procesar cada cuota con el precio correcto según método
             const cuotasData = cuotasPendientes.map(inst => {
                 const dueDate = new Date(inst.dueDate);
-                const isOverdue = dueDate < today;
+                dueDate.setHours(0, 0, 0, 0);
+                const isOverdue = !inst.frozen && today > dueDate;
 
-                // ✅ Usar monto según fecha
-                const montoActual = isOverdue
-                    ? (Number(inst.amountVencido) || Number(inst.amount) || 0)
-                    : (Number(inst.amountEnFecha) || Number(inst.amount) || 0);
+                // Método por defecto de la inscripción
+                const defaultMethod = ins.paymentType || 'Transferencia';
 
-                const pending = montoActual - Number(inst.amountPaid || 0);
+                // ✅ Calcular precio actual según método y vencimiento
+                const montoActual = calcularPrecioPorMetodo(ins, course, inst, defaultMethod, isOverdue);
+                const pending = Math.max(montoActual - Number(inst.amountPaid || 0), 0);
+
+                // Calcular también los montos en fecha y vencido para mostrar
+                const amountEnFecha = calcularPrecioPorMetodo(ins, course, inst, defaultMethod, false);
+                const amountVencido = calcularPrecioPorMetodo(ins, course, inst, defaultMethod, true);
 
                 return {
                     installmentNumber: inst.number,
                     dueDate: inst.dueDate,
-                    amountEnFecha: Number(inst.amountEnFecha || inst.amount || 0),
-                    amountVencido: Number(inst.amountVencido || inst.amount || 0),
-                    montoActual: montoActual, // ✅ Monto que debe pagar HOY
+                    amountEnFecha: amountEnFecha,
+                    amountVencido: amountVencido,
+                    montoActual: montoActual,
                     amountPaid: Number(inst.amountPaid || 0),
                     pending: pending,
                     isOverdue: isOverdue,
-                    estado: inst.status || 'Pendiente'
+                    frozen: inst.frozen || false,
+                    estado: inst.status || 'Pendiente',
+                    courseName: course.nombre
                 };
             });
 
-            const totalCurso = cuotasData.reduce((sum, c) => sum + c.pending, 0);
+            // ✅ ORDENAR cuotas dentro de cada curso (igual que en Cobros.jsx)
+            const cuotasOrdenadas = cuotasData.sort(compararCuotas);
+
+            const totalCurso = cuotasOrdenadas.reduce((sum, c) => sum + c.pending, 0);
             deudor.totalPending += totalCurso;
-            deudor.cuotas.push(...cuotasData);
+            deudor.cuotas.push(...cuotasOrdenadas);
 
             deudor.cursos.push({
-                courseName: course.nombre || ins.courseName,
+                courseName: course.nombre,
                 inscriptionId: ins.id,
                 estadoCurso: ins.status || 'Cursando',
                 fechaInscripcion: ins.createdAt || ins.fechaInscripcion,
-                cuotas: cuotasData
+                cuotas: cuotasOrdenadas  // ✅ Usar las cuotas ordenadas
             });
-
-            console.log(`✅ Deudor: ${deudor.studentName}, Total: $${deudor.totalPending}`);
         });
 
         const result = Array.from(byStudent.values()).sort((a, b) => b.totalPending - a.totalPending);
 
-        console.log('\n🎯 [DEUDORES] RESULTADO FINAL:');
-        console.log(`   Total deudores: ${result.length}`);
-        console.log(`   Deuda total: $${result.reduce((sum, d) => sum + d.totalPending, 0)}`);
+        console.log(`🎯 [DEUDORES] Total: ${result.length} deudores, $${result.reduce((sum, d) => sum + d.totalPending, 0)}`);
 
         return result;
     }, [students, inscriptions, courses]);

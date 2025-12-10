@@ -52,7 +52,7 @@ export default function Dashboard() {
                 />
                 <AnimatedCard
                     icon={FaClipboardList}
-                    title="Ver Inscripciones"
+                    title="Inscribir a Cursos"
                     subtitle="Gestiona las inscripciones de los estudiantes."
                     linkText="Ver inscripciones"
                     to="inscripciones"

@@ -1021,29 +1021,289 @@ export default function Inscripciones() {
                                     {selectedCourse && (
                                         <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-xl border-2 border-blue-200">
                                             <h3 className="text-lg font-bold text-blue-800 mb-4">💰 Información de Costos</h3>
+
+                                            {/* Método de Pago Referencial */}
+                                            <div className="mb-6 bg-white p-4 rounded-lg border-2 border-green-200">
+                                                <h4 className="font-bold text-green-800 mb-3 text-sm">Método de pago preferido (referencial)</h4>
+                                                <div className="flex flex-wrap gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="radio"
+                                                            id="paymentEfectivo"
+                                                            name="paymentType"
+                                                            value="Efectivo"
+                                                            checked={form.paymentType === 'Efectivo'}
+                                                            onChange={handleChange}
+                                                            className="w-4 h-4 text-green-600"
+                                                        />
+                                                        <label htmlFor="paymentEfectivo" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                            Efectivo
+                                                        </label>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="radio"
+                                                            id="paymentTransferencia"
+                                                            name="paymentType"
+                                                            value="Transferencia"
+                                                            checked={form.paymentType === 'Transferencia'}
+                                                            onChange={handleChange}
+                                                            className="w-4 h-4 text-green-600"
+                                                        />
+                                                        <label htmlFor="paymentTransferencia" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                            Transferencia
+                                                        </label>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="radio"
+                                                            id="paymentTarjeta"
+                                                            name="paymentType"
+                                                            value="Tarjeta"
+                                                            checked={form.paymentType === 'Tarjeta'}
+                                                            onChange={handleChange}
+                                                            className="w-4 h-4 text-green-600"
+                                                        />
+                                                        <label htmlFor="paymentTarjeta" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                            Tarjeta
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">Esta selección es referencial. El alumno puede pagar con cualquier método.</p>
+                                            </div>
+
+                                            {/* Opción de Pago Completo */}
+                                            <div className="mb-6 bg-white p-4 rounded-lg border-2 border-yellow-200">
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="fullPayment"
+                                                        name="fullPayment"
+                                                        checked={form.fullPayment}
+                                                        onChange={handleChange}
+                                                        className="w-5 h-5 text-yellow-600"
+                                                    />
+                                                    <label htmlFor="fullPayment" className="font-bold text-yellow-800 cursor-pointer">
+                                                        Abonar curso completo (Pago único)
+                                                    </label>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    {form.fullPayment
+                                                        ? "Se generará un único pago por el total del curso. No se crearán cuotas."
+                                                        : "Se generarán cuotas mensuales según el método seleccionado."}
+                                                </p>
+                                            </div>
+
+                                            {/* Tarjetas de Costos Detallados */}
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="bg-white p-4 rounded-lg border border-red-300">
-                                                    <p className="text-sm text-gray-600 mb-1">Efectivo</p>
-                                                    <p className="text-2xl font-bold text-green-700">${formatNumber(selectedCourse.totalEfectivo || 0)}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1} cuota(s)
-                                                    </p>
+                                                {/* Efectivo */}
+                                                <div className="bg-white p-4 rounded-lg border-2 border-green-300 shadow-sm">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <h4 className="font-bold text-green-800 text-lg">Efectivo</h4>
+                                                        {form.paymentType === 'Efectivo' && (
+                                                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                            Seleccionado
+                        </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Total del Curso */}
+                                                    <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                                                        <p className="text-sm text-gray-600 mb-1">Total del Curso</p>
+                                                        <p className="text-2xl font-bold text-green-700">
+                                                            ${formatNumber(selectedCourse.totalEfectivo || 0)}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Información por Cuota */}
+                                                    {!form.fullPayment && (
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center border-b pb-2">
+                                                                <span className="text-sm text-gray-600">Cuotas:</span>
+                                                                <span className="font-bold text-gray-800">
+                                {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1}
+                            </span>
+                                                            </div>
+
+                                                            <div className="p-2 bg-green-50 rounded border border-green-100">
+                                                                <p className="text-xs text-gray-500 mb-1">Valor por cuota:</p>
+                                                                <div className="flex justify-between items-center">
+                                                                    <div>
+                                                                        <p className="text-sm text-gray-700">En fecha:</p>
+                                                                        <p className="text-sm font-bold text-green-700">
+                                                                            ${formatNumber(selectedCourse.pagoFechaEfectivo || Math.round((selectedCourse.totalEfectivo || 0) / (selectedCourse.cuotasCompartidas || 1)))}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="text-sm text-gray-700">Vencida:</p>
+                                                                        <p className="text-sm font-bold text-red-600">
+                                                                            ${formatNumber(selectedCourse.pagoVencidoEfectivo || Math.round((selectedCourse.totalEfectivo || 0) / (selectedCourse.cuotasCompartidas || 1)))}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {form.fullPayment && (
+                                                        <div className="p-2 bg-yellow-50 rounded border border-yellow-100">
+                                                            <p className="text-xs text-yellow-700 font-semibold">
+                                                                📌 Pago único: ${formatNumber(selectedCourse.totalEfectivo || 0)}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="bg-white p-4 rounded-lg border border-blue-300">
-                                                    <p className="text-sm text-gray-600 mb-1">Transferencia</p>
-                                                    <p className="text-2xl font-bold text-blue-700">${formatNumber(selectedCourse.totalTransferencia || 0)}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1} cuota(s)
-                                                    </p>
+
+                                                {/* Transferencia */}
+                                                <div className="bg-white p-4 rounded-lg border-2 border-blue-300 shadow-sm">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <h4 className="font-bold text-blue-800 text-lg">Transferencia</h4>
+                                                        {form.paymentType === 'Transferencia' && (
+                                                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+                            Seleccionado
+                        </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Total del Curso */}
+                                                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                        <p className="text-sm text-gray-600 mb-1">Total del Curso</p>
+                                                        <p className="text-2xl font-bold text-blue-700">
+                                                            ${formatNumber(selectedCourse.totalTransferencia || 0)}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Información por Cuota */}
+                                                    {!form.fullPayment && (
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center border-b pb-2">
+                                                                <span className="text-sm text-gray-600">Cuotas:</span>
+                                                                <span className="font-bold text-gray-800">
+                                {selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1}
+                            </span>
+                                                            </div>
+
+                                                            <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                                                                <p className="text-xs text-gray-500 mb-1">Valor por cuota:</p>
+                                                                <div className="flex justify-between items-center">
+                                                                    <div>
+                                                                        <p className="text-sm text-gray-700">En fecha:</p>
+                                                                        <p className="text-sm font-bold text-blue-700">
+                                                                            ${formatNumber(selectedCourse.pagoFechaTransferencia || Math.round((selectedCourse.totalTransferencia || 0) / (selectedCourse.cuotasCompartidas || 1)))}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="text-sm text-gray-700">Vencida:</p>
+                                                                        <p className="text-sm font-bold text-red-600">
+                                                                            ${formatNumber(selectedCourse.pagoVencidoTransferencia || Math.round((selectedCourse.totalTransferencia || 0) / (selectedCourse.cuotasCompartidas || 1)))}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {form.fullPayment && (
+                                                        <div className="p-2 bg-yellow-50 rounded border border-yellow-100">
+                                                            <p className="text-xs text-yellow-700 font-semibold">
+                                                                📌 Pago único: ${formatNumber(selectedCourse.totalTransferencia || 0)}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="bg-white p-4 rounded-lg border border-purple-300">
-                                                    <p className="text-sm text-gray-600 mb-1">Tarjeta</p>
-                                                    <p className="text-2xl font-bold text-purple-700">${formatNumber(selectedCourse.totalTarjeta || 0)}</p>
-                                                    <p className="text-xs text-purple-600 mt-1 font-semibold">
-                                                        1 cuota (Pago único)
+
+                                                {/* Tarjeta */}
+                                                <div className="bg-white p-4 rounded-lg border-2 border-purple-300 shadow-sm">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <h4 className="font-bold text-purple-800 text-lg">Tarjeta</h4>
+                                                        {form.paymentType === 'Tarjeta' && (
+                                                            <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full">
+                            Seleccionado
+                        </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Total del Curso */}
+                                                    <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                                        <p className="text-sm text-gray-600 mb-1">Total del Curso</p>
+                                                        <p className="text-2xl font-bold text-purple-700">
+                                                            ${formatNumber(selectedCourse.totalTarjeta || 0)}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Información por Cuota */}
+                                                    {!form.fullPayment && (
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center border-b pb-2">
+                                                                <span className="text-sm text-gray-600">Cuotas:</span>
+                                                                <span className="font-bold text-gray-800">1</span>
+                                                            </div>
+
+                                                            <div className="p-2 bg-purple-50 rounded border border-purple-100">
+                                                                <p className="text-xs text-gray-500 mb-1">Valor por cuota:</p>
+                                                                <div className="flex justify-between items-center">
+                                                                    <div>
+                                                                        <p className="text-sm text-gray-700">En fecha:</p>
+                                                                        <p className="text-sm font-bold text-purple-700">
+                                                                            ${formatNumber(selectedCourse.pagoFechaTarjeta || selectedCourse.totalTarjeta || 0)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="text-sm text-gray-700">Vencida:</p>
+                                                                        <p className="text-sm font-bold text-red-600">
+                                                                            ${formatNumber(selectedCourse.pagoVencidoTarjeta || selectedCourse.totalTarjeta || 0)}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {form.fullPayment && (
+                                                        <div className="p-2 bg-yellow-50 rounded border border-yellow-100">
+                                                            <p className="text-xs text-yellow-700 font-semibold">
+                                                                📌 Pago único: ${formatNumber(selectedCourse.totalTarjeta || 0)}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    <p className="text-xs text-purple-600 mt-2 font-semibold">
+                                                        ⚠️ Tarjeta: Pago único (sin cuotas)
                                                     </p>
                                                 </div>
                                             </div>
+
+                                            {/* Resumen */}
+                                            <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                                <p className="text-sm font-semibold text-gray-800 mb-2">Resumen de configuración:</p>
+                                                <div className="flex flex-wrap gap-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-3 h-3 rounded-full ${form.paymentType === 'Efectivo' ? 'bg-green-500' : form.paymentType === 'Transferencia' ? 'bg-blue-500' : 'bg-purple-500'}`}></div>
+                                                        <span className="text-sm text-gray-700">
+                        Método: <span className="font-bold">{form.paymentType}</span>
+                    </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-3 h-3 rounded-full ${form.fullPayment ? 'bg-yellow-500' : 'bg-gray-400'}`}></div>
+                                                        <span className="text-sm text-gray-700">
+                        Modalidad: <span className="font-bold">{form.fullPayment ? 'Pago completo' : 'En cuotas'}</span>
+                    </span>
+                                                    </div>
+                                                    {!form.fullPayment && (
+                                                        <div className="flex items-center gap-2">
+                                                            <FiCalendar className="w-4 h-4 text-gray-500" />
+                                                            <span className="text-sm text-gray-700">
+                            Cuotas: <span className="font-bold">
+                                {form.paymentType === 'Tarjeta' ? '1' :
+                                    selectedCourse.cuotasEnabled ? (selectedCourse.cuotasCompartidas || 1) : 1}
+                            </span>
+                        </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Vacantes */}
                                             {selectedCourse.vacantes > 0 && (
                                                 <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                                     <p className="text-sm text-yellow-800">

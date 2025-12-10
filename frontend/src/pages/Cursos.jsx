@@ -1,7 +1,29 @@
 // src/pages/Cursos.jsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiPlus, FiTrash, FiInfo, FiCopy } from 'react-icons/fi';
+import {
+    FiEye,
+    FiEdit,
+    FiTrash2,
+    FiX,
+    FiPlus,
+    FiTrash,
+    FiInfo,
+    FiCopy,
+    FiCalendar,
+    FiUsers,
+    FiClock,
+    FiDollarSign,
+    FiBook,
+    FiCheckCircle,
+    FiChevronRight,
+    FiChevronLeft,
+    FiStar,
+    FiPercent,
+    FiCreditCard,
+    FiShield,
+    FiSearch
+} from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB";
 
 /* ==================== Componentes UI ==================== */
@@ -24,10 +46,14 @@ function Tooltip({ children, content }) {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg max-w-xs"
+                        className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm rounded-xl shadow-2xl max-w-xs border border-white/20 backdrop-blur-sm"
                     >
-                        {content}
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <FiInfo className="w-3 h-3" />
+                            <span className="font-semibold">Información</span>
+                        </div>
+                        <div className="text-white/90">{content}</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-blue-600"></div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -67,14 +93,20 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
     return (
         <div className="relative" ref={selectorRef}>
             {/* Input de búsqueda y tags de seleccionados */}
-            <div className="w-full border-2 border-gray-300 rounded-xl bg-white focus-within:border-red-500 shadow-sm">
-                {/* Tags de profesores seleccionados - AHORA ARRIBA */}
+            <div className="w-full border-2 border-gray-200 rounded-2xl bg-white focus-within:border-blue-500 shadow-sm hover:shadow transition-shadow duration-300">
+                {/* Tags de profesores seleccionados */}
                 {selectedTeachers.length > 0 && (
-                    <div className="flex flex-wrap gap-1 p-2 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                    <div className="flex flex-wrap gap-2 p-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
                         {selectedTeachers.map(teacherId => {
                             const teacher = availableTeachers.find(t => t.id === teacherId);
                             return teacher ? (
-                                <span key={teacherId} className="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                                <motion.span
+                                    key={teacherId}
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm border border-blue-200"
+                                >
+                                    <FiUsers className="w-3 h-3" />
                                     {teacher.nombre} {teacher.apellido}
                                     <button
                                         type="button"
@@ -82,25 +114,30 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                                             e.stopPropagation();
                                             handleTeacherToggle(teacherId);
                                         }}
-                                        className="hover:text-red-600"
+                                        className="hover:text-blue-600 ml-1 transition-colors"
                                     >
                                         <FiX className="w-3 h-3" />
                                     </button>
-                                </span>
+                                </motion.span>
                             ) : null;
                         })}
                     </div>
                 )}
 
                 {/* Input de búsqueda */}
-                <input
-                    type="text"
-                    placeholder="Buscar profesores por nombre o especialidad..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onFocus={() => !isOpen && onToggle(true)}
-                    className="w-full px-3 py-2 text-black focus:outline-none rounded-xl"
-                />
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder="🔍 Buscar profesores por nombre o especialidad..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onFocus={() => !isOpen && onToggle(true)}
+                        className="w-full px-4 py-3 text-gray-700 focus:outline-none rounded-2xl bg-transparent text-sm"
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <FiChevronRight className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`} />
+                    </div>
+                </div>
             </div>
 
             {/* Dropdown de opciones */}
@@ -111,33 +148,48 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-xl shadow-md max-h-60 overflow-hidden"
+                        className="absolute z-[100] w-full mt-1 bg-white border-2 border-gray-200 rounded-2xl shadow-lg max-h-80 overflow-hidden backdrop-blur-sm bg-white/95"
                     >
-                        <div className="max-h-40 overflow-y-auto">
+                        <div className="max-h-60 overflow-y-auto">
                             {filteredTeachers.length === 0 ? (
-                                <div className="p-3 text-gray-500 text-center">
-                                    {searchTerm ? 'No se encontraron profesores que coincidan' : 'No hay profesores disponibles'}
+                                <div className="p-6 text-gray-500 text-center">
+                                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <FiUsers className="w-6 h-6 text-gray-400" />
+                                    </div>
+                                    <p className="font-medium text-sm">
+                                        {searchTerm ? 'No se encontraron profesores que coincidan' : 'No hay profesores disponibles'}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        {searchTerm ? 'Intenta con otros términos' : 'Agrega profesores primero'}
+                                    </p>
                                 </div>
                             ) : (
                                 filteredTeachers.map(teacher => (
                                     <motion.div
                                         key={teacher.id}
-                                        whileHover={{ backgroundColor: '#f3f4f6' }}
-                                        className="flex items-center p-3 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                        whileHover={{ scale: 1.01, backgroundColor: '#f0f9ff' }}
+                                        className="flex items-center p-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:shadow-sm group"
                                         onClick={() => handleTeacherToggle(teacher.id)}
                                     >
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedTeachers.includes(teacher.id)}
-                                            onChange={() => handleTeacherToggle(teacher.id)}
-                                            className="mr-3 w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
+                                        <div className={`mr-3 w-5 h-5 rounded flex items-center justify-center ${selectedTeachers.includes(teacher.id) ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : 'bg-gray-200'}`}>
+                                            {selectedTeachers.includes(teacher.id) && (
+                                                <FiCheckCircle className="w-3 h-3 text-white" />
+                                            )}
+                                        </div>
                                         <div className="flex-1">
-                                            <div className="font-medium text-black">
+                                            <div className="font-medium text-gray-800 group-hover:text-blue-600 transition-colors">
                                                 {teacher.nombre} {teacher.apellido}
                                             </div>
-                                            <div className="text-sm text-gray-500">{teacher.especialidad}</div>
+                                            <div className="text-xs text-gray-600 flex items-center gap-2 mt-1">
+                                                {teacher.especialidad && (
+                                                    <span className="bg-gradient-to-r from-blue-50 to-indigo-50 px-2 py-1 rounded text-xs font-medium">
+                                                        {teacher.especialidad}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white font-medium text-xs ml-2">
+                                            {teacher.nombre.charAt(0)}{teacher.apellido.charAt(0)}
                                         </div>
                                     </motion.div>
                                 ))
@@ -145,16 +197,17 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
                         </div>
 
                         {/* Footer del dropdown */}
-                        <div className="border-t border-gray-200 p-3 bg-gray-50 flex justify-between items-center">
-                            <div className="text-sm text-gray-600">
+                        <div className="border-t border-gray-200 p-3 bg-gradient-to-r from-gray-50 to-white flex justify-between items-center">
+                            <div className="text-xs font-medium text-gray-700">
                                 {selectedTeachers.length} profesor{selectedTeachers.length !== 1 ? 'es' : ''} seleccionado{selectedTeachers.length !== 1 ? 's' : ''}
                             </div>
                             <button
                                 type="button"
                                 onClick={() => onToggle(false)}
-                                className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors"
+                                className="text-xs bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 font-medium shadow hover:shadow-md flex items-center gap-1"
                             >
-                                Cerrar
+                                <FiCheckCircle className="w-3 h-3" />
+                                Listo
                             </button>
                         </div>
                     </motion.div>
@@ -168,21 +221,34 @@ function TeacherSelector({ selectedTeachers, onTeachersChange, isOpen, onToggle,
 
 function Notifications({ notifications, remove }) {
     return (
-        <div className="fixed top-4 right-4 flex flex-col space-y-2 z-50">
+        <div className="fixed top-4 right-4 flex flex-col space-y-2 z-50 max-w-sm">
             <AnimatePresence>
                 {notifications.map(n => (
                     <motion.div
                         key={n.id}
-                        initial={{ opacity: 0, x: 50 }}
+                        initial={{ opacity: 0, x: 100 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 50 }}
+                        exit={{ opacity: 0, x: 100 }}
                         transition={{ duration: 0.3 }}
-                        className={`px-4 py-2 rounded shadow-md cursor-pointer border-l-4 ${
-                            n.type === 'success' ? 'bg-green-100 text-green-800 border-green-500' : 'bg-red-100 text-red-800 border-red-500'
+                        className={`px-4 py-3 rounded-xl shadow-lg cursor-pointer border-l-4 flex items-center gap-3 min-w-[280px] backdrop-blur-sm ${n.type === 'success'
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 border-green-500'
+                            : 'bg-gradient-to-r from-red-50 to-pink-50 text-red-800 border-red-500'
                         }`}
                         onClick={() => remove(n.id)}
                     >
-                        {n.message}
+                        <div className={`rounded-lg p-2 ${n.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-red-500 to-pink-500'}`}>
+                            {n.type === 'success' ?
+                                <FiCheckCircle className="w-4 h-4 text-white" /> :
+                                <FiX className="w-4 h-4 text-white" />
+                            }
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-sm">{n.type === 'success' ? '¡Éxito!' : 'Error'}</p>
+                            <p className="text-gray-700 text-xs">{n.message}</p>
+                        </div>
+                        <button className="text-gray-400 hover:text-gray-600">
+                            <FiX className="w-4 h-4" />
+                        </button>
                     </motion.div>
                 ))}
             </AnimatePresence>
@@ -192,7 +258,7 @@ function Notifications({ notifications, remove }) {
 
 /* ==================== Helpers ==================== */
 
-const diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 const weekdayIndex = (dia) => diasSemana.indexOf(dia);
 
@@ -208,23 +274,19 @@ const sortHorarios = (horarios = []) => {
 
 const resumenHorarios = (horarios = []) => {
     if (!horarios || horarios.length === 0) return '-';
-
-    // Filtrar horarios que tengan desde Y hasta definidos
     const horariosValidos = sortHorarios(horarios).filter(h =>
         h.desde && h.desde.trim() !== '' &&
         h.hasta && h.hasta.trim() !== ''
     );
-
     if (horariosValidos.length === 0) return ['-'];
-
-    return horariosValidos.map(h => `${h.dia.slice(0,3)} ${h.desde}-${h.hasta}`);
+    return horariosValidos.map(h => `${h.dia.slice(0, 3)} ${h.desde}-${h.hasta}`);
 };
 
 const formatDate = (iso) => {
     if (!iso) return '-';
-    const [y,m,d] = String(iso).split('-');
+    const [y, m, d] = String(iso).split('-');
     if (!y || !m || !d) return iso;
-    return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
 };
 
 const getTeacherNames = (teacherIds, availableTeachers = []) =>
@@ -241,33 +303,58 @@ const getEstadoCurso = (inicio, fin) => {
     const fechaInicio = new Date(inicio);
     const fechaFin = new Date(fin);
 
-    if (hoy < fechaInicio) return { text: 'Próximo', color: 'bg-blue-100 text-blue-800' };
-    if (hoy >= fechaInicio && hoy <= fechaFin) return { text: 'En Curso', color: 'bg-green-100 text-green-800' };
-    return { text: 'Finalizado', color: 'bg-gray-100 text-gray-800' };
+    if (hoy < fechaInicio) return {
+        text: 'Próximo',
+        color: 'bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border border-blue-200',
+        icon: '⏳',
+        bgColor: 'from-blue-400 to-cyan-400'
+    };
+    if (hoy >= fechaInicio && hoy <= fechaFin) return {
+        text: 'En Curso',
+        color: 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200',
+        icon: '▶️',
+        bgColor: 'from-green-400 to-emerald-400'
+    };
+    return {
+        text: 'Finalizado',
+        color: 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-200',
+        icon: '✅',
+        bgColor: 'from-gray-400 to-slate-400'
+    };
 };
 
 /* ==================== Función para calcular vacantes ==================== */
 const getVacantesInfo = (course, inscriptions) => {
     const totalVacantes = Number(course.vacantes) || 0;
-    if (totalVacantes === 0) return { disponibles: 0, ocupadas: 0, porcentaje: 0, color: 'bg-gray-100 text-gray-800', emoji: '⚪' };
+    if (totalVacantes === 0) return {
+        disponibles: 0,
+        ocupadas: 0,
+        porcentaje: 0,
+        color: 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-200',
+        emoji: '⚪',
+        bgColor: 'from-gray-300 to-slate-300'
+    };
 
     const ocupadas = inscriptions.filter(i => i.courseId === course.id).length;
     const disponibles = Math.max(0, totalVacantes - ocupadas);
     const porcentaje = (disponibles / totalVacantes) * 100;
 
-    let color, emoji;
+    let color, emoji, bgColor;
     if (porcentaje > 50) {
-        color = 'bg-green-100 text-green-800';
+        color = 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200';
         emoji = '🟢';
+        bgColor = 'from-green-300 to-emerald-300';
     } else if (porcentaje >= 10) {
-        color = 'bg-yellow-100 text-yellow-800';
+        color = 'bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-700 border border-yellow-200';
         emoji = '🟡';
+        bgColor = 'from-yellow-300 to-amber-300';
     } else {
-        color = 'bg-red-100 text-red-800';
+        color = 'bg-gradient-to-r from-red-50 to-pink-50 text-red-700 border border-red-200';
         emoji = '🔴';
+        bgColor = 'from-red-300 to-pink-300'
     }
 
-    return { disponibles, ocupadas, porcentaje, color, emoji };
+    return { disponibles, ocupadas, porcentaje, color, emoji, bgColor };
 };
 
 /* ==================== Tooltips Content ==================== */
@@ -387,7 +474,7 @@ export default function Cursos() {
     const showNotification = (type, message) => {
         const id = Date.now();
         setNotifications(n => [...n, { id, type, message }]);
-        setTimeout(() => removeNotification(id), 3000);
+        setTimeout(() => removeNotification(id), 5000);
     };
     const removeNotification = id => setNotifications(n => n.filter(x => x.id !== id));
 
@@ -616,7 +703,7 @@ export default function Cursos() {
     };
 
     const handleDelete = (course) => {
-        if (window.confirm(`¿Eliminar curso "${course.nombre}"?`)) {
+        if (window.confirm(`¿Eliminar curso "${course.nombre}"?\nEsta acción no se puede deshacer.`)) {
             removeCourse(course.id);
             showNotification('success', 'Curso eliminado');
         }
@@ -654,415 +741,648 @@ export default function Cursos() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 sm:p-6">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 p-4 sm:p-6">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            <div className="max-w-[1800px] mx-auto space-y-6">
+            <div className="max-w-[1920px] mx-auto space-y-6">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 rounded-2xl shadow-lg">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <h1 className="text-2xl sm:text-3xl font-bold">📚 Gestión de Cursos</h1>
-                            <p className="text-blue-100 text-sm mt-1">Administra los cursos académicos</p>
+                <motion.div
+                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-6 rounded-2xl shadow-lg"
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white/20 rounded-2xl p-4 backdrop-blur-sm border border-white/30">
+                                <FiBook className="w-8 h-8" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl font-bold mb-1">📚 Gestión de Cursos</h1>
+                                <p className="text-blue-100 text-sm font-medium">Administra y organiza todos los cursos académicos</p>
+                            </div>
                         </div>
-                        <button
+                        <motion.button
                             onClick={() => openForm(null)}
-                            className="bg-white text-red-600 px-6 py-3 rounded-xl hover:bg-red-50 transition-all font-bold shadow-lg w-full sm:w-auto text-center"
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="bg-white text-blue-600 px-6 py-3 rounded-xl hover:bg-blue-50 transition-all duration-300 font-bold shadow-lg hover:shadow-xl w-full sm:w-auto text-center flex items-center justify-center gap-3 group border border-white/50"
                         >
-                            + Nuevo Curso
-                        </button>
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                                <FiPlus className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm">Nuevo Curso</span>
+                        </motion.button>
                     </div>
+                </motion.div>
+
+                {/* Tarjetas de resumen */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <motion.div
+                        className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow duration-300"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold text-blue-700 mb-1 uppercase tracking-wide">Total Cursos</p>
+                                <p className="text-2xl font-bold text-blue-900">{courses.length}</p>
+                                <p className="text-xs text-blue-600 mt-1">Activos en el sistema</p>
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-3 rounded-xl shadow">
+                                <FiBook className="w-6 h-6 text-white" />
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        className="bg-gradient-to-r from-green-50 to-emerald-100 border border-green-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow duration-300"
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold text-green-700 mb-1 uppercase tracking-wide">En Curso</p>
+                                <p className="text-2xl font-bold text-green-900">
+                                    {courses.filter(c => getEstadoCurso(c.inicio, c.fin).text === 'En Curso').length}
+                                </p>
+                                <p className="text-xs text-green-600 mt-1">Actualmente activos</p>
+                            </div>
+                            <div className="bg-gradient-to-r from-green-400 to-green-500 p-3 rounded-xl shadow">
+                                <FiClock className="w-6 h-6 text-white" />
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        className="bg-gradient-to-r from-cyan-50 to-blue-100 border border-cyan-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow duration-300"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold text-cyan-700 mb-1 uppercase tracking-wide">Próximos</p>
+                                <p className="text-2xl font-bold text-cyan-900">
+                                    {courses.filter(c => getEstadoCurso(c.inicio, c.fin).text === 'Próximo').length}
+                                </p>
+                                <p className="text-xs text-cyan-600 mt-1">Por comenzar</p>
+                            </div>
+                            <div className="bg-gradient-to-r from-cyan-400 to-blue-400 p-3 rounded-xl shadow">
+                                <FiCalendar className="w-6 h-6 text-white" />
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
 
                 {/* Barra de búsqueda y filtros */}
                 <div className="space-y-4">
                     {/* Barra de búsqueda */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <input
-                            type="text"
-                            placeholder="🔍 Buscar por nombre o profesor..."
-                            className="flex-1 border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-red-500 focus:outline-none shadow-sm"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Filtros */}
-                    <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row gap-4">
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm font-medium text-gray-700">Estado:</label>
-                            <select
-                                value={filterEstado}
-                                onChange={(e) => setFilterEstado(e.target.value)}
-                                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none shadow-sm"
-                            >
-                                <option value="">Todos</option>
-                                <option value="Próximo">Próximo</option>
-                                <option value="En Curso">En Curso</option>
-                                <option value="Finalizado">Finalizado</option>
-                            </select>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm font-medium text-gray-700">COD:</label>
+                    <motion.div
+                        className="relative"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                    >
+                        <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Filtrar por código..."
-                                value={filterCod}
-                                onChange={(e) => setFilterCod(e.target.value)}
-                                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none w-32 shadow-sm"
+                                placeholder="🔍 Buscar por nombre, profesor o código del curso..."
+                                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none shadow-sm text-sm bg-white placeholder-gray-500"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
                             />
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-2 rounded-lg">
+                                    <FiSearch className="w-4 h-4" />
+                                </div>
+                            </div>
                         </div>
+                    </motion.div>
 
-                        {(search || filterEstado || filterCod) && (
-                            <button
-                                onClick={() => {
-                                    setSearch('');
-                                    setFilterEstado('');
-                                    setFilterCod('');
-                                }}
-                                className="text-sm text-red-600 hover:text-red-800 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
-                            >
-                                Limpiar filtros
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Tabla de cursos */}
-                <div className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-gray-200">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full">
-                            <thead className="bg-gradient-to-r from-red-100 to-blue-100">
-                            <tr>
-                                {[
-                                    'COD', 'Nombre del Curso', 'Fecha Inicio', 'Fecha Fin',
-                                    'Día y Horario', 'Profesor/es', 'Vacantes', 'Estado', 'Acciones'
-                                ].map(h => (
-                                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                            {filtered.map((course, index) => {
-                                const estado = getEstadoCurso(course.inicio, course.fin);
-                                const horarios = resumenHorarios(course.horarios || []);
-                                const vacantesInfo = getVacantesInfo(course, inscriptions);
-                                return (
-                                    <motion.tr
-                                        key={course.id}
-                                        className={`hover:bg-red-50 transition-colors ${
-                                            index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                                        }`}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.2, delay: index * 0.05 }}
+                    {/* Filtros */}
+                    <motion.div
+                        className="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-gray-200"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                    >
+                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-2 rounded-lg">
+                                    <FiCalendar className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-700 mb-1 block">Estado:</label>
+                                    <select
+                                        value={filterEstado}
+                                        onChange={(e) => setFilterEstado(e.target.value)}
+                                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none shadow-sm w-40 bg-white"
                                     >
-                                        <td className="px-4 py-3 text-red-600 font-bold">#{course.id}</td>
-                                        <td className="px-4 py-3 font-semibold text-gray-900">{course.nombre}</td>
-                                        <td className="px-4 py-3 text-gray-700">{formatDate(course.inicio)}</td>
-                                        <td className="px-4 py-3 text-gray-700">{formatDate(course.fin)}</td>
-                                        <td className="px-4 py-3 text-gray-700">
-                                            {Array.isArray(horarios) && horarios.length > 0 ? (
-                                                <div className="space-y-1">
-                                                    {horarios.map((horario, idx) => (
-                                                        <div key={idx} className="text-sm bg-gray-100 px-2 py-1 rounded">
-                                                            {horario}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-500">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-700">{getTeacherNames(course.profesores || [], professors)}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${vacantesInfo.color} flex items-center gap-1`}>
-                                                    <span className="text-base">{vacantesInfo.emoji}</span>
-                                                    <span>{vacantesInfo.disponibles}/{Number(course.vacantes)}</span>
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-3 py-2 rounded-full text-xs font-bold shadow-sm ${estado.color}`}>
-                                                {estado.text}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex space-x-2">
-                                                <motion.button
-                                                    onClick={() => setViewing(course)}
-                                                    whileHover={{ scale: 1.2 }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                    className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-full hover:bg-blue-50"
-                                                    title="Ver detalles"
-                                                >
-                                                    <FiEye size={18} />
-                                                </motion.button>
-                                                <motion.button
-                                                    onClick={() => openForm(course)}
-                                                    whileHover={{ scale: 1.2 }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                    className="text-green-600 hover:text-green-800 transition-colors p-2 rounded-full hover:bg-green-50"
-                                                    title="Editar curso"
-                                                >
-                                                    <FiEdit size={18} />
-                                                </motion.button>
-                                                <motion.button
-                                                    onClick={() => handleDuplicate(course)}
-                                                    whileHover={{ scale: 1.2 }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                    className="text-purple-600 hover:text-purple-800 transition-colors p-2 rounded-full hover:bg-purple-50"
-                                                    title="Duplicar curso"
-                                                >
-                                                    <FiCopy size={18} />
-                                                </motion.button>
-                                                <motion.button
-                                                    onClick={() => handleDelete(course)}
-                                                    whileHover={{ scale: 1.2 }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                    className="text-red-600 hover:text-red-800 transition-colors p-2 rounded-full hover:bg-red-50"
-                                                    title="Eliminar curso"
-                                                >
-                                                    <FiTrash2 size={18} />
-                                                </motion.button>
-                                            </div>
-                                        </td>
-                                    </motion.tr>
-                                );
-                            })}
-                            {filtered.length === 0 && (
-                                <tr>
-                                    <td colSpan={9} className="text-center py-12 text-gray-500">
-                                        <div className="flex flex-col items-center space-y-2">
-                                            <div className="text-4xl">📚</div>
-                                            <div className="text-lg">
-                                                {search || filterEstado || filterCod
-                                                    ? 'No se encontraron cursos que coincidan con los filtros.'
-                                                    : 'No hay cursos disponibles.'}
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
+                                        <option value="">📋 Todos</option>
+                                        <option value="Próximo">📅 Próximo</option>
+                                        <option value="En Curso">▶️ En Curso</option>
+                                        <option value="Finalizado">✅ Finalizado</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-2 rounded-lg">
+                                    <FiBook className="w-4 h-4 text-indigo-600" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-700 mb-1 block">Código:</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej: 101, 202..."
+                                        value={filterCod}
+                                        onChange={(e) => setFilterCod(e.target.value)}
+                                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none shadow-sm w-32 bg-white"
+                                    />
+                                </div>
+                            </div>
+
+                            {(search || filterEstado || filterCod) && (
+                                <motion.button
+                                    onClick={() => {
+                                        setSearch('');
+                                        setFilterEstado('');
+                                        setFilterCod('');
+                                    }}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="sm:ml-auto px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-300 font-medium text-xs shadow hover:shadow-md flex items-center gap-2"
+                                >
+                                    <FiX className="w-3 h-3" />
+                                    Limpiar filtros
+                                </motion.button>
                             )}
-                            </tbody>
-                        </table>
-                    </div>
+                        </div>
+                    </motion.div>
                 </div>
+
+                {/* Tabla de cursos - COMPLETAMENTE RESPONSIVE */}
+                <motion.div
+                    className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden border border-gray-200"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                >
+                    <div className="overflow-x-auto">
+                        <div className="min-w-full inline-block align-middle">
+                            <div className="overflow-hidden">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                    <tr className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            COD
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Nombre
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Fechas
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Horario
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Profesor/es
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Vacantes
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Estado
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Acciones
+                                        </th>
+                                    </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                    {filtered.map((course, index) => {
+                                        const estado = getEstadoCurso(course.inicio, course.fin);
+                                        const horarios = resumenHorarios(course.horarios || []);
+                                        const vacantesInfo = getVacantesInfo(course, inscriptions);
+                                        return (
+                                            <motion.tr
+                                                key={course.id}
+                                                className={`hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-300 ${index % 2 === 0 ? 'bg-gray-50/30' : 'bg-white/30'
+                                                }`}
+                                                initial={{ opacity: 0, y: 5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.2, delay: index * 0.05 }}
+                                            >
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                        <span className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-semibold px-3 py-1.5 rounded-lg text-xs shadow-sm border border-blue-200">
+                                                            #{course.id}
+                                                        </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="font-semibold text-gray-900 text-sm">{course.nombre}</div>
+                                                    <div className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                                                        <FiShield className="w-3 h-3 text-blue-500" />
+                                                        <span className="truncate max-w-[150px]">{course.tiposCertificado?.join(', ') || 'Sin certificados'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <FiCalendar className="w-3 h-3 text-blue-500" />
+                                                            <span className="text-xs font-medium text-gray-700">{formatDate(course.inicio)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <FiCalendar className="w-3 h-3 text-indigo-500" />
+                                                            <span className="text-xs font-medium text-gray-700">{formatDate(course.fin)}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {Array.isArray(horarios) && horarios.length > 0 ? (
+                                                        <div className="space-y-1">
+                                                            {horarios.slice(0, 1).map((horario, idx) => (
+                                                                <div key={idx} className="flex items-center gap-2">
+                                                                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-1 rounded">
+                                                                        <FiClock className="w-3 h-3 text-orange-500" />
+                                                                    </div>
+                                                                    <span className="text-xs font-medium text-gray-700 bg-gradient-to-r from-orange-50 to-yellow-50 px-2 py-1 rounded">
+                                                                            {horario}
+                                                                        </span>
+                                                                </div>
+                                                            ))}
+                                                            {horarios.length > 1 && (
+                                                                <div className="text-xs text-gray-500 font-medium">
+                                                                    +{horarios.length - 1} más
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-500 italic text-xs flex items-center gap-1">
+                                                                <FiClock className="w-3 h-3" />
+                                                                Sin horarios
+                                                            </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="max-w-[150px]">
+                                                        <div className="text-xs font-medium text-gray-700 truncate">
+                                                            {getTeacherNames(course.profesores || [], professors)}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {course.profesores?.length || 0} profesor{course.profesores?.length !== 1 ? 'es' : ''}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm ${vacantesInfo.color} flex items-center gap-2`}>
+                                                            <span className="text-lg">{vacantesInfo.emoji}</span>
+                                                            <div>
+                                                                <div className="font-bold">{vacantesInfo.disponibles}/{Number(course.vacantes)}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs text-gray-600 font-medium">
+                                                            {vacantesInfo.porcentaje.toFixed(0)}%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                        <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm ${estado.color} flex items-center gap-2`}>
+                                                            <span className="text-lg">{estado.icon}</span>
+                                                            <span>{estado.text}</span>
+                                                        </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex space-x-1.5">
+                                                        <motion.button
+                                                            onClick={() => setViewing(course)}
+                                                            whileHover={{ scale: 1.1, y: -1 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="bg-gradient-to-r from-blue-400 to-cyan-400 text-white p-2 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition-all duration-300 shadow hover:shadow-sm flex flex-col items-center justify-center gap-0.5 min-w-[50px]"
+                                                            title="Ver detalles"
+                                                        >
+                                                            <FiEye size={14} />
+                                                            <span className="text-[10px] font-medium">Ver</span>
+                                                        </motion.button>
+                                                        <motion.button
+                                                            onClick={() => openForm(course)}
+                                                            whileHover={{ scale: 1.1, y: -1 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="bg-gradient-to-r from-green-400 to-emerald-400 text-white p-2 rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all duration-300 shadow hover:shadow-sm flex flex-col items-center justify-center gap-0.5 min-w-[50px]"
+                                                            title="Editar"
+                                                        >
+                                                            <FiEdit size={14} />
+                                                            <span className="text-[10px] font-medium">Editar</span>
+                                                        </motion.button>
+                                                        <motion.button
+                                                            onClick={() => handleDuplicate(course)}
+                                                            whileHover={{ scale: 1.1, y: -1 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="bg-gradient-to-r from-purple-400 to-pink-400 text-white p-2 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all duration-300 shadow hover:shadow-sm flex flex-col items-center justify-center gap-0.5 min-w-[50px]"
+                                                            title="Duplicar"
+                                                        >
+                                                            <FiCopy size={14} />
+                                                            <span className="text-[10px] font-medium">Copiar</span>
+                                                        </motion.button>
+                                                        <motion.button
+                                                            onClick={() => handleDelete(course)}
+                                                            whileHover={{ scale: 1.1, y: -1 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="bg-gradient-to-r from-red-400 to-orange-400 text-white p-2 rounded-lg hover:from-red-500 hover:to-orange-500 transition-all duration-300 shadow hover:shadow-sm flex flex-col items-center justify-center gap-0.5 min-w-[50px]"
+                                                            title="Eliminar"
+                                                        >
+                                                            <FiTrash2 size={14} />
+                                                            <span className="text-[10px] font-medium">Eliminar</span>
+                                                        </motion.button>
+                                                    </div>
+                                                </td>
+                                            </motion.tr>
+                                        );
+                                    })}
+                                    {filtered.length === 0 && (
+                                        <tr>
+                                            <td colSpan={8} className="text-center py-12 text-gray-500">
+                                                <motion.div
+                                                    className="flex flex-col items-center space-y-4"
+                                                    initial={{ opacity: 0, scale: 0.9 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    transition={{ duration: 0.5 }}
+                                                >
+                                                    <div className="text-6xl">📚</div>
+                                                    <div>
+                                                        <div className="text-xl font-bold text-gray-700 mb-1">
+                                                            {search || filterEstado || filterCod
+                                                                ? 'No se encontraron cursos'
+                                                                : 'No hay cursos disponibles'}
+                                                        </div>
+                                                        <p className="text-gray-600 max-w-md mx-auto text-sm">
+                                                            {search || filterEstado || filterCod
+                                                                ? 'Intenta con otros términos de búsqueda o limpia los filtros'
+                                                                : 'Haz clic en "Nuevo Curso" para comenzar'}
+                                                        </p>
+                                                    </div>
+                                                    {(!search && !filterEstado && !filterCod) && (
+                                                        <motion.button
+                                                            onClick={() => openForm(null)}
+                                                            whileHover={{ scale: 1.05 }}
+                                                            className="mt-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow hover:shadow-md flex items-center gap-2 text-sm"
+                                                        >
+                                                            <FiPlus className="w-4 h-4" />
+                                                            <span>Crear primer curso</span>
+                                                        </motion.button>
+                                                    )}
+                                                </motion.div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
             </div>
 
             {/* Modal Detalles */}
             <AnimatePresence>
                 {viewing && (
                     <motion.div
-                        className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         onClick={() => setViewing(null)}
                     >
                         <motion.div
-                            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto relative border-2 border-red-200 shadow-2xl"
-                            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                            className="bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/50 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-gray-200 shadow-xl"
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header con gradiente */}
-                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-6 rounded-t-xl relative">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="bg-white/20 rounded-full p-2">
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                                </svg>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="bg-white/20 rounded-xl p-2 backdrop-blur-sm border border-white/30">
+                                                <FiBook className="w-6 h-6" />
                                             </div>
-                                            <h2 className="text-2xl font-bold">Detalles del Curso</h2>
+                                            <div>
+                                                <h2 className="text-xl font-bold">Detalles del Curso</h2>
+                                                <p className="text-blue-100 text-sm font-medium mt-1">Información completa</p>
+                                            </div>
                                         </div>
-                                        <p className="text-blue-100 text-lg font-semibold">{viewing.nombre}</p>
+                                        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                                            <div className="text-lg font-bold mb-1">{viewing.nombre}</div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="bg-white/20 px-2 py-1 rounded text-xs font-medium">
+                                                    COD: <strong>#{viewing.id}</strong>
+                                                </span>
+                                                <span className={`px-2 py-1 rounded text-xs font-semibold ${getEstadoCurso(viewing.inicio, viewing.fin).color}`}>
+                                                    {getEstadoCurso(viewing.inicio, viewing.fin).text}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <button
-                                        className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-all duration-200 hover:scale-110"
+                                        className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-all duration-300 hover:scale-110 backdrop-blur-sm border border-white/30"
                                         onClick={() => setViewing(null)}
                                     >
-                                        <FiX className="w-6 h-6" />
+                                        <FiX className="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="p-6 space-y-8">
-                                {/* Primera fila: Información básica + Estado */}
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    {/* Tarjeta de información del curso */}
-                                    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-blue-100 rounded-lg p-2">
-                                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
+                            <div className="p-6 space-y-6">
+                                {/* Primera fila: Información básica */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-2">
+                                                <FiInfo className="w-5 h-5 text-blue-600" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-gray-800">Información del Curso</h3>
+                                            <h3 className="text-lg font-bold text-gray-800">Información</h3>
                                         </div>
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                                <span className="text-sm font-medium text-gray-600">Código:</span>
-                                                <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold">#{viewing.id}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                                <span className="text-sm font-medium text-gray-600">Vacantes:</span>
-                                                <span className="font-semibold text-gray-800">{viewing.vacantes} estudiantes</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                                <span className="text-sm font-medium text-gray-600">Inicio:</span>
-                                                <span className="font-semibold text-gray-800">{formatDate(viewing.inicio)}</span>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-medium text-gray-600">Código:</span>
+                                                <span className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">#{viewing.id}</span>
                                             </div>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-sm font-medium text-gray-600">Fin:</span>
-                                                <span className="font-semibold text-gray-800">{formatDate(viewing.fin)}</span>
+                                                <span className="text-xs font-medium text-gray-600">Vacantes:</span>
+                                                <span className="font-semibold text-gray-800 text-sm">{viewing.vacantes}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-medium text-gray-600">Inicio:</span>
+                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3 text-blue-500" />
+                                                    {formatDate(viewing.inicio)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-medium text-gray-600">Fin:</span>
+                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3 text-indigo-500" />
+                                                    {formatDate(viewing.fin)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Tarjeta de estado */}
-                                    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-green-100 rounded-lg p-2">
-                                                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
+                                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2">
+                                                <FiCheckCircle className="w-5 h-5 text-green-600" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-gray-800">Estado del Curso</h3>
+                                            <h3 className="text-lg font-bold text-gray-800">Estado</h3>
                                         </div>
-                                        <div className="text-center py-4">
-                                            <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-lg font-bold ${getEstadoCurso(viewing.inicio, viewing.fin).color} shadow-md`}>
-                                                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                                        <div className="text-center py-2">
+                                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${getEstadoCurso(viewing.inicio, viewing.fin).color} shadow-sm mb-2`}>
+                                                <div className="w-2 h-2 rounded-full bg-current animate-pulse"></div>
                                                 {getEstadoCurso(viewing.inicio, viewing.fin).text}
                                             </div>
-                                            <p className="text-sm text-gray-600 mt-3">
+                                            <p className="text-xs text-gray-600 mt-1">
                                                 {getEstadoCurso(viewing.inicio, viewing.fin).text === 'En Curso'
-                                                    ? 'El curso se encuentra actualmente en desarrollo'
+                                                    ? 'Curso actualmente en desarrollo.'
                                                     : getEstadoCurso(viewing.inicio, viewing.fin).text === 'Próximo'
-                                                        ? 'El curso comenzará próximamente'
-                                                        : 'El curso ha finalizado'
-                                                }
+                                                        ? 'Programado para comenzar.'
+                                                        : 'Curso finalizado.'}
                                             </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Tarjeta de profesores */}
-                                    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-red-100 rounded-lg p-2">
-                                                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                </svg>
-                                            </div>
-                                            <h3 className="text-lg font-bold text-gray-800">Profesor/es</h3>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {viewing.profesores && viewing.profesores.length > 0 ? (
-                                                viewing.profesores.map(profesorId => {
-                                                    const profesor = professors.find(p => p.id === profesorId);
-                                                    return profesor ? (
-                                                        <div key={profesorId} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                                                            <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                                                {profesor.nombre.charAt(0)}{profesor.apellido.charAt(0)}
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-semibold text-gray-800">{profesor.nombre} {profesor.apellido}</div>
-                                                                <div className="text-sm text-gray-600">{profesor.especialidad}</div>
-                                                            </div>
-                                                        </div>
-                                                    ) : null;
-                                                })
-                                            ) : (
-                                                <div className="text-center py-4 text-gray-500">
-                                                    <svg className="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                                                    </svg>
-                                                    <p>No hay profesores asignados</p>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Segunda fila: Datos económicos */}
-                                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="bg-green-100 rounded-lg p-2">
-                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                            </svg>
+                                {/* Profesores */}
+                                <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2">
+                                            <FiUsers className="w-5 h-5 text-purple-600" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-800">Profesor/es</h3>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {viewing.profesores && viewing.profesores.length > 0 ? (
+                                            viewing.profesores.map(profesorId => {
+                                                const profesor = professors.find(p => p.id === profesorId);
+                                                return profesor ? (
+                                                    <motion.div
+                                                        key={profesorId}
+                                                        className="flex items-center gap-3 bg-gradient-to-r from-gray-50 to-white rounded-lg p-2 border border-gray-200"
+                                                        whileHover={{ y: -1 }}
+                                                    >
+                                                        <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-lg flex items-center justify-center text-white font-semibold text-xs">
+                                                            {profesor.nombre.charAt(0)}{profesor.apellido.charAt(0)}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <div className="font-semibold text-gray-800 text-sm">{profesor.nombre} {profesor.apellido}</div>
+                                                            <div className="text-xs text-gray-600">
+                                                                {profesor.especialidad || 'Sin especialidad'}
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ) : null;
+                                            })
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-500">
+                                                <div className="bg-gradient-to-r from-gray-100 to-gray-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                                    <FiUsers className="w-6 h-6 text-gray-400" />
+                                                </div>
+                                                <p className="font-medium text-sm">No hay profesores asignados</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Datos económicos */}
+                                <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2">
+                                            <FiDollarSign className="w-5 h-5 text-green-600" />
                                         </div>
                                         <h3 className="text-lg font-bold text-gray-800">Información Económica</h3>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         {/* Efectivo */}
-                                        <div className="bg-gradient-to-br from-red-50 to-blue-50 rounded-xl p-5 border-2 border-red-200">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                                                <h4 className="font-bold text-red-800 text-lg">Efectivo</h4>
+                                        <div className="bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-lg p-3 border border-blue-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-2 rounded">
+                                                    <FiDollarSign className="w-4 h-4 text-white" />
+                                                </div>
+                                                <h4 className="font-semibold text-blue-800 text-sm">Efectivo</h4>
                                             </div>
-                                            <div className="space-y-3">
+                                            <div className="space-y-2">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-red-700">Pago en fecha:</span>
-                                                    <span className="font-bold text-red-900">${Number(viewing.pagoFechaEfectivo || 0).toLocaleString('es-AR')}</span>
+                                                    <span className="text-xs font-medium text-blue-700">Pago en fecha:</span>
+                                                    <span className="font-semibold text-blue-900 text-sm">${Number(viewing.pagoFechaEfectivo || 0).toLocaleString('es-AR')}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-red-700">Pago vencido:</span>
-                                                    <span className="font-bold text-red-900">${Number(viewing.pagoVencidoEfectivo || 0).toLocaleString('es-AR')}</span>
+                                                    <span className="text-xs font-medium text-blue-700">Pago vencido:</span>
+                                                    <span className="font-semibold text-blue-900 text-sm">${Number(viewing.pagoVencidoEfectivo || 0).toLocaleString('es-AR')}</span>
                                                 </div>
-                                                <div className="border-t border-red-200 pt-2 mt-2">
+                                                <div className="border-t border-blue-200 pt-2 mt-1">
                                                     <div className="flex justify-between items-center">
-                                                        <span className="font-semibold text-red-800">Total:</span>
-                                                        <span className="font-bold text-xl text-red-900">${Number(viewing.totalEfectivo || 0).toLocaleString('es-AR')}</span>
+                                                        <span className="text-xs font-semibold text-blue-800">Total:</span>
+                                                        <span className="font-bold text-blue-900">${Number(viewing.totalEfectivo || 0).toLocaleString('es-AR')}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Transferencia */}
-                                        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5 border-2 border-blue-200">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                                <h4 className="font-bold text-blue-800 text-lg">Transferencia</h4>
+                                        <div className="bg-gradient-to-br from-indigo-50 via-white to-indigo-50 rounded-lg p-3 border border-indigo-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <div className="bg-gradient-to-r from-indigo-400 to-indigo-500 p-2 rounded">
+                                                    <FiCreditCard className="w-4 h-4 text-white" />
+                                                </div>
+                                                <h4 className="font-semibold text-indigo-800 text-sm">Transferencia</h4>
                                             </div>
-                                            <div className="space-y-3">
+                                            <div className="space-y-2">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-blue-700">Pago en fecha:</span>
-                                                    <span className="font-bold text-blue-900">${Number(viewing.pagoFechaTransferencia || 0).toLocaleString('es-AR')}</span>
+                                                    <span className="text-xs font-medium text-indigo-700">Pago en fecha:</span>
+                                                    <span className="font-semibold text-indigo-900 text-sm">${Number(viewing.pagoFechaTransferencia || 0).toLocaleString('es-AR')}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-blue-700">Pago vencido:</span>
-                                                    <span className="font-bold text-blue-900">${Number(viewing.pagoVencidoTransferencia || 0).toLocaleString('es-AR')}</span>
+                                                    <span className="text-xs font-medium text-indigo-700">Pago vencido:</span>
+                                                    <span className="font-semibold text-indigo-900 text-sm">${Number(viewing.pagoVencidoTransferencia || 0).toLocaleString('es-AR')}</span>
                                                 </div>
-                                                <div className="border-t border-blue-200 pt-2 mt-2">
+                                                <div className="border-t border-indigo-200 pt-2 mt-1">
                                                     <div className="flex justify-between items-center">
-                                                        <span className="font-semibold text-blue-800">Total:</span>
-                                                        <span className="font-bold text-xl text-blue-900">${Number(viewing.totalTransferencia || 0).toLocaleString('es-AR')}</span>
+                                                        <span className="text-xs font-semibold text-indigo-800">Total:</span>
+                                                        <span className="font-bold text-indigo-900">${Number(viewing.totalTransferencia || 0).toLocaleString('es-AR')}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Tarjeta */}
-                                        <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-5 border-2 border-purple-200">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                                                <h4 className="font-bold text-purple-800 text-lg">Tarjeta</h4>
-                                                <span className="bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs font-bold">1 Cuota</span>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-purple-700">Porcentaje:</span>
-                                                    <span className="font-bold text-purple-900">{Number(viewing.porcentajeTarjeta || 0)}%</span>
+                                        <div className="bg-gradient-to-br from-purple-50 via-white to-purple-50 rounded-lg p-3 border border-purple-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <div className="bg-gradient-to-r from-purple-400 to-purple-500 p-2 rounded">
+                                                    <FiPercent className="w-4 h-4 text-white" />
                                                 </div>
-                                                <div className="border-t border-purple-200 pt-2 mt-2">
+                                                <div>
+                                                    <h4 className="font-semibold text-purple-800 text-sm">Tarjeta</h4>
+                                                    <span className="bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 px-1 py-0.5 rounded text-[10px] font-bold">1 Cuota</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs font-medium text-purple-700">Porcentaje:</span>
+                                                    <span className="font-semibold text-purple-900 text-sm flex items-center gap-1">
+                                                        {Number(viewing.porcentajeTarjeta || 0)}%
+                                                        <div className="w-6 h-1 bg-gradient-to-r from-purple-300 to-purple-500 rounded-full"></div>
+                                                    </span>
+                                                </div>
+                                                <div className="border-t border-purple-200 pt-2 mt-1">
                                                     <div className="flex justify-between items-center">
-                                                        <span className="font-semibold text-purple-800">Total único:</span>
-                                                        <span className="font-bold text-xl text-purple-900">${Number(viewing.totalTarjeta || 0).toLocaleString('es-AR')}</span>
+                                                        <span className="text-xs font-semibold text-purple-800">Total único:</span>
+                                                        <span className="font-bold text-purple-900">${Number(viewing.totalTarjeta || 0).toLocaleString('es-AR')}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1071,97 +1391,116 @@ export default function Cursos() {
 
                                     {/* Información de cuotas */}
                                     {viewing.cuotasEnabled && (
-                                        <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <motion.div
+                                            className="mt-4 bg-gradient-to-r from-gray-50 to-white rounded-lg p-3 border border-gray-200"
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                        >
                                             <div className="flex items-center gap-2 text-gray-700">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <span className="font-medium">Cuotas compartidas para Efectivo y Transferencia: <strong>{viewing.cuotasCompartidas || 0}</strong> cuotas</span>
+                                                <div className="bg-gradient-to-r from-gray-200 to-gray-300 p-1.5 rounded">
+                                                    <FiInfo className="w-3 h-3 text-gray-600" />
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="font-semibold">Cuotas compartidas: </span>
+                                                    <span className="ml-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-2 py-1 rounded font-semibold">
+                                                        {viewing.cuotasCompartidas || 0} cuotas
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <p className="text-sm text-gray-600 mt-1">El pago con tarjeta es siempre en 1 cuota (curso completo)</p>
-                                        </div>
+                                            <p className="text-xs text-gray-600 mt-1 ml-8">
+                                                Tarjeta: 1 cuota con {viewing.porcentajeTarjeta || 15}% de recargo.
+                                            </p>
+                                        </motion.div>
                                     )}
                                 </div>
 
-                                {/* Tercera fila: Horarios y Certificados */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Horarios y Certificados */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     {/* Horarios */}
-                                    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-orange-100 rounded-lg p-2">
-                                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
+                                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg p-2">
+                                                <FiClock className="w-5 h-5 text-orange-600" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-gray-800">Horarios del Curso</h3>
+                                            <h3 className="text-lg font-bold text-gray-800">Horarios</h3>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                             {viewing.horarios && viewing.horarios.length > 0 ? (
                                                 sortHorarios(viewing.horarios).map((horario, idx) => (
-                                                    <div key={idx} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="bg-white rounded-lg p-3 shadow-sm border">
-                                                                <span className="font-bold text-blue-600 text-sm">{horario.dia.slice(0, 3)}</span>
+                                                    <motion.div
+                                                        key={idx}
+                                                        className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-white rounded-lg p-2 border border-gray-200"
+                                                        whileHover={{ x: 2 }}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="bg-white rounded p-1.5 border">
+                                                                <span className="font-bold text-blue-600 text-xs">{horario.dia.slice(0, 3)}</span>
                                                             </div>
                                                             <div>
-                                                                <div className="font-semibold text-gray-800">{horario.dia}</div>
-                                                                <div className="text-sm text-gray-600">
+                                                                <div className="font-semibold text-gray-800 text-sm">{horario.dia}</div>
+                                                                <div className="text-gray-600 text-xs">
                                                                     {horario.desde && horario.hasta ? (
-                                                                        <span className="font-medium">{horario.desde} - {horario.hasta}</span>
+                                                                        <span className="font-medium text-gray-700">{horario.desde} - {horario.hasta}</span>
                                                                     ) : (
-                                                                        <span className="text-red-500 italic">Sin horario definido</span>
+                                                                        <span className="text-red-500 italic">Sin horario</span>
                                                                     )}
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
+                                                        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 px-2 py-1 rounded text-xs font-medium">
+                                                            {horario.desde && horario.hasta ? `${horario.desde}-${horario.hasta}` : 'Sin definir'}
+                                                        </div>
+                                                    </motion.div>
                                                 ))
                                             ) : (
-                                                <div className="text-center py-8 text-gray-500">
-                                                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <p className="font-medium">No hay horarios definidos</p>
-                                                    <p className="text-sm">Edita el curso para agregar horarios</p>
+                                                <div className="text-center py-4 text-gray-500">
+                                                    <div className="bg-gradient-to-r from-gray-100 to-gray-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                                        <FiClock className="w-6 h-6 text-gray-400" />
+                                                    </div>
+                                                    <p className="font-medium text-sm">No hay horarios</p>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Certificados */}
-                                    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-red-100 rounded-lg p-2">
-                                                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
+                                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-2">
+                                                <FiShield className="w-5 h-5 text-red-600" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-gray-800">Certificados Disponibles</h3>
+                                            <h3 className="text-lg font-bold text-gray-800">Certificados</h3>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                             {viewing.tiposCertificado && viewing.tiposCertificado.length > 0 ? (
                                                 viewing.tiposCertificado.map((tipo, idx) => (
-                                                    <div key={idx} className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                                                    <motion.div
+                                                        key={idx}
+                                                        className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-white rounded-lg p-2 border border-gray-200"
+                                                        whileHover={{ x: 2 }}
+                                                    >
                                                         <div className="flex items-center gap-3">
-                                                            <div className="bg-red-100 rounded-full p-2">
-                                                                <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                                                </svg>
+                                                            <div className="bg-gradient-to-r from-red-50 to-red-100 rounded p-1.5">
+                                                                <FiShield className="w-4 h-4 text-red-600" />
                                                             </div>
-                                                            <span className="font-semibold text-gray-800">{tipo}</span>
+                                                            <div>
+                                                                <div className="font-semibold text-gray-800 text-sm">{tipo}</div>
+                                                                <div className="text-xs text-gray-500">Certificado oficial</div>
+                                                            </div>
                                                         </div>
-                                                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold text-sm">
-                                                            ${Number(viewing.costosCertificado?.[tipo] || 0).toLocaleString('es-AR')}
-                                                        </span>
-                                                    </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 px-2 py-1 rounded text-sm font-semibold">
+                                                                ${Number(viewing.costosCertificado?.[tipo] || 0).toLocaleString('es-AR')}
+                                                            </span>
+                                                        </div>
+                                                    </motion.div>
                                                 ))
                                             ) : (
-                                                <div className="text-center py-8 text-gray-500">
-                                                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                                    </svg>
-                                                    <p className="font-medium">No hay certificados disponibles</p>
-                                                    <p className="text-sm">Edita el curso para agregar certificados</p>
+                                                <div className="text-center py-4 text-gray-500">
+                                                    <div className="bg-gradient-to-r from-gray-100 to-gray-200 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                                        <FiShield className="w-6 h-6 text-gray-400" />
+                                                    </div>
+                                                    <p className="font-medium text-sm">No hay certificados</p>
                                                 </div>
                                             )}
                                         </div>
@@ -1169,16 +1508,20 @@ export default function Cursos() {
                                 </div>
                             </div>
 
-                            {/* Footer con botón de editar */}
-                            <div className="sticky bottom-0 bg-gradient-to-r from-white to-gray-50 border-t border-gray-200 p-6 rounded-b-2xl">
+                            {/* Footer */}
+                            <div className="sticky bottom-0 bg-gradient-to-r from-white via-blue-50/50 to-indigo-50/50 border-t border-gray-200 p-4 rounded-b-xl">
                                 <div className="flex justify-center">
-                                    <button
-                                        className="px-8 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-xl hover:from-red-700 hover:to-blue-700 transition-all duration-300 flex items-center gap-3 shadow-lg hover:shadow-xl font-semibold"
+                                    <motion.button
+                                        className="px-6 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 shadow hover:shadow-md font-semibold text-sm"
                                         onClick={() => { setViewing(null); openForm(viewing); }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
                                     >
-                                        <FiEdit className="w-5 h-5" />
+                                        <div className="bg-white/20 p-1.5 rounded group-hover:rotate-12 transition-transform">
+                                            <FiEdit className="w-4 h-4" />
+                                        </div>
                                         <span>Editar Curso</span>
-                                    </button>
+                                    </motion.button>
                                 </div>
                             </div>
                         </motion.div>
@@ -1190,44 +1533,65 @@ export default function Cursos() {
             <AnimatePresence>
                 {isFormOpen && (
                     <motion.div
-                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="bg-white rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden relative text-black shadow-2xl border-2 border-gray-200"
-                            initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
+                            className="bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/50 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden relative shadow-xl border border-gray-200"
+                            initial={{ scale: 0.8, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.8, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-6 flex justify-between items-center">
-                                <div>
-                                    <h2 className="text-2xl font-bold">{editing ? 'Editar Curso' : 'Nuevo Curso'}</h2>
-                                    <p className="text-blue-100 text-sm">Completa la información del curso</p>
+                            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-6 flex justify-between items-center rounded-t-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 rounded-xl p-2 backdrop-blur-sm border border-white/30">
+                                        {editing ? <FiEdit className="w-6 h-6" /> : <FiPlus className="w-6 h-6" />}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold">{editing ? 'Editar Curso' : 'Nuevo Curso'}</h2>
+                                        <p className="text-blue-100 text-sm">Completa la información</p>
+                                    </div>
                                 </div>
-                                <button type="button" className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors" onClick={closeForm}>
-                                    <FiX className="w-6 h-6" />
+                                <button type="button" className="bg-white/20 rounded-xl p-2 hover:bg-white/30 transition-colors backdrop-blur-sm border border-white/30" onClick={closeForm}>
+                                    <FiX className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(95vh-140px)]">
-                                <div className="p-6 space-y-8">
+                            <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-120px)]">
+                                <div className="p-6 space-y-6">
                                     {/* Información general */}
-                                    <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-xl border-2 border-red-200">
-                                        <h3 className="text-lg font-bold text-red-800 mb-4">Información General</h3>
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                            <div className="flex flex-col lg:col-span-2">
-                                                <label className="text-sm font-semibold mb-2 text-gray-700">Nombre:</label>
+                                    <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 p-4 rounded-lg border border-blue-200">
+                                        <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+                                            <div className="bg-gradient-to-r from-blue-100 to-blue-200 p-2 rounded">
+                                                <FiInfo className="w-5 h-5" />
+                                            </div>
+                                            Información General
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                                                    <FiBook className="w-4 h-4 text-blue-500" />
+                                                    Nombre del Curso:
+                                                </label>
                                                 <input
                                                     name="nombre"
                                                     type="text"
                                                     value={formData.nombre}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
+                                                    className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none transition-colors text-sm w-full"
                                                     required
+                                                    placeholder="Ej: Desarrollo Web Full Stack"
                                                 />
                                             </div>
 
-                                            <div className="flex flex-col lg:col-span-2">
-                                                <label className="text-sm font-semibold mb-2 text-gray-700">Profesor/es:</label>
+                                            <div>
+                                                <label className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                                                    <FiUsers className="w-4 h-4 text-blue-500" />
+                                                    Profesor/es:
+                                                </label>
                                                 <TeacherSelector
                                                     selectedTeachers={formData.profesores}
                                                     onTeachersChange={(teachers) => setFormData(fd => ({ ...fd, profesores: teachers }))}
@@ -1240,174 +1604,188 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Datos Económicos */}
-                                    <div className="bg-gradient-to-r from-red-50 to-blue-50 p-6 rounded-xl border-2 border-blue-200">
-                                        <h3 className="text-lg font-bold text-blue-800 mb-4">Datos Económicos</h3>
+                                    <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 p-4 rounded-lg border border-blue-200">
+                                        <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+                                            <div className="bg-gradient-to-r from-blue-100 to-blue-200 p-2 rounded">
+                                                <FiDollarSign className="w-5 h-5" />
+                                            </div>
+                                            Datos Económicos
+                                        </h3>
 
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             {/* Efectivo */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
-                                                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center bg-red-100 py-2 rounded">Efectivo</h4>
+                                            <div className="border border-gray-200 rounded-lg p-3 bg-white shadow-sm">
+                                                <h4 className="text-sm font-bold text-gray-700 mb-3 text-center bg-gradient-to-r from-blue-50 to-blue-100 py-2 rounded">Efectivo</h4>
                                                 <div className="space-y-3">
-                                                    <div className="flex flex-col">
+                                                    <div>
                                                         <Tooltip content={tooltipContent.pagoFechaEfectivo}>
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
                                                                 Pago en Fecha <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="pagoFechaEfectivo"
-                                                            type="number"
-                                                            value={formData.pagoFechaEfectivo}
-                                                            onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
-                                                            required min="0" step="0.01"
-                                                        />
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                                            <input
+                                                                name="pagoFechaEfectivo"
+                                                                type="number"
+                                                                value={formData.pagoFechaEfectivo}
+                                                                onChange={handleChange}
+                                                                className="border border-gray-300 rounded-lg pl-6 pr-2 py-1.5 text-gray-700 focus:border-blue-500 focus:outline-none text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                placeholder="0.00"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col">
+                                                    <div>
                                                         <Tooltip content={tooltipContent.pagoVencidoEfectivo}>
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                Pago Vencidos <FiInfo className="w-3 h-3 text-gray-400" />
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                                Pago Vencido <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="pagoVencidoEfectivo"
-                                                            type="number"
-                                                            value={formData.pagoVencidoEfectivo}
-                                                            onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
-                                                            required min="0" step="0.01"
-                                                        />
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                                            <input
+                                                                name="pagoVencidoEfectivo"
+                                                                type="number"
+                                                                value={formData.pagoVencidoEfectivo}
+                                                                onChange={handleChange}
+                                                                className="border border-gray-300 rounded-lg pl-6 pr-2 py-1.5 text-gray-700 focus:border-blue-500 focus:outline-none text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                placeholder="0.00"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col">
+                                                    <div>
                                                         <Tooltip content="Calculado automáticamente: Pago en Fecha × Nº Cuotas">
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                Costo Total (Calculado) <FiInfo className="w-3 h-3 text-gray-400" />
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                                Total <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="totalEfectivo"
-                                                            type="number"
-                                                            value={formData.totalEfectivo}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors bg-yellow-50 cursor-not-allowed"
-                                                            required min="0" step="0.01"
-                                                            readOnly
-                                                        />
-                                                        <small className="text-xs text-gray-600 mt-1">
-                                                            {formData.cuotasEnabled && formData.pagoFechaEfectivo && formData.cuotasCompartidas
-                                                                ? `${formData.pagoFechaEfectivo} × ${formData.cuotasCompartidas} = $${formData.totalEfectivo}`
-                                                                : 'Configure Pago en Fecha y Nº de Cuotas'}
-                                                        </small>
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                                            <input
+                                                                name="totalEfectivo"
+                                                                type="number"
+                                                                value={formData.totalEfectivo}
+                                                                className="border border-gray-300 rounded-lg pl-6 pr-2 py-1.5 text-gray-700 focus:border-blue-500 focus:outline-none bg-yellow-50 cursor-not-allowed text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                readOnly
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Transferencias */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
-                                                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center bg-blue-100 py-2 rounded">Transferencias</h4>
+                                            <div className="border border-gray-200 rounded-lg p-3 bg-white shadow-sm">
+                                                <h4 className="text-sm font-bold text-gray-700 mb-3 text-center bg-gradient-to-r from-indigo-50 to-indigo-100 py-2 rounded">Transferencias</h4>
                                                 <div className="space-y-3">
-                                                    <div className="flex flex-col">
+                                                    <div>
                                                         <Tooltip content={tooltipContent.pagoFechaTransferencia}>
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
                                                                 Pago en Fecha <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="pagoFechaTransferencia"
-                                                            type="number"
-                                                            value={formData.pagoFechaTransferencia}
-                                                            onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
-                                                            required min="0" step="0.01"
-                                                        />
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                                            <input
+                                                                name="pagoFechaTransferencia"
+                                                                type="number"
+                                                                value={formData.pagoFechaTransferencia}
+                                                                onChange={handleChange}
+                                                                className="border border-gray-300 rounded-lg pl-6 pr-2 py-1.5 text-gray-700 focus:border-indigo-500 focus:outline-none text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                placeholder="0.00"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col">
+                                                    <div>
                                                         <Tooltip content={tooltipContent.pagoVencidoTransferencia}>
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                Pago Vencidos <FiInfo className="w-3 h-3 text-gray-400" />
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                                Pago Vencido <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="pagoVencidoTransferencia"
-                                                            type="number"
-                                                            value={formData.pagoVencidoTransferencia}
-                                                            onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
-                                                            required min="0" step="0.01"
-                                                        />
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                                            <input
+                                                                name="pagoVencidoTransferencia"
+                                                                type="number"
+                                                                value={formData.pagoVencidoTransferencia}
+                                                                onChange={handleChange}
+                                                                className="border border-gray-300 rounded-lg pl-6 pr-2 py-1.5 text-gray-700 focus:border-indigo-500 focus:outline-none text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                placeholder="0.00"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col">
+                                                    <div>
                                                         <Tooltip content="Calculado automáticamente: Pago en Fecha × Nº Cuotas">
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                Costo Total (Calculado) <FiInfo className="w-3 h-3 text-gray-400" />
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                                Total <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="totalTransferencia"
-                                                            type="number"
-                                                            value={formData.totalTransferencia}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors bg-yellow-50 cursor-not-allowed"
-                                                            required min="0" step="0.01"
-                                                            readOnly
-                                                        />
-                                                        <small className="text-xs text-gray-600 mt-1">
-                                                            {formData.cuotasEnabled && formData.pagoFechaTransferencia && formData.cuotasCompartidas
-                                                                ? `${formData.pagoFechaTransferencia} × ${formData.cuotasCompartidas} = $${formData.totalTransferencia}`
-                                                                : 'Configure Pago en Fecha y Nº de Cuotas'}
-                                                        </small>
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                                            <input
+                                                                name="totalTransferencia"
+                                                                type="number"
+                                                                value={formData.totalTransferencia}
+                                                                className="border border-gray-300 rounded-lg pl-6 pr-2 py-1.5 text-gray-700 focus:border-indigo-500 focus:outline-none bg-yellow-50 cursor-not-allowed text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                readOnly
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Tarjetas */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
-                                                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center bg-purple-100 py-2 rounded">Tarjetas</h4>
+                                            <div className="border border-gray-200 rounded-lg p-3 bg-white shadow-sm">
+                                                <h4 className="text-sm font-bold text-gray-700 mb-3 text-center bg-gradient-to-r from-purple-50 to-purple-100 py-2 rounded">Tarjetas</h4>
                                                 <div className="space-y-3">
-                                                    <div className="flex flex-col">
+                                                    <div>
                                                         <Tooltip content={tooltipContent.porcentajeTarjeta}>
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                % <FiInfo className="w-3 h-3 text-gray-400" />
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                                % Recargo <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="porcentajeTarjeta"
-                                                            type="number"
-                                                            value={formData.porcentajeTarjeta}
-                                                            onChange={handleChange}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors bg-gray-100"
-                                                            required min="0" step="0.01"
-                                                            readOnly
-                                                        />
+                                                        <div className="relative">
+                                                            <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                                                            <input
+                                                                name="porcentajeTarjeta"
+                                                                type="number"
+                                                                value={formData.porcentajeTarjeta}
+                                                                onChange={handleChange}
+                                                                className="border border-gray-300 rounded-lg px-2 pr-8 py-1.5 text-gray-700 focus:border-purple-500 focus:outline-none bg-gray-100 cursor-not-allowed text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                readOnly
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col">
-                                                        <Tooltip content="Calculado automáticamente: Costo Total Efectivo + Porcentaje de Tarjeta. Solo pago en 1 cuota (curso completo)">
-                                                            <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                                Curso Total (1 Cuota) <FiInfo className="w-3 h-3 text-gray-400" />
+                                                    <div>
+                                                        <Tooltip content="Calculado: Total Efectivo + Porcentaje">
+                                                            <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                                Total (1 Cuota) <FiInfo className="w-3 h-3 text-gray-400" />
                                                             </label>
                                                         </Tooltip>
-                                                        <input
-                                                            name="totalTarjeta"
-                                                            type="number"
-                                                            value={formData.totalTarjeta}
-                                                            className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none transition-colors bg-yellow-50 cursor-not-allowed"
-                                                            required min="0" step="0.01"
-                                                            readOnly
-                                                        />
-                                                        <small className="text-xs text-purple-600 mt-1 font-semibold">
-                                                            {formData.totalEfectivo
-                                                                ? `$${formData.totalEfectivo} + ${formData.porcentajeTarjeta}% = $${calcularTotalTarjeta(formData.totalEfectivo, formData.porcentajeTarjeta).toFixed(2)}`
-                                                                : 'Se calcula a partir del Costo Total en Efectivo'}
-                                                        </small>
-                                                    </div>
-                                                    <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 text-xs text-red-800">
-                                                        <strong>⚠️ Importante:</strong> El pago con tarjeta es <strong>siempre en 1 sola cuota</strong> (pago completo del curso).
-                                                        El monto incluye el {formData.porcentajeTarjeta}% de recargo configurado en Parametrización.
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                                            <input
+                                                                name="totalTarjeta"
+                                                                type="number"
+                                                                value={formData.totalTarjeta}
+                                                                className="border border-gray-300 rounded-lg pl-6 pr-2 py-1.5 text-gray-700 focus:border-purple-500 focus:outline-none bg-yellow-50 cursor-not-allowed text-sm w-full"
+                                                                required min="0" step="0.01"
+                                                                readOnly
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Cuotas compartidas (fuera de las tres columnas) */}
-                                        <div className="mt-6 border-2 border-gray-200 rounded-lg p-4 bg-white">
+                                        {/* Cuotas compartidas */}
+                                        <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-white">
                                             <div className="flex items-center space-x-2 mb-3">
                                                 <input
                                                     type="checkbox"
@@ -1418,18 +1796,18 @@ export default function Cursos() {
                                                         cuotasEnabled: e.target.checked,
                                                         cuotasCompartidas: e.target.checked ? fd.cuotasCompartidas : ''
                                                     }))}
-                                                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                                                 />
-                                                <label htmlFor="cuotasEnabled" className="text-sm text-gray-700 font-medium">
-                                                    Habilitar cuotas para Efectivo y Transferencias (La tarjeta siempre es 1 cuota)
+                                                <label htmlFor="cuotasEnabled" className="text-sm text-gray-700 font-semibold">
+                                                    Habilitar cuotas para Efectivo y Transferencias
                                                 </label>
                                             </div>
 
                                             {formData.cuotasEnabled && (
-                                                <div className="flex flex-col max-w-xs">
+                                                <div>
                                                     <Tooltip content={tooltipContent.cuotasCompartidas}>
-                                                        <label className="text-sm font-medium mb-2 text-gray-700 flex items-center gap-1">
-                                                            Nº Cuotas (compartidas) <FiInfo className="w-3 h-3 text-gray-400" />
+                                                        <label className="text-xs font-semibold mb-2 text-gray-700 flex items-center gap-1">
+                                                            Nº Cuotas <FiInfo className="w-3 h-3 text-gray-400" />
                                                         </label>
                                                     </Tooltip>
                                                     <input
@@ -1437,8 +1815,9 @@ export default function Cursos() {
                                                         type="number"
                                                         value={formData.cuotasCompartidas}
                                                         onChange={handleChange}
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
+                                                        className="border border-gray-300 rounded-lg px-3 py-1.5 text-gray-700 focus:border-blue-500 focus:outline-none text-sm w-full max-w-xs"
                                                         min="1" step="1"
+                                                        placeholder="Ej: 3, 6, 12..."
                                                     />
                                                 </div>
                                             )}
@@ -1446,67 +1825,86 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Certificados */}
-                                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-200">
-                                        <h3 className="text-lg font-bold text-purple-800 mb-4">Certificados</h3>
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 p-4 rounded-lg border border-purple-200">
+                                        <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
+                                            <div className="bg-gradient-to-r from-purple-100 to-purple-200 p-2 rounded">
+                                                <FiShield className="w-5 h-5" />
+                                            </div>
+                                            Certificados
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-gray-700">Tipo(s) de Certificado:</label>
+                                                <label className="text-sm font-semibold text-gray-700">
+                                                    Tipo(s) de Certificado:
+                                                </label>
                                                 <div className="flex gap-2">
-                                                    <input
-                                                        list="cert-types"
-                                                        value={formData.certDraft}
-                                                        onChange={(e) => setFormData(fd => ({ ...fd, certDraft: e.target.value }))}
-                                                        placeholder="Escribe o selecciona (p.ej. UTN, CEA, ISO, etc.)"
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-purple-500 focus:outline-none flex-1 transition-colors"
-                                                    />
-                                                    <datalist id="cert-types">
-                                                        {availableCertTypes.map(t => <option key={t} value={t} />)}
-                                                    </datalist>
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            list="cert-types"
+                                                            value={formData.certDraft}
+                                                            onChange={(e) => setFormData(fd => ({ ...fd, certDraft: e.target.value }))}
+                                                            placeholder="Ej: UTN, CEA, ISO..."
+                                                            className="border border-gray-300 rounded-lg px-3 py-1.5 text-gray-700 focus:border-purple-500 focus:outline-none text-sm w-full"
+                                                        />
+                                                        <datalist id="cert-types">
+                                                            {availableCertTypes.map(t => <option key={t} value={t} />)}
+                                                        </datalist>
+                                                    </div>
 
-                                                    <button
+                                                    <motion.button
                                                         type="button"
                                                         onClick={handleAddCert}
-                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors whitespace-nowrap shadow-sm"
-                                                        title="Agregar certificado"
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 flex items-center gap-2 transition-colors text-sm font-semibold shadow-sm"
                                                     >
-                                                        <FiPlus className="w-4 h-4" /> Agregar
-                                                    </button>
+                                                        <FiPlus className="w-4 h-4" />
+                                                        <span>Agregar</span>
+                                                    </motion.button>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-gray-700">Certificados agregados:</label>
-                                                <div className="border-2 border-gray-200 rounded-lg p-4 bg-white min-h-[100px] shadow-sm">
+                                                <label className="text-sm font-semibold text-gray-700">
+                                                    Certificados agregados:
+                                                </label>
+                                                <div className="border border-gray-200 rounded-lg p-2 bg-white/90 max-h-48 overflow-y-auto">
                                                     {formData.tiposCertificado.length === 0 ? (
-                                                        <div className="text-gray-500 italic">Agrega al menos un tipo de certificado.</div>
+                                                        <div className="text-gray-500 italic text-center py-4 text-sm">Agrega certificados</div>
                                                     ) : (
                                                         <div className="space-y-2">
                                                             {formData.tiposCertificado.map(tipo => (
-                                                                <div key={tipo} className="flex items-center gap-2 bg-white rounded-lg px-4 py-3 shadow-sm border border-gray-200">
+                                                                <div key={tipo} className="flex items-center gap-2 bg-white rounded p-2 shadow-sm border border-gray-200">
                                                                     <div className="flex-1">
-                                                                        <div className="font-medium text-sm text-black">{tipo}</div>
+                                                                        <div className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                                                                            <FiShield className="w-3 h-3 text-purple-600" />
+                                                                            {tipo}
+                                                                        </div>
                                                                         <div className="flex items-center gap-2 mt-1">
-                                                                            <input
-                                                                                type="number"
-                                                                                placeholder="Costo"
-                                                                                value={formData.costosCertificado?.[tipo] ?? ''}
-                                                                                onChange={(e) => handleCertCostChange(tipo, e.target.value)}
-                                                                                className="w-32 border border-gray-300 rounded px-2 py-1 text-xs focus:border-purple-500 focus:outline-none"
-                                                                                min="0"
-                                                                                step="0.01"
-                                                                                required
-                                                                            />
+                                                                            <div className="relative">
+                                                                                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">$</span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    placeholder="Costo"
+                                                                                    value={formData.costosCertificado?.[tipo] ?? ''}
+                                                                                    onChange={(e) => handleCertCostChange(tipo, e.target.value)}
+                                                                                    className="w-32 border border-gray-300 rounded px-6 py-1 text-xs focus:border-purple-500 focus:outline-none"
+                                                                                    min="0"
+                                                                                    step="0.01"
+                                                                                    required
+                                                                                />
+                                                                            </div>
                                                                             <span className="text-xs text-gray-500">ARS</span>
                                                                         </div>
                                                                     </div>
-                                                                    <button
+                                                                    <motion.button
                                                                         type="button"
                                                                         onClick={() => removeCert(tipo)}
+                                                                        whileHover={{ scale: 1.1 }}
                                                                         className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-                                                                        title="Eliminar"
                                                                     >
                                                                         <FiTrash className="w-4 h-4" />
-                                                                    </button>
+                                                                    </motion.button>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -1517,71 +1915,81 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Horarios */}
-                                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border-2 border-orange-200">
-                                        <h3 className="text-lg font-bold text-orange-800 mb-4">Horarios</h3>
+                                    <div className="bg-gradient-to-r from-orange-50/50 to-yellow-50/50 p-4 rounded-lg border border-orange-200">
+                                        <h3 className="text-lg font-bold text-orange-800 mb-4 flex items-center gap-2">
+                                            <div className="bg-gradient-to-r from-orange-100 to-yellow-100 p-2 rounded">
+                                                <FiClock className="w-5 h-5" />
+                                            </div>
+                                            Horarios
+                                        </h3>
                                         <div className="space-y-4">
-                                            <div className="flex flex-wrap gap-4 items-end">
+                                            <div className="flex flex-wrap gap-3 items-end">
                                                 <div className="flex flex-col">
-                                                    <label className="text-sm font-semibold mb-2 text-gray-700">Día:</label>
+                                                    <label className="text-xs font-semibold mb-1 text-gray-700">Día:</label>
                                                     <select
                                                         value={formData.horarioDraft.dia}
                                                         onChange={(e) => setFormData(fd => ({ ...fd, horarioDraft: { ...fd.horarioDraft, dia: e.target.value } }))}
-                                                        className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors"
+                                                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-orange-500 focus:outline-none text-sm"
                                                     >
                                                         {diasSemana.map(d => <option key={d} value={d}>{d}</option>)}
                                                     </select>
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <label className="text-sm font-semibold mb-2 text-gray-700">Desde:</label>
+                                                    <label className="text-xs font-semibold mb-1 text-gray-700">Desde:</label>
                                                     <input
                                                         type="time"
                                                         value={formData.horarioDraft.desde}
                                                         onChange={(e) => setFormData(fd => ({ ...fd, horarioDraft: { ...fd.horarioDraft, desde: e.target.value } }))}
-                                                        className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors"
+                                                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-orange-500 focus:outline-none text-sm"
                                                     />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <label className="text-sm font-semibold mb-2 text-gray-700">Hasta:</label>
+                                                    <label className="text-xs font-semibold mb-1 text-gray-700">Hasta:</label>
                                                     <input
                                                         type="time"
                                                         value={formData.horarioDraft.hasta}
                                                         onChange={(e) => setFormData(fd => ({ ...fd, horarioDraft: { ...fd.horarioDraft, hasta: e.target.value } }))}
-                                                        className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-orange-500 focus:outline-none transition-colors"
+                                                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-orange-500 focus:outline-none text-sm"
                                                     />
                                                 </div>
-                                                <button
+                                                <motion.button
                                                     type="button"
                                                     onClick={handleAddHorario}
-                                                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 transition-colors whitespace-nowrap shadow-sm"
-                                                    title="Agregar horario"
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 flex items-center gap-2 transition-colors text-sm font-semibold shadow-sm"
                                                 >
-                                                    <FiPlus className="w-4 h-4" /> Agregar
-                                                </button>
+                                                    <FiPlus className="w-4 h-4" />
+                                                    <span>Agregar</span>
+                                                </motion.button>
                                             </div>
 
                                             {/* Listado */}
-                                            <div className="border-2 border-gray-200 rounded-lg p-4 bg-white min-h-[100px] shadow-sm">
+                                            <div className="border border-gray-200 rounded-lg p-2 bg-white/90 max-h-48 overflow-y-auto">
                                                 {formData.horarios.length === 0 ? (
-                                                    <div className="text-gray-500 italic">Agrega al menos un horario.</div>
+                                                    <div className="text-gray-500 italic text-center py-4 text-sm">Agrega horarios</div>
                                                 ) : (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                         {sortHorarios(formData.horarios).map((h, idx) => (
                                                             <div
                                                                 key={`${h.dia}-${h.desde}-${h.hasta}-${idx}`}
-                                                                className="flex items-center justify-between bg-white rounded-lg px-4 py-3 shadow-sm border border-gray-200"
+                                                                className="flex items-center justify-between bg-white rounded p-2 shadow-sm border border-gray-200"
                                                             >
-                                                                <div className="text-black">
-                                                                    <div className="font-medium text-sm">{h.dia}</div>
+                                                                <div className="text-gray-700">
+                                                                    <div className="font-semibold text-sm flex items-center gap-1">
+                                                                        <FiClock className="w-3 h-3 text-orange-600" />
+                                                                        {h.dia}
+                                                                    </div>
                                                                     <div className="text-xs text-gray-600">{h.desde} - {h.hasta}</div>
                                                                 </div>
-                                                                <button
+                                                                <motion.button
                                                                     type="button"
                                                                     onClick={() => removeHorario(idx)}
+                                                                    whileHover={{ scale: 1.1 }}
                                                                     className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-                                                                    title="Eliminar"
                                                                 >
                                                                     <FiTrash className="w-4 h-4" />
-                                                                </button>
+                                                                </motion.button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1591,42 +1999,57 @@ export default function Cursos() {
                                     </div>
 
                                     {/* Fechas y Vacantes */}
-                                    <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl border-2 border-gray-200">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-4">Fechas y Vacantes</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-gradient-to-r from-gray-50/50 to-slate-50/50 p-4 rounded-lg border border-gray-200">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                            <div className="bg-gradient-to-r from-gray-100 to-gray-200 p-2 rounded">
+                                                <FiCalendar className="w-5 h-5" />
+                                            </div>
+                                            Fechas y Vacantes
+                                        </h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                             <div className="flex flex-col">
-                                                <label className="text-sm font-semibold mb-2 text-gray-700">Fecha de inicio:</label>
+                                                <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3 text-blue-500" />
+                                                    Inicio:
+                                                </label>
                                                 <input
                                                     type="date"
                                                     name="inicio"
                                                     value={formData.inicio}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
+                                                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-blue-500 focus:outline-none text-sm"
                                                     required
                                                 />
                                             </div>
                                             <div className="flex flex-col">
-                                                <label className="text-sm font-semibold mb-2 text-gray-700">Fecha de fin:</label>
+                                                <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3 text-indigo-500" />
+                                                    Fin:
+                                                </label>
                                                 <input
                                                     type="date"
                                                     name="fin"
                                                     value={formData.fin}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-blue-500 focus:outline-none transition-colors"
+                                                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                                                     required
                                                 />
                                             </div>
                                             <div className="flex flex-col">
-                                                <label className="text-sm font-semibold mb-2 text-gray-700">Vacantes:</label>
+                                                <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                    <FiUsers className="w-3 h-3 text-green-500" />
+                                                    Vacantes:
+                                                </label>
                                                 <input
                                                     type="number"
                                                     name="vacantes"
                                                     value={formData.vacantes}
                                                     onChange={handleChange}
-                                                    className="border-2 border-gray-300 rounded-lg px-3 py-2 text-black focus:border-red-500 focus:outline-none transition-colors"
+                                                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-green-500 focus:outline-none text-sm"
                                                     min="0"
                                                     step="1"
                                                     required
+                                                    placeholder="Ej: 20, 30..."
                                                 />
                                             </div>
                                         </div>
@@ -1634,20 +2057,24 @@ export default function Cursos() {
                                 </div>
 
                                 {/* Footer con botones */}
-                                <div className="sticky bottom-0 bg-white border-t-2 border-gray-200 p-6 flex justify-end gap-3 shadow-lg">
-                                    <button
+                                <div className="sticky bottom-0 bg-gradient-to-r from-white via-blue-50/50 to-indigo-50/50 border-t border-gray-200 p-4 flex justify-end gap-3">
+                                    <motion.button
                                         type="button"
                                         onClick={closeForm}
-                                        className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm shadow-sm"
                                     >
                                         Cancelar
-                                    </button>
-                                    <button
+                                    </motion.button>
+                                    <motion.button
                                         type="submit"
-                                        className="px-6 py-3 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-xl hover:from-red-700 hover:to-blue-700 transition-colors font-bold shadow-lg"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-colors font-semibold text-sm shadow hover:shadow-md"
                                     >
                                         {editing ? 'Guardar Cambios' : 'Crear Curso'}
-                                    </button>
+                                    </motion.button>
                                 </div>
                             </form>
                         </motion.div>

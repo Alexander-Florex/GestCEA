@@ -6,7 +6,7 @@ import { useAuth } from "./AuthContext.jsx";
 const LS_KEY = "gestcea_db_v1";
 const LS_BACKUP_KEY = "gestcea_db_backup";
 const LS_AUDIT_KEY = "gestcea_audit_log";
-const SCHEMA_VERSION = 5; // ✅ Incrementado para incluir mejoras
+const SCHEMA_VERSION = 6; // ✅ Incrementado para separar calendarios
 const AUTO_BACKUP_INTERVAL = 30 * 60 * 1000; // 30 minutos
 
 const AppDBContext = createContext(null);
@@ -45,7 +45,8 @@ const AUDIT_ACTIONS = {
     LOGIN: 'LOGIN',
     LOGOUT: 'LOGOUT',
     PAYMENT: 'PAYMENT',
-    INSCRIPTION: 'INSCRIPTION'
+    INSCRIPTION: 'INSCRIPTION',
+    POSTPONE_CLASSES: 'POSTPONE_CLASSES' // ✅ Nueva acción
 };
 
 const createAuditLog = (action, entity, entityId, data, userId, userName) => {
@@ -181,10 +182,21 @@ const validateCourseData = (data) => {
     if (data.vacantes != null && Number(data.vacantes) < 0) {
         throw new Error("Las vacantes no pueden ser negativas.");
     }
-    if (data.inicio && data.fin) {
-        const ini = new Date(data.inicio), fin = new Date(data.fin);
+
+    // Validar calendario académico
+    if (data.inicioClases && data.finClases) {
+        const ini = new Date(data.inicioClases), fin = new Date(data.finClases);
         if (ini > fin) {
-            throw new Error("La fecha de inicio no puede ser posterior a la fecha de fin.");
+            throw new Error("La fecha de inicio de clases no puede ser posterior a la fecha de fin.");
+        }
+    }
+
+    // Validar calendario financiero
+    if (data.primerVencimiento && data.inicioClases) {
+        const primerVenc = new Date(data.primerVencimiento);
+        const inicioClases = new Date(data.inicioClases);
+        if (primerVenc > inicioClases) {
+            console.warn('[DB] Advertencia: El primer vencimiento es posterior al inicio de clases.');
         }
     }
 };
@@ -315,7 +327,6 @@ const ensureNotOverpay = (inscription, number, monto, formaPago = null) => {
     }
 };
 
-
 /** ======================= DEFAULT DB (ESCALABLE) ======================= */
 export const INSCRIPTION_STATUS = {
     CURSANDO: 'Cursando',
@@ -329,15 +340,14 @@ const defaultDB = {
     __createdAt: nowISO(),
     __lastModified: nowISO(),
     settings: {
-        // ✅ Settings completo con todos los porcentajes
         graceDays: 0,
         currency: "ARS",
         autoBackup: true,
         backupInterval: 30,
         enableAudit: true,
-        porcentajeTransferencia: 5,  // ✅ Agregado
-        porcentajeTarjeta: 15,         // ✅ Agregado
-        porcentajeIVAFacturaA: 21      // ✅ Agregado
+        porcentajeTransferencia: 5,
+        porcentajeTarjeta: 15,
+        porcentajeIVAFacturaA: 21
     },
 
     students: [
@@ -636,8 +646,19 @@ const defaultDB = {
             nombre: "Programación Web I",
             descripcion: "Fundamentos de HTML, CSS y JavaScript básico para crear sitios web estáticos y dinámicos",
             vacantes: 25,
+
+            // ✅ CALENDARIO ACADÉMICO (editables)
+            inicioClases: "2025-11-10T12:00:00.000Z",
+            finClases: "2026-02-10T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO (fijos una vez definidos)
+            primerVencimiento: "2025-11-05T12:00:00.000Z", // 5 días antes de iniciar
+            periodicidadPagos: "mensual", // "mensual", "quincenal", "semanal"
+
+            // ✅ CAMPOS DE COMPATIBILIDAD (mantener por ahora)
             inicio: "2025-11-10T12:00:00.000Z",
             fin: "2026-02-10T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Presencial",
             nivel: "Inicial",
@@ -693,8 +714,19 @@ const defaultDB = {
             nombre: "Programación Web II",
             descripcion: "JavaScript avanzado, DOM manipulation, AJAX y primeros pasos con frameworks modernos",
             vacantes: 20,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-12-01T12:00:00.000Z",
+            finClases: "2026-03-01T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-11-25T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-12-01T12:00:00.000Z",
             fin: "2026-03-01T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Híbrido",
             nivel: "Intermedio",
@@ -743,8 +775,19 @@ const defaultDB = {
             nombre: "Base de Datos MySQL",
             descripcion: "Diseño, implementación y administración de bases de datos relacionales con MySQL",
             vacantes: 30,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-11-15T12:00:00.000Z",
+            finClases: "2026-02-15T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-11-10T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-11-15T12:00:00.000Z",
             fin: "2026-02-15T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Presencial",
             nivel: "Intermedio",
@@ -793,8 +836,19 @@ const defaultDB = {
             nombre: "Redes y Subnetting",
             descripcion: "Fundamentos de redes, protocolos TCP/IP, configuración de routers y switches",
             vacantes: 18,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-11-20T12:00:00.000Z",
+            finClases: "2026-02-20T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-11-15T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-11-20T12:00:00.000Z",
             fin: "2026-02-20T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Presencial",
             nivel: "Intermedio",
@@ -843,8 +897,19 @@ const defaultDB = {
             nombre: "Algoritmos y Estructuras de Datos",
             descripcion: "Análisis de algoritmos, complejidad computacional y estructuras de datos fundamentales",
             vacantes: 28,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-12-05T12:00:00.000Z",
+            finClases: "2026-03-05T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-11-30T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-12-05T12:00:00.000Z",
             fin: "2026-03-05T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Virtual",
             nivel: "Intermedio",
@@ -894,8 +959,19 @@ const defaultDB = {
             nombre: "React Avanzado",
             descripcion: "Patrones avanzados de React, hooks personalizados, context API y performance optimization",
             vacantes: 22,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-11-25T12:00:00.000Z",
+            finClases: "2026-02-25T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-11-20T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-11-25T12:00:00.000Z",
             fin: "2026-02-25T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Híbrido",
             nivel: "Avanzado",
@@ -944,8 +1020,19 @@ const defaultDB = {
             nombre: "Node.js y Express",
             descripcion: "Desarrollo de aplicaciones backend con Node.js, Express, autenticación y APIs REST",
             vacantes: 26,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-12-10T12:00:00.000Z",
+            finClases: "2026-03-10T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-12-05T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-12-10T12:00:00.000Z",
             fin: "2026-03-10T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Virtual",
             nivel: "Intermedio",
@@ -995,8 +1082,19 @@ const defaultDB = {
             nombre: "Arquitectura de Software",
             descripcion: "Patrones de diseño, principios SOLID, arquitecturas limpias y microservicios",
             vacantes: 16,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-11-30T12:00:00.000Z",
+            finClases: "2026-02-28T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-11-25T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-11-30T12:00:00.000Z",
             fin: "2026-02-28T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Presencial",
             nivel: "Avanzado",
@@ -1045,8 +1143,19 @@ const defaultDB = {
             nombre: "Seguridad Informática",
             descripcion: "Fundamentos de ciberseguridad, ethical hacking, análisis de vulnerabilidades y hardening",
             vacantes: 20,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-12-15T12:00:00.000Z",
+            finClases: "2026-03-15T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-12-10T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-12-15T12:00:00.000Z",
             fin: "2026-03-15T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Híbrido",
             nivel: "Avanzado",
@@ -1095,8 +1204,19 @@ const defaultDB = {
             nombre: "Testing y QA Automation",
             descripcion: "Metodologías de testing, frameworks de automatización y estrategias de calidad de software",
             vacantes: 24,
+
+            // ✅ CALENDARIO ACADÉMICO
+            inicioClases: "2025-12-20T12:00:00.000Z",
+            finClases: "2026-03-20T12:00:00.000Z",
+
+            // ✅ CALENDARIO FINANCIERO
+            primerVencimiento: "2025-12-15T12:00:00.000Z",
+            periodicidadPagos: "mensual",
+
+            // ✅ CAMPOS DE COMPATIBILIDAD
             inicio: "2025-12-20T12:00:00.000Z",
             fin: "2026-03-20T12:00:00.000Z",
+
             duracion: "3 meses",
             modalidad: "Virtual",
             nivel: "Intermedio",
@@ -1153,9 +1273,9 @@ const defaultDB = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             installments: [
-                { number: 1, dueDate: "2025-11-10", amount: 60000, amountPaid: 60000, paidAt: "2025-11-10", status: "Pagado" },
-                { number: 2, dueDate: "2025-12-10", amount: 60000, amountPaid: 0, status: "Pendiente" },
-                { number: 3, dueDate: "2026-01-10", amount: 60000, amountPaid: 0, status: "Pendiente" }
+                { number: 1, dueDate: "2025-11-05", amount: 60000, amountPaid: 60000, paidAt: "2025-11-05", status: "Pagado" },
+                { number: 2, dueDate: "2025-12-05", amount: 60000, amountPaid: 0, status: "Pendiente" },
+                { number: 3, dueDate: "2026-01-05", amount: 60000, amountPaid: 0, status: "Pendiente" }
             ]
         },
         {
@@ -1169,12 +1289,12 @@ const defaultDB = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             installments: [
-                { number: 1, dueDate: "2025-12-01", amount: 40250, amountPaid: 40250, paidAt: "2025-12-01", status: "Pagado" },
-                { number: 2, dueDate: "2026-01-01", amount: 40250, amountPaid: 0, status: "Pendiente" },
-                { number: 3, dueDate: "2026-02-01", amount: 40250, amountPaid: 0, status: "Pendiente" },
-                { number: 4, dueDate: "2026-03-01", amount: 40250, amountPaid: 0, status: "Pendiente" },
-                { number: 5, dueDate: "2026-04-01", amount: 40250, amountPaid: 0, status: "Pendiente" },
-                { number: 6, dueDate: "2026-05-01", amount: 40250, amountPaid: 0, status: "Pendiente" }
+                { number: 1, dueDate: "2025-11-25", amount: 40250, amountPaid: 40250, paidAt: "2025-11-25", status: "Pagado" },
+                { number: 2, dueDate: "2025-12-25", amount: 40250, amountPaid: 0, status: "Pendiente" },
+                { number: 3, dueDate: "2026-01-25", amount: 40250, amountPaid: 0, status: "Pendiente" },
+                { number: 4, dueDate: "2026-02-25", amount: 40250, amountPaid: 0, status: "Pendiente" },
+                { number: 5, dueDate: "2026-03-25", amount: 40250, amountPaid: 0, status: "Pendiente" },
+                { number: 6, dueDate: "2026-04-25", amount: 40250, amountPaid: 0, status: "Pendiente" }
             ]
         },
         {
@@ -1188,9 +1308,9 @@ const defaultDB = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             installments: [
-                { number: 1, dueDate: "2025-11-15", amount: 68250, amountPaid: 68250, paidAt: "2025-11-15", status: "Pagado" },
-                { number: 2, dueDate: "2025-12-15", amount: 68250, amountPaid: 0, status: "Pendiente" },
-                { number: 3, dueDate: "2026-01-15", amount: 68250, amountPaid: 0, status: "Pendiente" }
+                { number: 1, dueDate: "2025-11-10", amount: 68250, amountPaid: 68250, paidAt: "2025-11-10", status: "Pagado" },
+                { number: 2, dueDate: "2025-12-10", amount: 68250, amountPaid: 0, status: "Pendiente" },
+                { number: 3, dueDate: "2026-01-10", amount: 68250, amountPaid: 0, status: "Pendiente" }
             ]
         },
         {
@@ -1204,10 +1324,10 @@ const defaultDB = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             installments: [
-                { number: 1, dueDate: "2025-11-20", amount: 60000, amountPaid: 60000, paidAt: "2025-11-20", status: "Pagado" },
-                { number: 2, dueDate: "2025-12-20", amount: 60000, amountPaid: 0, status: "Pendiente" },
-                { number: 3, dueDate: "2026-01-20", amount: 60000, amountPaid: 0, status: "Pendiente" },
-                { number: 4, dueDate: "2026-02-20", amount: 60000, amountPaid: 0, status: "Pendiente" }
+                { number: 1, dueDate: "2025-11-15", amount: 60000, amountPaid: 60000, paidAt: "2025-11-15", status: "Pagado" },
+                { number: 2, dueDate: "2025-12-15", amount: 60000, amountPaid: 0, status: "Pendiente" },
+                { number: 3, dueDate: "2026-01-15", amount: 60000, amountPaid: 0, status: "Pendiente" },
+                { number: 4, dueDate: "2026-02-15", amount: 60000, amountPaid: 0, status: "Pendiente" }
             ]
         },
         {
@@ -1221,12 +1341,12 @@ const defaultDB = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             installments: [
-                { number: 1, dueDate: "2025-12-05", amount: 31625, amountPaid: 31625, paidAt: "2025-12-05", status: "Pagado" },
-                { number: 2, dueDate: "2026-01-05", amount: 31625, amountPaid: 0, status: "Pendiente" },
-                { number: 3, dueDate: "2026-02-05", amount: 31625, amountPaid: 0, status: "Pendiente" },
-                { number: 4, dueDate: "2026-03-05", amount: 31625, amountPaid: 0, status: "Pendiente" },
-                { number: 5, dueDate: "2026-04-05", amount: 31625, amountPaid: 0, status: "Pendiente" },
-                { number: 6, dueDate: "2026-05-05", amount: 31625, amountPaid: 0, status: "Pendiente" }
+                { number: 1, dueDate: "2025-11-30", amount: 31625, amountPaid: 31625, paidAt: "2025-11-30", status: "Pagado" },
+                { number: 2, dueDate: "2025-12-30", amount: 31625, amountPaid: 0, status: "Pendiente" },
+                { number: 3, dueDate: "2026-01-30", amount: 31625, amountPaid: 0, status: "Pendiente" },
+                { number: 4, dueDate: "2026-02-28", amount: 31625, amountPaid: 0, status: "Pendiente" },
+                { number: 5, dueDate: "2026-03-30", amount: 31625, amountPaid: 0, status: "Pendiente" },
+                { number: 6, dueDate: "2026-04-30", amount: 31625, amountPaid: 0, status: "Pendiente" }
             ]
         }
     ],
@@ -1327,6 +1447,71 @@ const migrations = {
             if (!course.porcentajeTarjeta) course.porcentajeTarjeta = 15;
             if (!course.porcentajeRecargoCuotaVencida) course.porcentajeRecargoCuotaVencida = 10;
         });
+        return db;
+    },
+    6: (db) => {
+        console.log('[DB] Aplicando migración v6: Separar calendarios académico/financiero');
+
+        (db.courses || []).forEach(course => {
+            // 1. Separar calendario académico
+            if (!course.inicioClases) course.inicioClases = course.inicio || new Date().toISOString();
+            if (!course.finClases) course.finClases = course.fin || new Date(Date.now() + 90*24*60*60*1000).toISOString();
+
+            // 2. Calcular primer vencimiento si no existe (5 días antes del inicio)
+            if (!course.primerVencimiento) {
+                const inicioDate = new Date(course.inicioClases);
+                inicioDate.setDate(inicioDate.getDate() - 5);
+                course.primerVencimiento = inicioDate.toISOString();
+            }
+
+            // 3. Establecer periodicidad por defecto
+            if (!course.periodicidadPagos) {
+                course.periodicidadPagos = "mensual";
+            }
+
+            // 4. Mantener campos antiguos para compatibilidad (inicio y fin)
+            // Estos ya deberían existir, pero los aseguramos
+            if (!course.inicio) course.inicio = course.inicioClases;
+            if (!course.fin) course.fin = course.finClases;
+        });
+
+        // 5. Ajustar fechas de cuotas existentes basadas en nuevo calendario financiero
+        (db.inscriptions || []).forEach(inscription => {
+            const course = db.courses.find(c => c.id === inscription.courseId);
+            if (course && inscription.installments && inscription.installments.length > 0) {
+                // Solo si hay un curso asociado y tiene primerVencimiento
+                if (course.primerVencimiento) {
+                    const primerVencimiento = new Date(course.primerVencimiento);
+
+                    // Recalcular fechas de cuotas basadas en periodicidad
+                    const updatedInstallments = inscription.installments.map((inst, index) => {
+                        const newDueDate = new Date(primerVencimiento);
+
+                        switch(course.periodicidadPagos) {
+                            case "mensual":
+                                newDueDate.setMonth(newDueDate.getMonth() + index);
+                                break;
+                            case "quincenal":
+                                newDueDate.setDate(newDueDate.getDate() + (index * 15));
+                                break;
+                            case "semanal":
+                                newDueDate.setDate(newDueDate.getDate() + (index * 7));
+                                break;
+                            default:
+                                newDueDate.setMonth(newDueDate.getMonth() + index);
+                        }
+
+                        return {
+                            ...inst,
+                            dueDate: newDueDate.toISOString().split('T')[0]
+                        };
+                    });
+
+                    inscription.installments = updatedInstallments;
+                }
+            }
+        });
+
         return db;
     }
 };
@@ -1469,6 +1654,22 @@ export const AppDBProvider = ({ children }) => {
             case 'courses':
                 validateCourseData(newData);
                 ensureUniqueCourseName(db.courses, newData.nombre);
+
+                // ✅ Asegurar campos de calendario separados
+                if (!newData.inicioClases && newData.inicio) {
+                    newData.inicioClases = newData.inicio;
+                }
+                if (!newData.finClases && newData.fin) {
+                    newData.finClases = newData.fin;
+                }
+                if (!newData.primerVencimiento && newData.inicioClases) {
+                    const inicioDate = new Date(newData.inicioClases);
+                    inicioDate.setDate(inicioDate.getDate() - 5);
+                    newData.primerVencimiento = inicioDate.toISOString();
+                }
+                if (!newData.periodicidadPagos) {
+                    newData.periodicidadPagos = "mensual";
+                }
                 break;
             case 'students':
                 validatePersonBasic(newData);
@@ -1635,7 +1836,7 @@ export const AppDBProvider = ({ children }) => {
 
     // ========================== OPERACIONES ESPECÍFICAS ==========================
 
-    // ✅ INSCRIPCIONES - GENERA installmentsByMethod
+    // ✅ INSCRIPCIONES - GENERA installmentsByMethod (ACTUALIZADA)
     const inscribirAlumno = useCallback((studentId, courseId, paymentType) => {
         const curso = db.courses.find(c => c.id === courseId);
         if (!curso) throw new Error("Curso no encontrado.");
@@ -1661,6 +1862,9 @@ export const AppDBProvider = ({ children }) => {
                 throw new Error("Forma de pago no válida.");
         }
 
+        // ✅ Usar primerVencimiento para calcular fechas de cuotas
+        const primerVencimiento = new Date(curso.primerVencimiento || curso.inicioClases);
+
         // ✅ Generar cuotas PRINCIPALES (según método elegido)
         const installments = Array.from({ length: cuotas }, (_, i) => {
             const installmentNumber = i + 1;
@@ -1678,8 +1882,22 @@ export const AppDBProvider = ({ children }) => {
                     break;
             }
 
-            const dueDate = new Date(curso.inicio);
-            dueDate.setMonth(dueDate.getMonth() + i);
+            // ✅ Calcular fecha de vencimiento basada en periodicidad
+            const dueDate = new Date(primerVencimiento);
+
+            switch(curso.periodicidadPagos) {
+                case "mensual":
+                    dueDate.setMonth(dueDate.getMonth() + i);
+                    break;
+                case "quincenal":
+                    dueDate.setDate(dueDate.getDate() + (i * 15));
+                    break;
+                case "semanal":
+                    dueDate.setDate(dueDate.getDate() + (i * 7));
+                    break;
+                default:
+                    dueDate.setMonth(dueDate.getMonth() + i);
+            }
 
             return {
                 number: installmentNumber,
@@ -1700,8 +1918,22 @@ export const AppDBProvider = ({ children }) => {
         // ✅ CRÍTICO: Generar installmentsByMethod para TODOS los métodos
         const installmentsByMethod = {
             efectivo: Array.from({ length: curso.cuotasEfectivo }, (_, i) => {
-                const dueDate = new Date(curso.inicio);
-                dueDate.setMonth(dueDate.getMonth() + i);
+                const dueDate = new Date(primerVencimiento);
+
+                switch(curso.periodicidadPagos) {
+                    case "mensual":
+                        dueDate.setMonth(dueDate.getMonth() + i);
+                        break;
+                    case "quincenal":
+                        dueDate.setDate(dueDate.getDate() + (i * 15));
+                        break;
+                    case "semanal":
+                        dueDate.setDate(dueDate.getDate() + (i * 7));
+                        break;
+                    default:
+                        dueDate.setMonth(dueDate.getMonth() + i);
+                }
+
                 return {
                     number: i + 1,
                     dueDate: dueDate.toISOString().split('T')[0],
@@ -1711,8 +1943,22 @@ export const AppDBProvider = ({ children }) => {
                 };
             }),
             transferencia: Array.from({ length: curso.cuotasTransferencia }, (_, i) => {
-                const dueDate = new Date(curso.inicio);
-                dueDate.setMonth(dueDate.getMonth() + i);
+                const dueDate = new Date(primerVencimiento);
+
+                switch(curso.periodicidadPagos) {
+                    case "mensual":
+                        dueDate.setMonth(dueDate.getMonth() + i);
+                        break;
+                    case "quincenal":
+                        dueDate.setDate(dueDate.getDate() + (i * 15));
+                        break;
+                    case "semanal":
+                        dueDate.setDate(dueDate.getDate() + (i * 7));
+                        break;
+                    default:
+                        dueDate.setMonth(dueDate.getMonth() + i);
+                }
+
                 return {
                     number: i + 1,
                     dueDate: dueDate.toISOString().split('T')[0],
@@ -1722,8 +1968,22 @@ export const AppDBProvider = ({ children }) => {
                 };
             }),
             tarjeta: Array.from({ length: curso.cuotasTarjeta }, (_, i) => {
-                const dueDate = new Date(curso.inicio);
-                dueDate.setMonth(dueDate.getMonth() + i);
+                const dueDate = new Date(primerVencimiento);
+
+                switch(curso.periodicidadPagos) {
+                    case "mensual":
+                        dueDate.setMonth(dueDate.getMonth() + i);
+                        break;
+                    case "quincenal":
+                        dueDate.setDate(dueDate.getDate() + (i * 15));
+                        break;
+                    case "semanal":
+                        dueDate.setDate(dueDate.getDate() + (i * 7));
+                        break;
+                    default:
+                        dueDate.setMonth(dueDate.getMonth() + i);
+                }
+
                 return {
                     number: i + 1,
                     dueDate: dueDate.toISOString().split('T')[0],
@@ -1748,7 +2008,76 @@ export const AppDBProvider = ({ children }) => {
         return create('inscriptions', inscriptionData);
     }, [db, create]);
 
-    // ✅ PAGOS (ACTUALIZADO sin romper nada)
+    // ✅ POSPONER SOLO CLASES (NUEVA FUNCIÓN)
+    const posponerClasesCurso = useCallback((cursoId, nuevaFechaInicioClases, motivo = '') => {
+        try {
+            const curso = db.courses.find(c => c.id === cursoId);
+            if (!curso) throw new Error('Curso no encontrado.');
+
+            // Calcular diferencia de días
+            const fechaAnterior = new Date(curso.inicioClases || curso.inicio);
+            const fechaNueva = new Date(nuevaFechaInicioClases);
+            const diffDias = Math.floor((fechaNueva - fechaAnterior) / (1000 * 60 * 60 * 24));
+
+            if (diffDias <= 0) {
+                throw new Error('La nueva fecha debe ser posterior a la actual.');
+            }
+
+            // Calcular nueva fecha fin de clases
+            const fechaFinAnterior = new Date(curso.finClases || curso.fin);
+            const nuevaFechaFinClases = new Date(fechaFinAnterior);
+            nuevaFechaFinClases.setDate(nuevaFechaFinClases.getDate() + diffDias);
+
+            // ✅ SOLO actualizar calendario académico
+            const cursoActualizado = update('courses', cursoId, {
+                inicioClases: nuevaFechaInicioClases,
+                finClases: nuevaFechaFinClases.toISOString(),
+                // Mantener campos de compatibilidad
+                inicio: nuevaFechaInicioClases,
+                fin: nuevaFechaFinClases.toISOString(),
+                updatedAt: nowISO()
+            });
+
+            // ✅ Auditoría especial para posposición de clases
+            if (db.settings?.enableAudit && user) {
+                const auditLog = createAuditLog(
+                    AUDIT_ACTIONS.POSTPONE_CLASSES,
+                    'courses',
+                    cursoId,
+                    {
+                        tipo: 'posponer_clases',
+                        motivo: motivo,
+                        inicioClasesAnterior: curso.inicioClases || curso.inicio,
+                        inicioClasesNuevo: nuevaFechaInicioClases,
+                        finClasesAnterior: curso.finClases || curso.fin,
+                        finClasesNuevo: nuevaFechaFinClases.toISOString(),
+                        diferenciaDias: diffDias,
+                        // IMPORTANTE: Se mantienen fechas de pago
+                        primerVencimiento: curso.primerVencimiento,
+                        periodicidadPagos: curso.periodicidadPagos,
+                        mensaje: 'Calendario académico pospuesto. Calendario de pagos sin cambios.'
+                    },
+                    user.id,
+                    `${user.nombre} ${user.apellido}`
+                );
+                saveAuditLog(auditLog);
+            }
+
+            return {
+                success: true,
+                curso: cursoActualizado,
+                diferenciaDias: diffDias,
+                mensaje: `Clases pospuestas ${diffDias} días. Fechas de pago sin cambios.`
+            };
+
+        } catch (error) {
+            console.error('[DB] Error al posponer clases:', error);
+            setError(error.message);
+            throw error;
+        }
+    }, [db, update, user]);
+
+    // ✅ PAGOS (COMPATIBLE CON NUEVO SISTEMA)
     const registrarPago = useCallback(
         (inscriptionId, installmentNumber, monto, formaPago, observaciones = "") => {
             // ✅ Obtener datos frescos de la DB
@@ -1929,8 +2258,6 @@ export const AppDBProvider = ({ children }) => {
         [db, saveDB, user]
     );
 
-
-
     // ✅ BECAS
     const asignarBeca = useCallback((studentId, becaId, cursoId, observaciones = "") => {
         const beca = db.becas.find(b => b.id === becaId);
@@ -1952,7 +2279,6 @@ export const AppDBProvider = ({ children }) => {
 
         return create('asignacionBecas', asignacionData);
     }, [create, db]);
-
 
     // ✅ DEPOSITAR CUOTA (Pago parcial)
     const depositarCuota = useCallback((inscriptionId, installmentNumber, monto, formaPago, observaciones = '') => {
@@ -2137,7 +2463,6 @@ export const AppDBProvider = ({ children }) => {
         }
     }, [db, user, saveDB]);
 
-
     // ✅ CONSULTAS ESPECIALIZADAS
     const getStudentInscriptions = useCallback((studentId) => {
         return db.inscriptions
@@ -2243,7 +2568,6 @@ export const AppDBProvider = ({ children }) => {
                         return {
                             ...inst,
                             frozen: newStatus,
-                            // opcional: metadatos de freeze
                             freezeAt: newStatus ? nowISO() : null,
                             freezeByUserId: newStatus && user ? user.id : null,
                         };
@@ -2277,15 +2601,15 @@ export const AppDBProvider = ({ children }) => {
         loading,
         error,
 
-        // ✅ Colecciones base (AGREGADO)
+        // ✅ Colecciones base
         students: db?.students || [],
         professors: db?.professors || [],
         courses: db?.courses || [],
         inscriptions: db?.inscriptions || [],
         becas: db?.becas || [],
         users: db?.users || [],
-        cajaMovimientos: db?.caja || [],              // ✅ AGREGADO
-        settings: db?.settings || {},                  // ✅ AGREGADO
+        cajaMovimientos: db?.caja || [],
+        settings: db?.settings || {},
 
         // CRUD Básico
         create,
@@ -2299,6 +2623,7 @@ export const AppDBProvider = ({ children }) => {
         asignarBeca,
         depositarCuota,
         freezarCuota,
+        posponerClasesCurso, // ✅ NUEVA FUNCIÓN
 
         // CRUD específico por entidad
         addStudent: (data) => create('students', data),
@@ -2325,13 +2650,13 @@ export const AppDBProvider = ({ children }) => {
         removeBeca: (id) => remove('becas', id),
         findBeca: (id) => db?.becas?.find(b => b.id === id),
 
-        // ✅ AGREGADO: CRUD para Users
+        // CRUD para Users
         addUser: (data) => create('users', data),
         updateUser: (id, data) => update('users', id, data),
         removeUser: (id) => remove('users', id),
         findUser: (id) => db?.users?.find(u => u.id === id),
 
-        // ✅ AGREGADO: Función para Settings
+        // Función para Settings
         updateSettings: (newSettings) => {
             const updatedDB = {
                 ...db,
@@ -2341,7 +2666,7 @@ export const AppDBProvider = ({ children }) => {
             return saveDB(updatedDB);
         },
 
-        // ✅ AGREGADO: Función para Caja
+        // Función para Caja
         addCajaMovimiento: (data) => create('caja', data),
 
         // Consultas
@@ -2370,9 +2695,9 @@ export const AppDBProvider = ({ children }) => {
         findBecaByType: (tipo) => dbIndex.findBecaByType(tipo)
     }), [
         db, loading, error, create, read, update, remove,
-        inscribirAlumno, registrarPago, asignarBeca, depositarCuota, freezarCuota,
+        inscribirAlumno, registrarPago, asignarBeca, depositarCuota, freezarCuota, posponerClasesCurso,
         getStudentInscriptions, getCourseInscriptions, getStudentWithBecas,
-        resetDB, exportDB, importDB, restoreBackup, saveDB  // ✅ AGREGADO saveDB
+        resetDB, exportDB, importDB, restoreBackup, saveDB
     ]);
 
     if (loading) {

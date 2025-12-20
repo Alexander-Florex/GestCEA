@@ -282,11 +282,23 @@ const resumenHorarios = (horarios = []) => {
     return horariosValidos.map(h => `${h.dia.slice(0, 3)} ${h.desde}-${h.hasta}`);
 };
 
+// CORRECCIÓN: Función formatDate corregida
 const formatDate = (iso) => {
     if (!iso) return '-';
-    const [y, m, d] = String(iso).split('-');
-    if (!y || !m || !d) return iso;
-    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+
+    try {
+        const date = new Date(iso);
+        if (isNaN(date.getTime())) return iso;
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        return `${day}/${month}/${year}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error, iso);
+        return iso;
+    }
 };
 
 const getTeacherNames = (teacherIds, availableTeachers = []) =>
@@ -370,10 +382,28 @@ const tooltipContent = {
     porcentajeTarjeta: "Porcentaje de aumento aplicado sobre el costo total de efectivo para calcular el precio con tarjeta (fijo en 15%)"
 };
 
+/* ==================== Funciones Helper ==================== */
+
+const calcularPrimerVencimiento = (fechaInicio) => {
+    if (!fechaInicio) return '';
+    const fecha = new Date(fechaInicio);
+    fecha.setDate(fecha.getDate() - 5); // 5 días antes del inicio
+    return fecha.toISOString().split('T')[0];
+};
+
 /* ==================== Página Cursos ==================== */
 
 export default function Cursos() {
-    const { courses, addCourse, updateCourse, removeCourse, professors, inscriptions, settings } = useDB();
+    const {
+        courses,
+        addCourse,
+        updateCourse,
+        removeCourse,
+        professors,
+        inscriptions,
+        settings,
+        posponerClasesCurso
+    } = useDB();
     const [search, setSearch] = useState('');
     const [filterEstado, setFilterEstado] = useState('');
     const [filterCod, setFilterCod] = useState('');
@@ -382,6 +412,9 @@ export default function Cursos() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [isTeacherSelectorOpen, setIsTeacherSelectorOpen] = useState(false);
+    const [postponingCourse, setPostponingCourse] = useState(null);
+    const [postponeDays, setPostponeDays] = useState(7);
+    const [postponeReason, setPostponeReason] = useState('');
 
     const availableCertTypes = useMemo(() => {
         const base = new Set(['UTN', 'CEA']);
@@ -409,8 +442,19 @@ export default function Cursos() {
         horarios: [],
         horarioDraft: { dia: 'Lunes', desde: '', hasta: '' },
         certDraft: '',
+
+        // ✅ CALENDARIO ACADÉMICO (nuevos campos)
+        inicioClases: '',
+        finClases: '',
+
+        // ✅ CALENDARIO FINANCIERO (nuevos campos)
+        primerVencimiento: '',
+        periodicidadPagos: 'mensual', // 'mensual', 'quincenal', 'semanal'
+
+        // ❌ Campos antiguos (mantener por compatibilidad temporal)
         inicio: '',
         fin: '',
+
         vacantes: '',
     });
 
@@ -455,6 +499,14 @@ export default function Cursos() {
         }
     }, [formData.totalEfectivo, formData.porcentajeTarjeta]);
 
+    // ✅ Calcular primer vencimiento automáticamente cuando se ingresa inicio de clases
+    useEffect(() => {
+        if (formData.inicioClases && !formData.primerVencimiento && !editing) {
+            const primerVenc = calcularPrimerVencimiento(formData.inicioClases);
+            setFormData(prev => ({ ...prev, primerVencimiento: primerVenc }));
+        }
+    }, [formData.inicioClases, editing]);
+
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.key === 'Escape' && isFormOpen) {
@@ -481,7 +533,7 @@ export default function Cursos() {
     const filtered = useMemo(() => {
         return courses.filter(c => {
             const teacherNames = getTeacherNames(c.profesores || [], professors);
-            const estado = getEstadoCurso(c.inicio, c.fin);
+            const estado = getEstadoCurso(c.inicioClases || c.inicio, c.finClases || c.fin);
 
             const matchesSearch = (
                 (c.nombre || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -516,8 +568,20 @@ export default function Cursos() {
                 horarios: course.horarios || [],
                 horarioDraft: { dia: 'Lunes', desde: '', hasta: '' },
                 certDraft: '',
-                inicio: course.inicio || '',
-                fin: course.fin || '',
+
+                // ✅ CALENDARIO ACADÉMICO
+                inicioClases: course.inicioClases || course.inicio || '',
+                finClases: course.finClases || course.fin || '',
+
+                // ✅ CALENDARIO FINANCIERO
+                primerVencimiento: course.primerVencimiento ||
+                    (course.inicioClases ? calcularPrimerVencimiento(course.inicioClases) : ''),
+                periodicidadPagos: course.periodicidadPagos || 'mensual',
+
+                // ❌ Mantener campos antiguos por compatibilidad
+                inicio: course.inicioClases || course.inicio || '',
+                fin: course.finClases || course.fin || '',
+
                 vacantes: String(course.vacantes ?? ''),
             });
         } else {
@@ -540,8 +604,19 @@ export default function Cursos() {
                 horarios: [],
                 horarioDraft: { dia: 'Lunes', desde: '', hasta: '' },
                 certDraft: '',
+
+                // ✅ CALENDARIO ACADÉMICO (vacíos para nuevo curso)
+                inicioClases: '',
+                finClases: '',
+
+                // ✅ CALENDARIO FINANCIERO
+                primerVencimiento: '',
+                periodicidadPagos: 'mensual',
+
+                // ❌ Campos antiguos
                 inicio: '',
                 fin: '',
+
                 vacantes: '',
             });
         }
@@ -647,11 +722,14 @@ export default function Cursos() {
                 throw new Error('Si habilitas cuotas, debes especificar un número válido');
             }
 
-            if (!formData.inicio) throw new Error('Fecha de inicio obligatoria');
-            if (!formData.fin) throw new Error('Fecha de fin obligatoria');
-            if (new Date(formData.fin) < new Date(formData.inicio)) {
+            if (!formData.inicioClases) throw new Error('Fecha de inicio de clases obligatoria');
+            if (!formData.finClases) throw new Error('Fecha de fin de clases obligatoria');
+            if (new Date(formData.finClases) < new Date(formData.inicioClases)) {
                 throw new Error('La fecha de fin no puede ser anterior al inicio');
             }
+
+            if (!formData.primerVencimiento) throw new Error('Primer vencimiento obligatorio');
+            if (!formData.periodicidadPagos) throw new Error('Periodicidad de pagos obligatoria');
 
             if (formData.tiposCertificado.length === 0) {
                 throw new Error('Agrega al menos un tipo de certificado con el botón +');
@@ -684,8 +762,19 @@ export default function Cursos() {
                 tiposCertificado: [...formData.tiposCertificado],
                 costosCertificado: costos,
                 horarios: [...formData.horarios],
-                inicio: formData.inicio,
-                fin: formData.fin,
+
+                // ✅ CALENDARIO ACADÉMICO
+                inicioClases: formData.inicioClases,
+                finClases: formData.finClases,
+
+                // ✅ CALENDARIO FINANCIERO
+                primerVencimiento: formData.primerVencimiento || calcularPrimerVencimiento(formData.inicioClases),
+                periodicidadPagos: formData.periodicidadPagos,
+
+                // ❌ Mantener campos antiguos por compatibilidad
+                inicio: formData.inicioClases,
+                fin: formData.finClases,
+
                 vacantes: Number(formData.vacantes),
             };
 
@@ -727,8 +816,12 @@ export default function Cursos() {
             tiposCertificado: [...(course.tiposCertificado || [])],
             costosCertificado: { ...(course.costosCertificado || {}) },
             horarios: [...(course.horarios || [])],
-            inicio: course.inicio || '',
-            fin: course.fin || '',
+            inicioClases: course.inicioClases || course.inicio || '',
+            finClases: course.finClases || course.fin || '',
+            primerVencimiento: course.primerVencimiento || calcularPrimerVencimiento(course.inicioClases || course.inicio),
+            periodicidadPagos: course.periodicidadPagos || 'mensual',
+            inicio: course.inicioClases || course.inicio || '',
+            fin: course.finClases || course.fin || '',
             vacantes: Number(course.vacantes ?? 0),
         };
 
@@ -737,6 +830,34 @@ export default function Cursos() {
             showNotification('success', `Curso "${course.nombre}" duplicado correctamente`);
         } catch (err) {
             showNotification('error', err.message);
+        }
+    };
+
+    // Función para manejar el posponer clases
+    const handlePostponeClasses = async () => {
+        if (!postponingCourse) return;
+
+        try {
+            // Calcular nueva fecha (días después)
+            const currentDate = new Date(postponingCourse.inicioClases || postponingCourse.inicio);
+            const newDate = new Date(currentDate);
+            newDate.setDate(newDate.getDate() + postponeDays);
+
+            // Llamar a la función del contexto
+            const result = await posponerClasesCurso(
+                postponingCourse.id,
+                newDate.toISOString(),
+                postponeReason || `Clases pospuestas ${postponeDays} días`
+            );
+
+            if (result.success) {
+                showNotification('success', result.mensaje);
+                setPostponingCourse(null);
+                setPostponeDays(7);
+                setPostponeReason('');
+            }
+        } catch (error) {
+            showNotification('error', error.message);
         }
     };
 
@@ -806,7 +927,7 @@ export default function Cursos() {
                             <div>
                                 <p className="text-xs font-semibold text-green-700 mb-1 uppercase tracking-wide">En Curso</p>
                                 <p className="text-2xl font-bold text-green-900">
-                                    {courses.filter(c => getEstadoCurso(c.inicio, c.fin).text === 'En Curso').length}
+                                    {courses.filter(c => getEstadoCurso(c.inicioClases || c.inicio, c.finClases || c.fin).text === 'En Curso').length}
                                 </p>
                                 <p className="text-xs text-green-600 mt-1">Actualmente activos</p>
                             </div>
@@ -826,7 +947,7 @@ export default function Cursos() {
                             <div>
                                 <p className="text-xs font-semibold text-cyan-700 mb-1 uppercase tracking-wide">Próximos</p>
                                 <p className="text-2xl font-bold text-cyan-900">
-                                    {courses.filter(c => getEstadoCurso(c.inicio, c.fin).text === 'Próximo').length}
+                                    {courses.filter(c => getEstadoCurso(c.inicioClases || c.inicio, c.finClases || c.fin).text === 'Próximo').length}
                                 </p>
                                 <p className="text-xs text-cyan-600 mt-1">Por comenzar</p>
                             </div>
@@ -965,7 +1086,7 @@ export default function Cursos() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                     {filtered.map((course, index) => {
-                                        const estado = getEstadoCurso(course.inicio, course.fin);
+                                        const estado = getEstadoCurso(course.inicioClases || course.inicio, course.finClases || course.fin);
                                         const horarios = resumenHorarios(course.horarios || []);
                                         const vacantesInfo = getVacantesInfo(course, inscriptions);
                                         return (
@@ -993,11 +1114,11 @@ export default function Cursos() {
                                                     <div className="space-y-1">
                                                         <div className="flex items-center gap-1.5">
                                                             <FiCalendar className="w-3 h-3 text-blue-500" />
-                                                            <span className="text-xs font-medium text-gray-700">{formatDate(course.inicio)}</span>
+                                                            <span className="text-xs font-medium text-gray-700">{formatDate(course.inicioClases || course.inicio)}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5">
                                                             <FiCalendar className="w-3 h-3 text-indigo-500" />
-                                                            <span className="text-xs font-medium text-gray-700">{formatDate(course.fin)}</span>
+                                                            <span className="text-xs font-medium text-gray-700">{formatDate(course.finClases || course.fin)}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1077,6 +1198,16 @@ export default function Cursos() {
                                                         >
                                                             <FiEdit size={14} />
                                                             <span className="text-[10px] font-medium">Editar</span>
+                                                        </motion.button>
+                                                        <motion.button
+                                                            onClick={() => setPostponingCourse(course)}
+                                                            whileHover={{ scale: 1.1, y: -1 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="bg-gradient-to-r from-cyan-400 to-blue-400 text-white p-2 rounded-lg hover:from-cyan-500 hover:to-blue-500 transition-all duration-300 shadow hover:shadow-sm flex flex-col items-center justify-center gap-0.5 min-w-[50px]"
+                                                            title="Posponer clases"
+                                                        >
+                                                            <FiCalendar size={14} />
+                                                            <span className="text-[10px] font-medium">Posponer</span>
                                                         </motion.button>
                                                         <motion.button
                                                             onClick={() => handleDuplicate(course)}
@@ -1183,8 +1314,8 @@ export default function Cursos() {
                                                 <span className="bg-white/20 px-2 py-1 rounded text-xs font-medium">
                                                     COD: <strong>#{viewing.id}</strong>
                                                 </span>
-                                                <span className={`px-2 py-1 rounded text-xs font-semibold ${getEstadoCurso(viewing.inicio, viewing.fin).color}`}>
-                                                    {getEstadoCurso(viewing.inicio, viewing.fin).text}
+                                                <span className={`px-2 py-1 rounded text-xs font-semibold ${getEstadoCurso(viewing.inicioClases || viewing.inicio, viewing.finClases || viewing.fin).color}`}>
+                                                    {getEstadoCurso(viewing.inicioClases || viewing.inicio, viewing.finClases || viewing.fin).text}
                                                 </span>
                                             </div>
                                         </div>
@@ -1204,11 +1335,62 @@ export default function Cursos() {
                                     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-2">
-                                                <FiInfo className="w-5 h-5 text-blue-600" />
+                                                <FiCalendar className="w-5 h-5 text-blue-600" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-gray-800">Información</h3>
+                                            <h3 className="text-lg font-bold text-gray-800">Calendario Académico</h3>
                                         </div>
                                         <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-medium text-gray-600">Inicio de clases:</span>
+                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3 text-blue-500" />
+                                                    {formatDate(viewing.inicioClases || viewing.inicio)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-medium text-gray-600">Fin de clases:</span>
+                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3 text-cyan-500" />
+                                                    {formatDate(viewing.finClases || viewing.fin)}
+                                                </span>
+                                            </div>
+                                            {/* Botón para posponer clases */}
+                                            <div className="mt-3 pt-2 border-t border-gray-200">
+                                                <button
+                                                    onClick={() => {
+                                                        setViewing(null);
+                                                        setPostponingCourse(viewing);
+                                                    }}
+                                                    className="w-full text-center px-3 py-1.5 bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-cyan-100 transition-all text-xs font-medium border border-blue-200"
+                                                >
+                                                    Posponer clases (sin afectar pagos)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2">
+                                                <FiCreditCard className="w-5 h-5 text-green-600" />
+                                            </div>
+                                            <h3 className="text-lg font-bold text-gray-800">Calendario Financiero</h3>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-medium text-gray-600">Primer vencimiento:</span>
+                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                                                    <FiCalendar className="w-3 h-3 text-green-500" />
+                                                    {formatDate(viewing.primerVencimiento)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-medium text-gray-600">Periodicidad:</span>
+                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                                                    <FiClock className="w-3 h-3 text-emerald-500" />
+                                                    {viewing.periodicidadPagos || 'mensual'}
+                                                </span>
+                                            </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-xs font-medium text-gray-600">Código:</span>
                                                 <span className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">#{viewing.id}</span>
@@ -1217,42 +1399,6 @@ export default function Cursos() {
                                                 <span className="text-xs font-medium text-gray-600">Vacantes:</span>
                                                 <span className="font-semibold text-gray-800 text-sm">{viewing.vacantes}</span>
                                             </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-xs font-medium text-gray-600">Inicio:</span>
-                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
-                                                    <FiCalendar className="w-3 h-3 text-blue-500" />
-                                                    {formatDate(viewing.inicio)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-xs font-medium text-gray-600">Fin:</span>
-                                                <span className="font-semibold text-gray-800 text-sm flex items-center gap-1">
-                                                    <FiCalendar className="w-3 h-3 text-indigo-500" />
-                                                    {formatDate(viewing.fin)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2">
-                                                <FiCheckCircle className="w-5 h-5 text-green-600" />
-                                            </div>
-                                            <h3 className="text-lg font-bold text-gray-800">Estado</h3>
-                                        </div>
-                                        <div className="text-center py-2">
-                                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${getEstadoCurso(viewing.inicio, viewing.fin).color} shadow-sm mb-2`}>
-                                                <div className="w-2 h-2 rounded-full bg-current animate-pulse"></div>
-                                                {getEstadoCurso(viewing.inicio, viewing.fin).text}
-                                            </div>
-                                            <p className="text-xs text-gray-600 mt-1">
-                                                {getEstadoCurso(viewing.inicio, viewing.fin).text === 'En Curso'
-                                                    ? 'Curso actualmente en desarrollo.'
-                                                    : getEstadoCurso(viewing.inicio, viewing.fin).text === 'Próximo'
-                                                        ? 'Programado para comenzar.'
-                                                        : 'Curso finalizado.'}
-                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -1998,59 +2144,128 @@ export default function Cursos() {
                                         </div>
                                     </div>
 
-                                    {/* Fechas y Vacantes */}
-                                    <div className="bg-gradient-to-r from-gray-50/50 to-slate-50/50 p-4 rounded-lg border border-gray-200">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                            <div className="bg-gradient-to-r from-gray-100 to-gray-200 p-2 rounded">
-                                                <FiCalendar className="w-5 h-5" />
+                                    {/* Fechas y Vacantes - CALENDARIOS SEPARADOS */}
+                                    <div className="space-y-6">
+                                        {/* CALENDARIO ACADÉMICO */}
+                                        <div className="bg-gradient-to-r from-blue-50/50 to-cyan-50/50 p-4 rounded-lg border border-blue-200">
+                                            <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+                                                <div className="bg-gradient-to-r from-blue-100 to-cyan-100 p-2 rounded">
+                                                    <FiCalendar className="w-5 h-5" />
+                                                </div>
+                                                Calendario Académico
+                                                <span className="text-xs bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-2 py-1 rounded">
+                                                    EDITABLE
+                                                </span>
+                                            </h3>
+                                            <p className="text-sm text-gray-600 mb-3">Define las fechas de inicio y fin de las clases (puedes cambiarlas después sin afectar los pagos)</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="flex flex-col">
+                                                    <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                        <FiCalendar className="w-3 h-3 text-blue-500" />
+                                                        Inicio de Clases:
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        name="inicioClases"
+                                                        value={formData.inicioClases ? formData.inicioClases.split('T')[0] : ''}
+                                                        onChange={handleChange}
+                                                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-blue-500 focus:outline-none text-sm"
+                                                        required
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Fecha en que comienzan las clases</p>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                        <FiCalendar className="w-3 h-3 text-cyan-500" />
+                                                        Fin de Clases:
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        name="finClases"
+                                                        value={formData.finClases ? formData.finClases.split('T')[0] : ''}
+                                                        onChange={handleChange}
+                                                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-cyan-500 focus:outline-none text-sm"
+                                                        required
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Fecha en que finalizan las clases</p>
+                                                </div>
                                             </div>
-                                            Fechas y Vacantes
-                                        </h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        </div>
+
+                                        {/* CALENDARIO FINANCIERO */}
+                                        <div className="bg-gradient-to-r from-green-50/50 to-emerald-50/50 p-4 rounded-lg border border-green-200">
+                                            <h3 className="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
+                                                <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-2 rounded">
+                                                    <FiCreditCard className="w-5 h-5" />
+                                                </div>
+                                                Calendario Financiero
+                                                <span className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded">
+                                                    FIJO
+                                                </span>
+                                            </h3>
+                                            <p className="text-sm text-gray-600 mb-3">Define las fechas de pago (una vez definidas, no se deberían cambiar)</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="flex flex-col">
+                                                    <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                        <FiCalendar className="w-3 h-3 text-green-500" />
+                                                        Primer Vencimiento:
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        name="primerVencimiento"
+                                                        value={formData.primerVencimiento ? formData.primerVencimiento.split('T')[0] : ''}
+                                                        onChange={handleChange}
+                                                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-green-500 focus:outline-none text-sm"
+                                                        required
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Fecha del primer pago (sugerido: 5 días antes del inicio)</p>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
+                                                        <FiClock className="w-3 h-3 text-emerald-500" />
+                                                        Periodicidad de Pagos:
+                                                    </label>
+                                                    <select
+                                                        name="periodicidadPagos"
+                                                        value={formData.periodicidadPagos}
+                                                        onChange={handleChange}
+                                                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-emerald-500 focus:outline-none text-sm"
+                                                        required
+                                                    >
+                                                        <option value="mensual">Mensual</option>
+                                                        <option value="quincenal">Quincenal</option>
+                                                        <option value="semanal">Semanal</option>
+                                                    </select>
+                                                    <p className="text-xs text-gray-500 mt-1">Cada cuánto se pagan las cuotas</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* VACANTES */}
+                                        <div className="bg-gradient-to-r from-gray-50/50 to-slate-50/50 p-4 rounded-lg border border-gray-200">
+                                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                                <div className="bg-gradient-to-r from-gray-100 to-gray-200 p-2 rounded">
+                                                    <FiUsers className="w-5 h-5" />
+                                                </div>
+                                                Vacantes
+                                            </h3>
                                             <div className="flex flex-col">
                                                 <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
-                                                    <FiCalendar className="w-3 h-3 text-blue-500" />
-                                                    Inicio:
-                                                </label>
-                                                <input
-                                                    type="date"
-                                                    name="inicio"
-                                                    value={formData.inicio}
-                                                    onChange={handleChange}
-                                                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-blue-500 focus:outline-none text-sm"
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
-                                                    <FiCalendar className="w-3 h-3 text-indigo-500" />
-                                                    Fin:
-                                                </label>
-                                                <input
-                                                    type="date"
-                                                    name="fin"
-                                                    value={formData.fin}
-                                                    onChange={handleChange}
-                                                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <label className="text-xs font-semibold mb-1 text-gray-700 flex items-center gap-1">
-                                                    <FiUsers className="w-3 h-3 text-green-500" />
-                                                    Vacantes:
+                                                    <FiUsers className="w-3 h-3 text-gray-500" />
+                                                    Número de Vacantes:
                                                 </label>
                                                 <input
                                                     type="number"
                                                     name="vacantes"
                                                     value={formData.vacantes}
                                                     onChange={handleChange}
-                                                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-green-500 focus:outline-none text-sm"
+                                                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700 focus:border-gray-500 focus:outline-none text-sm max-w-xs"
                                                     min="0"
                                                     step="1"
                                                     required
                                                     placeholder="Ej: 20, 30..."
                                                 />
+                                                <p className="text-xs text-gray-500 mt-1">Máximo número de estudiantes que pueden inscribirse</p>
                                             </div>
                                         </div>
                                     </div>
@@ -2077,6 +2292,126 @@ export default function Cursos() {
                                     </motion.button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal para posponer clases */}
+            <AnimatePresence>
+                {postponingCourse && (
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <motion.div
+                            className="bg-gradient-to-br from-white via-cyan-50/50 to-blue-50/50 rounded-xl w-full max-w-md overflow-hidden relative shadow-xl border border-cyan-200"
+                            initial={{ scale: 0.8, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.8, y: 20 }}
+                        >
+                            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white p-6 flex justify-between items-center rounded-t-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 rounded-xl p-2 backdrop-blur-sm border border-white/30">
+                                        <FiCalendar className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold">Posponer Clases</h2>
+                                        <p className="text-cyan-100 text-sm">Sin afectar fechas de pago</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="bg-white/20 rounded-xl p-2 hover:bg-white/30 transition-colors backdrop-blur-sm border border-white/30"
+                                    onClick={() => setPostponingCourse(null)}
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-4">
+                                <div className="text-center mb-4">
+                                    <div className="text-lg font-bold text-gray-800 mb-1">
+                                        {postponingCourse.nombre}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        Fecha actual de inicio: {formatDate(postponingCourse.inicioClases || postponingCourse.inicio)}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                                        <FiCalendar className="w-4 h-4 text-cyan-500" />
+                                        Días a posponer:
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="30"
+                                            value={postponeDays}
+                                            onChange={(e) => setPostponeDays(Number(e.target.value))}
+                                            className="flex-1 h-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <span className="font-bold text-lg text-cyan-700 min-w-[3rem] text-center">
+                                            {postponeDays} día{postponeDays !== 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-2">
+                                        Nueva fecha: {(() => {
+                                        const currentDate = new Date(postponingCourse.inicioClases || postponingCourse.inicio);
+                                        const newDate = new Date(currentDate);
+                                        newDate.setDate(newDate.getDate() + postponeDays);
+                                        return formatDate(newDate.toISOString());
+                                    })()}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                                        <FiInfo className="w-4 h-4 text-blue-500" />
+                                        Motivo (opcional):
+                                    </label>
+                                    <textarea
+                                        value={postponeReason}
+                                        onChange={(e) => setPostponeReason(e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none text-sm"
+                                        rows="2"
+                                        placeholder="Ej: Profesor enfermo, feriado no contemplado..."
+                                    />
+                                </div>
+
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
+                                    <div className="flex items-start gap-2">
+                                        <FiInfo className="w-5 h-5 text-green-600 mt-0.5" />
+                                        <div>
+                                            <div className="font-semibold text-green-800 text-sm">✅ No afectará las fechas de pago</div>
+                                            <div className="text-xs text-green-600 mt-1">
+                                                Las cuotas mantendrán sus fechas originales. Solo se modifica el calendario académico.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gradient-to-r from-white via-cyan-50/50 to-blue-50/50 border-t border-gray-200 p-4 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setPostponingCourse(null)}
+                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm shadow-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handlePostponeClasses}
+                                    className="px-4 py-2 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white rounded-lg hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 transition-colors font-semibold text-sm shadow hover:shadow-md"
+                                >
+                                    Posponer Clases
+                                </button>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}

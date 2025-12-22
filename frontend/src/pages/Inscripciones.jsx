@@ -438,31 +438,41 @@ export default function Inscripciones() {
         setNotifications(n => n.filter(x => x.id !== id));
     };
 
+    // Función para cargar los datos de una inscripción en el formulario
+    const loadInscriptionData = (inscription) => {
+        const course = courses.find(c => c.id === inscription.courseId);
+        const professor = professors.find(p => p.id === inscription.professorId);
+
+        // Convertir los certificados de la inscripción al formato del formulario
+        const certificadosForm = (course?.tiposCertificado || []).map(tipo => ({
+            tipo: tipo,
+            costo: course?.costosCertificado?.[tipo] || 0,
+            selected: inscription.certificados?.some(c => c.tipo === tipo) || false
+        }));
+
+        setForm({
+            studentId: inscription.studentId?.toString() || '',
+            courseId: inscription.courseId?.toString() || '',
+            professorId: inscription.professorId?.toString() || '',
+            paymentType: inscription.paymentType || 'Efectivo',
+            fullPayment: inscription.fullPayment || false,
+            certificados: certificadosForm,
+            hasBonus: inscription.hasBonus || false,
+            bonusAmount: inscription.bonusAmount || 0,
+            hasBeca: inscription.hasBeca || false,
+            becaId: inscription.becaId?.toString() || '',
+            hasFactura: inscription.hasFactura || false,
+            tipoFactura: inscription.tipoFactura || 'Factura C',
+            fechaInicio: inscription.fechaInicio || '',
+            fechaFin: inscription.fechaFin || '',
+            observaciones: inscription.observaciones || ''
+        });
+    };
+
     const openForm = (ins) => {
         if (ins) {
             setEditing(ins);
-            const curso = courses.find(c => c.id === ins.courseId);
-            setForm({
-                studentId: ins.studentId?.toString() || '',
-                courseId: ins.courseId?.toString() || '',
-                professorId: ins.professorId?.toString() || '',
-                paymentType: ins.paymentType || 'Efectivo',
-                fullPayment: ins.fullPayment || false,
-                certificados: ins.certificados || (curso?.tiposCertificado || []).map(t => ({
-                    tipo: t,
-                    costo: curso?.costosCertificado?.[t] || 0,
-                    selected: false
-                })),
-                hasBonus: ins.hasBonus || false,
-                bonusAmount: ins.bonusAmount || 0,
-                hasBeca: ins.hasBeca || false,
-                becaId: ins.becaId?.toString() || '',
-                hasFactura: ins.hasFactura || false,
-                tipoFactura: ins.tipoFactura || 'Factura C',
-                fechaInicio: ins.fechaInicio || '',
-                fechaFin: ins.fechaFin || '',
-                observaciones: ins.observaciones || ''
-            });
+            loadInscriptionData(ins);
         } else {
             setEditing(null);
             setForm({
@@ -486,10 +496,13 @@ export default function Inscripciones() {
         setIsFormOpen(true);
     };
 
-    const closeForm = () => {
+    // MODIFICADO: Ahora acepta un parámetro para mantener el modal de detalles abierto
+    const closeForm = (keepViewing = false) => {
         setIsFormOpen(false);
         setEditing(null);
-        setViewing(null);
+        if (!keepViewing) {
+            setViewing(null);
+        }
     };
 
     const handleChange = (e) => {
@@ -873,7 +886,8 @@ export default function Inscripciones() {
                 showNotification("success", "🎉 Inscripción creada exitosamente");
             }
 
-            closeForm();
+            // MODIFICADO: Mantener el modal de detalles abierto si estamos editando desde ahí
+            closeForm(!!viewing);
         } catch (err) {
             console.error("❌ ERROR:", err);
             showNotification("error", `❌ ${err.message}`);
@@ -1329,7 +1343,9 @@ export default function Inscripciones() {
                                                     course={inscription.course}
                                                     inscription={inscription}
                                                     student={viewing.student}
+                                                    // MODIFICADO: Ahora carga los datos de la inscripción antes de abrir el formulario
                                                     onEdit={() => {
+                                                        loadInscriptionData(inscription);
                                                         setEditing(inscription);
                                                         setIsFormOpen(true);
                                                     }}
@@ -1395,7 +1411,8 @@ export default function Inscripciones() {
                                     whileHover={{ rotate: 90 }}
                                     whileTap={{ scale: 0.9 }}
                                     className="bg-white/20 rounded-full p-2 hover:bg-white/30 transition-colors"
-                                    onClick={closeForm}
+                                    // MODIFICADO: Ahora mantiene el modal de detalles abierto si existe
+                                    onClick={() => closeForm(!!viewing)}
                                 >
                                     <FiX className="w-6 h-6" />
                                 </motion.button>
@@ -2019,11 +2036,12 @@ export default function Inscripciones() {
 
                                 {/* Botones */}
                                 <div className="sticky bottom-0 bg-white border-t-2 border-gray-200 p-6 flex justify-end gap-3 shadow-lg">
+                                    {/* MODIFICADO: El botón cancelar ahora mantiene el modal de detalles abierto si existe */}
                                     <motion.button
                                         type="button"
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={closeForm}
+                                        onClick={() => closeForm(!!viewing)}
                                         className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold"
                                     >
                                         Cancelar

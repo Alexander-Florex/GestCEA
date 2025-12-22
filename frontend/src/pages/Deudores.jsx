@@ -5,7 +5,10 @@ import {
     FiSearch, FiMail, FiPhone, FiChevronDown,
     FiCalendar, FiAlertCircle, FiDollarSign,
     FiBell, FiMessageSquare, FiCheck, FiSend,
-    FiFilter, FiX, FiCalendar as FiCal
+    FiFilter, FiX, FiCalendar as FiCal,
+    FiUsers, FiFileText, FiCreditCard, FiTrendingUp,
+    FiArrowLeft, FiEye, FiEyeOff, FiUser, FiClock,
+    FiPercent, FiArchive, FiRefreshCw
 } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 
@@ -23,15 +26,6 @@ const formatDate = d => {
     return `${day}/${month}/${date.getFullYear()}`;
 };
 
-const formatDateForInput = d => {
-    if (!d) return '';
-    const date = new Date(d);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
-
 const getDaysLate = (dueDate) => {
     const today = new Date();
     const due = new Date(dueDate);
@@ -47,31 +41,14 @@ const isCurrentMonth = (date) => {
         targetDate.getFullYear() === today.getFullYear();
 };
 
-const isSameDay = (date1, date2) => {
-    const d1 = new Date(date1);
-    const d2 = new Date(date2);
-    return d1.getDate() === d2.getDate() &&
-        d1.getMonth() === d2.getMonth() &&
-        d1.getFullYear() === d2.getFullYear();
-};
-
-/* ================== FUNCIÓN CRÍTICA: CALCULAR PRECIO SEGÚN MÉTODO ================== */
-/**
- * Esta función es IDÉNTICA a la de Cobros.jsx
- * Calcula el precio correcto según:
- * 1. Método de pago (por defecto Transferencia para deudores)
- * 2. Si está vencida o en fecha
- * 3. Prioridad: installmentsByMethod > curso > cuota estática
- */
+/* ================== FUNCIÓN CRÍTICA: CALCULAR PRECIO ================== */
 const calcularPrecioPorMetodo = (inscription, course, installment, metodo, isOverdue) => {
-    // Mapeo de método a key
     const methodKey = metodo === "Efectivo" ? "efectivo"
         : metodo === "Transferencia" ? "transferencia"
             : "tarjeta";
 
     let precio = 0;
 
-    // PRIORIDAD 1: installmentsByMethod (sistema nuevo)
     if (inscription?.installmentsByMethod?.[methodKey]) {
         const cuotaPorMetodo = inscription.installmentsByMethod[methodKey].find(
             c => Number(c.number) === Number(installment.number)
@@ -81,12 +58,10 @@ const calcularPrecioPorMetodo = (inscription, course, installment, metodo, isOve
             precio = isOverdue
                 ? (Number(cuotaPorMetodo.amountVencido) || Number(cuotaPorMetodo.amountEnFecha) || 0)
                 : (Number(cuotaPorMetodo.amountEnFecha) || Number(cuotaPorMetodo.amount) || 0);
-
             return precio;
         }
     }
 
-    // PRIORIDAD 2: Curso (fallback para inscripciones viejas)
     if (course) {
         if (isOverdue) {
             switch (metodo) {
@@ -114,12 +89,9 @@ const calcularPrecioPorMetodo = (inscription, course, installment, metodo, isOve
             }
         }
 
-        if (precio > 0) {
-            return precio;
-        }
+        if (precio > 0) return precio;
     }
 
-    // PRIORIDAD 3: Cuota estática (último recurso)
     precio = isOverdue
         ? (Number(installment.amountVencido) || Number(installment.amount) || 0)
         : (Number(installment.amountEnFecha) || Number(installment.amount) || 0);
@@ -138,14 +110,19 @@ function Notifications({ notifications, remove }) {
                         initial={{ opacity: 0, x: 50 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 50 }}
-                        className={`px-4 py-3 rounded-lg shadow-xl text-white font-semibold text-sm ${
-                            n.type === 'success' ? 'bg-green-600' :
-                                n.type === 'error' ? 'bg-red-600' :
-                                    n.type === 'warning' ? 'bg-yellow-600' :
-                                        'bg-blue-600'
+                        className={`px-4 py-3 rounded-lg shadow-xl text-white font-semibold text-sm ${n.type === 'success' ? 'bg-green-600 border-l-4 border-green-700' :
+                            n.type === 'error' ? 'bg-red-600 border-l-4 border-red-700' :
+                                n.type === 'warning' ? 'bg-yellow-600 border-l-4 border-yellow-700' :
+                                    'bg-blue-600 border-l-4 border-blue-700'
                         }`}
                     >
-                        {n.message}
+                        <div className="flex items-center gap-2">
+                            {n.type === 'success' && <FiCheck className="w-4 h-4" />}
+                            {n.type === 'error' && <FiAlertCircle className="w-4 h-4" />}
+                            {n.type === 'warning' && <FiAlertCircle className="w-4 h-4" />}
+                            {n.type === 'info' && <FiBell className="w-4 h-4" />}
+                            {n.message}
+                        </div>
                     </motion.div>
                 ))}
             </AnimatePresence>
@@ -153,205 +130,144 @@ function Notifications({ notifications, remove }) {
     );
 }
 
-/* ==================== Filtro por Rango de Fechas ==================== */
-function FiltroRangoFechas({ filtroFecha, setFiltroFecha, showNotification }) {
-    const [mostrarCalendario, setMostrarCalendario] = useState(false);
+/* ==================== Filtro Mejorado ==================== */
+function FiltroAvanzado({ filtroFecha, setFiltroFecha, filtroTipo, setFiltroTipo, showNotification }) {
+    const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-    const aplicarFiltro = () => {
-        setMostrarCalendario(false);
-        if (filtroFecha.desde || filtroFecha.hasta) {
-            let mensaje = 'Filtro aplicado: ';
-            if (filtroFecha.desde && filtroFecha.hasta) {
-                mensaje += `Desde ${formatDate(filtroFecha.desde)} hasta ${formatDate(filtroFecha.hasta)}`;
-            } else if (filtroFecha.desde) {
-                mensaje += `Desde ${formatDate(filtroFecha.desde)}`;
-            } else if (filtroFecha.hasta) {
-                mensaje += `Hasta ${formatDate(filtroFecha.hasta)}`;
-            }
-            showNotification('info', mensaje);
-        }
-    };
-
-    const limpiarFiltro = () => {
+    const limpiarFiltros = () => {
         setFiltroFecha({ desde: null, hasta: null });
-        setMostrarCalendario(false);
-        showNotification('info', 'Filtro de fechas limpiado');
+        setFiltroTipo('todos');
+        setMostrarFiltros(false);
+        showNotification('info', 'Filtros limpiados');
     };
 
-    const establecerHoy = (campo) => {
-        const hoy = new Date();
-        const hoyFormateado = hoy.toISOString().split('T')[0];
-        setFiltroFecha(prev => ({
-            ...prev,
-            [campo]: hoyFormateado
-        }));
-    };
-
-    const manejarCambioFecha = (campo, valor) => {
-        setFiltroFecha(prev => ({
-            ...prev,
-            [campo]: valor
-        }));
-    };
-
-    const getDisplayDate = (fecha) => {
-        if (!fecha) return '';
-        if (fecha.includes('/')) return fecha;
-
-        const [year, month, day] = fecha.split('-');
-        return `${day}/${month}/${year}`;
-    };
-
-    const getTextoFiltro = () => {
-        if (!filtroFecha.desde && !filtroFecha.hasta) return 'Rango de fechas';
-
-        const desdeDisplay = getDisplayDate(filtroFecha.desde);
-        const hastaDisplay = getDisplayDate(filtroFecha.hasta);
-
-        if (filtroFecha.desde && filtroFecha.hasta) {
-            return `${desdeDisplay} - ${hastaDisplay}`;
+    const aplicarFiltros = () => {
+        setMostrarFiltros(false);
+        let mensaje = 'Filtros aplicados: ';
+        if (filtroTipo !== 'todos') {
+            mensaje += filtroTipo === 'vencidas' ? 'Solo vencidas' : 'Mes actual';
         }
-        if (filtroFecha.desde) return `Desde ${desdeDisplay}`;
-        if (filtroFecha.hasta) return `Hasta ${hastaDisplay}`;
-        return 'Rango de fechas';
+        if (filtroFecha.desde || filtroFecha.hasta) {
+            mensaje += ' | Rango de fechas';
+        }
+        showNotification('success', mensaje);
     };
 
-    const tieneFiltro = filtroFecha.desde || filtroFecha.hasta;
+    const tieneFiltros = filtroTipo !== 'todos' || filtroFecha.desde || filtroFecha.hasta;
 
     return (
         <div className="relative">
             <button
-                onClick={() => setMostrarCalendario(!mostrarCalendario)}
-                className={`flex items-center gap-2 px-4 py-2 lg:py-3 border-2 rounded-lg font-semibold transition-colors text-sm lg:text-base ${
-                    tieneFiltro
-                        ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
+                onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm ${tieneFiltros
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400 hover:text-blue-600'
                 }`}
             >
-                <FiCal className="w-4 h-4" />
-                <span className="max-w-40 truncate">{getTextoFiltro()}</span>
-                {tieneFiltro && (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            limpiarFiltro();
-                        }}
-                        className="text-white hover:text-red-200"
-                    >
-                        <FiX className="w-3 h-3" />
-                    </button>
+                <FiFilter className="w-4 h-4" />
+                <span>Filtros</span>
+                {tieneFiltros && (
+                    <span className="ml-1 bg-white text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                        {filtroTipo !== 'todos' ? 1 : 0 + (filtroFecha.desde || filtroFecha.hasta ? 1 : 0)}
+                    </span>
                 )}
             </button>
 
             <AnimatePresence>
-                {mostrarCalendario && (
+                {mostrarFiltros && (
                     <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 p-4"
+                        className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 p-5"
                     >
-                        <div className="space-y-4">
-                            <h4 className="font-bold text-gray-800 text-sm">Filtrar por rango de fechas</h4>
+                        <div className="space-y-5">
+                            <div className="flex items-center justify-between">
+                                <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                    <FiFilter className="w-4 h-4" />
+                                    Filtros Avanzados
+                                </h4>
+                                {tieneFiltros && (
+                                    <button
+                                        onClick={limpiarFiltros}
+                                        className="text-xs text-red-600 hover:text-red-800 font-medium"
+                                    >
+                                        Limpiar todo
+                                    </button>
+                                )}
+                            </div>
 
-                            {/* Fecha Desde */}
+                            {/* Tipo de cuota */}
                             <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Fecha Desde:
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Tipo de cuota:
                                 </label>
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-2">
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { value: 'todos', label: 'Todos', icon: FiUsers },
+                                        { value: 'vencidas', label: 'Vencidas', icon: FiAlertCircle },
+                                        { value: 'mesActual', label: 'Este mes', icon: FiCalendar }
+                                    ].map((option) => {
+                                        const Icon = option.icon;
+                                        return (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => setFiltroTipo(option.value)}
+                                                className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${filtroTipo === option.value
+                                                    ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                                    : 'bg-gray-50 border-gray-300 hover:border-blue-400'
+                                                }`}
+                                            >
+                                                <Icon className={`w-4 h-4 mb-1 ${filtroTipo === option.value ? 'text-blue-600' : 'text-gray-500'}`} />
+                                                <span className="text-xs font-medium">{option.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Rango de fechas */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Rango de fechas:
+                                </label>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-xs text-gray-600 mb-1 block">Desde</label>
                                         <input
                                             type="date"
                                             value={filtroFecha.desde || ''}
-                                            onChange={(e) => manejarCambioFecha('desde', e.target.value)}
-                                            className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-blue-500 focus:outline-none"
+                                            onChange={(e) => setFiltroFecha(prev => ({ ...prev, desde: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />
-                                        <button
-                                            onClick={() => establecerHoy('desde')}
-                                            className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
-                                        >
-                                            Hoy
-                                        </button>
                                     </div>
-                                    {filtroFecha.desde && (
-                                        <p className="text-xs text-gray-600">
-                                            Seleccionado: {getDisplayDate(filtroFecha.desde)}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Fecha Hasta */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Fecha Hasta:
-                                </label>
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-2">
+                                    <div>
+                                        <label className="text-xs text-gray-600 mb-1 block">Hasta</label>
                                         <input
                                             type="date"
                                             value={filtroFecha.hasta || ''}
-                                            onChange={(e) => manejarCambioFecha('hasta', e.target.value)}
-                                            className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-blue-500 focus:outline-none"
+                                            onChange={(e) => setFiltroFecha(prev => ({ ...prev, hasta: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />
-                                        <button
-                                            onClick={() => establecerHoy('hasta')}
-                                            className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
-                                        >
-                                            Hoy
-                                        </button>
                                     </div>
-                                    {filtroFecha.hasta && (
-                                        <p className="text-xs text-gray-600">
-                                            Seleccionado: {getDisplayDate(filtroFecha.hasta)}
-                                        </p>
-                                    )}
                                 </div>
                             </div>
 
-                            {/* Información del filtro */}
-                            <div className="text-xs text-gray-600 space-y-1 bg-blue-50 p-3 rounded-lg">
-                                <p className="font-semibold">Comportamiento del filtro:</p>
-                                <p>• <strong>Solo Desde:</strong> Cuotas desde esta fecha en adelante (incluyendo la fecha)</p>
-                                <p>• <strong>Solo Hasta:</strong> Cuotas hasta esta fecha (incluyendo la fecha)</p>
-                                <p>• <strong>Ambas:</strong> Cuotas entre estas fechas (incluyendo ambas)</p>
-                                <p>• <strong>Ninguna:</strong> Todas las cuotas pendientes</p>
-                            </div>
-
-                            {/* Botones de acción */}
+                            {/* Botones */}
                             <div className="flex gap-2 pt-2">
                                 <button
-                                    onClick={limpiarFiltro}
-                                    disabled={!tieneFiltro}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                                        tieneFiltro
-                                            ? 'bg-red-500 hover:bg-red-600 text-white'
-                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    }`}
+                                    onClick={() => setMostrarFiltros(false)}
+                                    className="flex-1 px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all border border-gray-300"
                                 >
-                                    Borrar
+                                    Cancelar
                                 </button>
                                 <button
-                                    onClick={aplicarFiltro}
-                                    className="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-semibold transition-colors"
+                                    onClick={aplicarFiltros}
+                                    className="flex-1 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg text-sm font-medium transition-all shadow-md"
                                 >
                                     Aplicar
                                 </button>
                             </div>
-
-                            {/* Fechas actuales seleccionadas */}
-                            {tieneFiltro && (
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                                    <p className="text-xs text-yellow-700 font-semibold">Fechas seleccionadas:</p>
-                                    {filtroFecha.desde && (
-                                        <p className="text-xs text-yellow-600">Desde: {getDisplayDate(filtroFecha.desde)}</p>
-                                    )}
-                                    {filtroFecha.hasta && (
-                                        <p className="text-xs text-yellow-600">Hasta: {getDisplayDate(filtroFecha.hasta)}</p>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     </motion.div>
                 )}
@@ -360,264 +276,142 @@ function FiltroRangoFechas({ filtroFecha, setFiltroFecha, showNotification }) {
     );
 }
 
-/* ==================== Card de Cuota Seleccionable ==================== */
-function CuotaSeleccionable({ cuota, curso, isSelected, onToggle, showCheckbox = true }) {
-    const isVencida = cuota.isOverdue;
-    const daysLate = isVencida ? getDaysLate(cuota.dueDate) : 0;
-    const esMesActual = isCurrentMonth(cuota.dueDate);
-    const isPaid = cuota.isPaid;
+/* ==================== Card de Deudor Compacto ==================== */
+function DeudorCard({ alumno, isActive, onClick, showNotification }) {
+    const cuotasVencidas = alumno.cuotas.filter(c => c.isOverdue && !c.isPaid).length;
+    const cuotasTotales = alumno.cuotas.filter(c => !c.isPaid).length;
+    const diasAtraso = cuotasVencidas > 0 ?
+        Math.max(...alumno.cuotas.filter(c => c.isOverdue && !c.isPaid).map(c => getDaysLate(c.dueDate))) : 0;
 
-    // ✅ Si está pagada, no permitir click ni selección
-    const handleClick = () => {
-        if (isPaid) return; // No hacer nada si está pagada
-        onToggle(cuota);
+    const getSeverity = () => {
+        if (cuotasVencidas > 3) return 'critical';
+        if (cuotasVencidas > 0) return 'high';
+        if (cuotasTotales > 0) return 'medium';
+        return 'low';
+    };
+
+    const severity = getSeverity();
+    const severityColors = {
+        critical: 'from-red-500 to-red-600',
+        high: 'from-orange-500 to-orange-600',
+        medium: 'from-yellow-500 to-yellow-600',
+        low: 'from-gray-500 to-gray-600'
+    };
+
+    const severityBgColors = {
+        critical: 'bg-red-50 border-red-200',
+        high: 'bg-orange-50 border-orange-200',
+        medium: 'bg-yellow-50 border-yellow-200',
+        low: 'bg-gray-50 border-gray-200'
     };
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-3 lg:p-4 rounded-lg border-2 ${
-                isPaid
-                    ? 'bg-gray-100 border-gray-300 opacity-60'  // ✅ Estilo gris para pagadas
-                    : isSelected
-                        ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-200'
-                        : isVencida
-                            ? 'bg-red-50 border-red-400'
-                            : esMesActual
-                                ? 'bg-yellow-50 border-yellow-400'
-                                : 'bg-white border-gray-300'
-            } shadow-sm ${!isPaid ? 'hover:shadow-md cursor-pointer' : 'cursor-not-allowed'} transition-all`}
-            onClick={handleClick}
+            layout
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{
+                opacity: isActive ? 0 : 1,
+                scale: isActive ? 0.9 : 1,
+                height: isActive ? 0 : 'auto',
+                marginBottom: isActive ? 0 : '1rem'
+            }}
+            exit={{ opacity: 0, scale: 0.95, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.3 }}
+            className={`relative ${isActive ? 'hidden' : 'block'}`}
         >
-            <div className="flex items-start gap-3">
-                {showCheckbox && (
-                    <div className="flex items-start pt-1">
-                        <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
-                            isPaid
-                                ? 'bg-gray-300 border-gray-400 cursor-not-allowed'  // ✅ Checkbox gris para pagadas
-                                : isSelected
-                                    ? 'bg-blue-500 border-blue-500 text-white'
-                                    : 'border-gray-400 bg-white'
-                        }`}>
-                            {isSelected && !isPaid && <FiCheck className="w-3 h-3" />}
-                            {isPaid && <FiCheck className="w-3 h-3 text-white" />}
-                        </div>
+            <div
+                onClick={onClick}
+                className={`group bg-white rounded-xl shadow-sm border overflow-hidden cursor-pointer transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 ${severityBgColors[severity]}`}
+            >
+                {/* Header con gradiente */}
+                <div className={`bg-gradient-to-r ${severityColors[severity]} p-4 relative overflow-hidden`}>
+                    <div className="absolute top-0 right-0 w-16 h-16 opacity-20">
+                        <FiAlertCircle className="w-full h-full text-white" />
                     </div>
-                )}
-
-                <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-bold text-sm lg:text-base ${isPaid ? 'text-gray-500' : 'text-gray-800'}`}>
-                                {curso.courseName} - Cuota #{cuota.installmentNumber}
-                            </span>
-                            {/* ✅ Badge PAGADA */}
-                            {isPaid && (
-                                <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded-full font-semibold">
-                                    PAGADA
-                                </span>
-                            )}
-                            {/* Badges de vencida y mes actual solo si NO está pagada */}
-                            {!isPaid && isVencida && (
-                                <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-semibold">
-                                    VENCIDA
-                                </span>
-                            )}
-                            {!isPaid && !isVencida && esMesActual && (
-                                <span className="px-2 py-0.5 bg-yellow-500 text-white text-xs rounded-full font-semibold">
-                                    ESTE MES
+                    <div className="relative z-10">
+                        <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <FiUser className="w-4 h-4 text-white" />
+                                </div>
+                                <h3 className="text-white font-bold text-sm truncate max-w-[180px]">
+                                    {alumno.studentName}
+                                </h3>
+                            </div>
+                            {cuotasVencidas > 0 && (
+                                <span className="bg-white/30 text-white text-xs px-2 py-1 rounded-full font-bold">
+                                    {cuotasVencidas} VENCIDAS
                                 </span>
                             )}
                         </div>
-                        <span className={`text-lg lg:text-xl font-bold ${isPaid ? 'text-gray-500 line-through' : 'text-red-700'}`}>
-                            ${formatNumber(cuota.pending)}
-                        </span>
                     </div>
-
-                    <div className={`flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm ${isPaid ? 'text-gray-500' : 'text-gray-600'}`}>
-                        <div className="flex items-center gap-1">
-                            <FiCalendar className="w-3 h-3 lg:w-4 lg:h-4" />
-                            <span>Vence: {formatDate(cuota.dueDate)}</span>
-                        </div>
-                        {!isPaid && isVencida && (
-                            <span className="text-red-600 font-semibold">
-                                ({daysLate} {daysLate === 1 ? 'día' : 'días'} de atraso)
-                            </span>
-                        )}
-                        {cuota.amountPaid > 0 && (
-                            <span className={`font-semibold ${isPaid ? 'text-green-600' : 'text-green-600'}`}>
-                                Pagado: ${formatNumber(cuota.amountPaid)}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Mostrar precios en fecha y vencido solo si NO está pagada */}
-                    {!isPaid && (
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                            <span className="bg-green-100 text-green-700 px-2 py-1 rounded">
-                                En fecha: ${formatNumber(cuota.amountEnFecha)}
-                            </span>
-                            <span className="bg-red-100 text-red-700 px-2 py-1 rounded">
-                                Vencido: ${formatNumber(cuota.amountVencido)}
-                            </span>
-                        </div>
-                    )}
                 </div>
+
+                {/* Contenido */}
+                <div className="p-4">
+                    {/* Monto pendiente */}
+                    <div className="mb-4">
+                        <div className="text-xs text-gray-500 mb-1">Total pendiente</div>
+                        <div className="text-2xl font-bold text-gray-900 truncate">
+                            ${formatNumber(alumno.totalPending)}
+                        </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="text-center">
+                            <div className="text-xs text-gray-500 mb-1">Cuotas</div>
+                            <div className="text-lg font-semibold text-gray-900">{cuotasTotales}</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-xs text-gray-500 mb-1">Cursos</div>
+                            <div className="text-lg font-semibold text-gray-900">{alumno.cursos.length}</div>
+                        </div>
+                    </div>
+
+                    {/* Info adicional */}
+                    <div className="space-y-2">
+                        {diasAtraso > 0 && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <FiClock className="w-3 h-3 text-red-500" />
+                                <span className="text-red-600 font-medium">{diasAtraso} días de atraso</span>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <FiMail className="w-3 h-3" />
+                            <span className="truncate">{alumno.contact.email || 'Sin email'}</span>
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-4 pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">
+                                Click para ver detalles
+                            </span>
+                            <FiEye className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Indicador de severidad */}
+                <div className={`absolute top-0 left-0 w-1 h-full ${severityColors[severity].replace('from-', 'bg-').split(' ')[0]}`}></div>
             </div>
         </motion.div>
     );
 }
 
-/* ==================== Card de Curso ==================== */
-function CursoCard({ curso, selectedCuotas, onToggleCuota, showCheckbox = true }) {
-    const [isExpanded, setIsExpanded] = useState(true);
-
-    // ✅ Calcular cuotas pendientes (no pagadas) para los contadores
-    const cuotasPendientes = curso.cuotas.filter(c => !c.isPaid);
-    const totalCurso = cuotasPendientes.reduce((sum, c) => sum + c.pending, 0);
-    const cuotasVencidas = cuotasPendientes.filter(c => c.isOverdue).length;
-
-    // ✅ Función de comparación para ordenar cuotas (modificada para Deudores)
-    const compararCuotas = (a, b) => {
-        // 0. PRIMERO: Las pagadas siempre al final
-        if (a.isPaid && !b.isPaid) return 1;
-        if (!a.isPaid && b.isPaid) return -1;
-
-        // Si ambas están pagadas, ordenar por número de cuota
-        if (a.isPaid && b.isPaid) {
-            return Number(a.installmentNumber) - Number(b.installmentNumber);
-        }
-
-        // 1. Segundo: vencidas vs no vencidas (entre las no pagadas)
-        if (a.isOverdue && !b.isOverdue) return -1;
-        if (!a.isOverdue && b.isOverdue) return 1;
-
-        // 2. Si ambas vencidas: más días de atraso primero
-        if (a.isOverdue && b.isOverdue) {
-            const diasA = getDaysLate(a.dueDate);
-            const diasB = getDaysLate(b.dueDate);
-            return diasB - diasA; // Más días primero
-        }
-
-        // 3. Si ninguna vencida: más próxima a vencer primero
-        const fechaA = new Date(a.dueDate);
-        const fechaB = new Date(b.dueDate);
-        return fechaA - fechaB;
-    };
-
-    // ✅ Ordenar cuotas usando la misma lógica que Cobros.jsx
-    const cuotasOrdenadas = [...curso.cuotas].sort(compararCuotas);
-
-    return (
-        <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-sm">
-            <div
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="bg-gradient-to-r from-red-100 to-blue-100 p-3 lg:p-4 cursor-pointer hover:from-red-200 hover:to-blue-200 transition-colors"
-            >
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-white p-2 rounded-lg shadow-sm">
-                            <FiDollarSign className="w-4 h-4 lg:w-5 lg:h-5 text-red-600" />
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-gray-800 text-sm lg:text-base">{curso.courseName}</h4>
-                            <div className="text-xs lg:text-sm text-gray-600">
-                                {cuotasPendientes.length} cuota{cuotasPendientes.length !== 1 ? 's' : ''} pendiente{cuotasPendientes.length !== 1 ? 's' : ''}
-                                {cuotasVencidas > 0 && (
-                                    <span className="text-red-600 font-semibold ml-2">
-                                        ({cuotasVencidas} vencida{cuotasVencidas !== 1 ? 's' : ''})
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-lg lg:text-xl font-bold text-red-700">
-                            ${formatNumber(totalCurso)}
-                        </span>
-                        <motion.div
-                            animate={{ rotate: isExpanded ? 180 : 0 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <FiChevronDown className="w-5 h-5 text-gray-600" />
-                        </motion.div>
-                    </div>
-                </div>
-            </div>
-
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="p-3 lg:p-4 space-y-3 bg-gray-50">
-                            {/* ✅ Usar cuotasOrdenadas en lugar de curso.cuotas */}
-                            {cuotasOrdenadas.map((cuota, idx) => (
-                                <CuotaSeleccionable
-                                    key={idx}
-                                    cuota={cuota}
-                                    curso={curso}
-                                    isSelected={selectedCuotas.some(sc =>
-                                        sc.installmentNumber === cuota.installmentNumber &&
-                                        sc.dueDate === cuota.dueDate
-                                    )}
-                                    onToggle={onToggleCuota}
-                                    showCheckbox={showCheckbox}
-                                />
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
-
-/* ==================== Card de Alumno ==================== */
-function AlumnoCard({ alumno, showNotification }) {
-    const [isExpanded, setIsExpanded] = useState(false);
+/* ==================== Vista Expandida de Deudor ==================== */
+function DeudorExpandido({ alumno, onClose, showNotification }) {
     const [selectedCuotas, setSelectedCuotas] = useState([]);
+    const [metodoPago, setMetodoPago] = useState('Transferencia');
     const [isSending, setIsSending] = useState(false);
 
-    // ✅ Calcular cuotas pendientes (no pagadas) para los contadores
     const cuotasPendientes = alumno.cuotas.filter(c => !c.isPaid);
-    const totalCuotasPendientes = cuotasPendientes.length;
-
-    // ✅ Función de comparación para ordenar cuotas (modificada para Deudores)
-    const compararCuotas = (a, b) => {
-        // 0. PRIMERO: Las pagadas siempre al final
-        if (a.isPaid && !b.isPaid) return 1;
-        if (!a.isPaid && b.isPaid) return -1;
-
-        // Si ambas están pagadas, ordenar por número de cuota
-        if (a.isPaid && b.isPaid) {
-            return Number(a.installmentNumber) - Number(b.installmentNumber);
-        }
-
-        // 1. Segundo: vencidas vs no vencidas (entre las no pagadas)
-        if (a.isOverdue && !b.isOverdue) return -1;
-        if (!a.isOverdue && b.isOverdue) return 1;
-
-        // 2. Si ambas vencidas: más días de atraso primero
-        if (a.isOverdue && b.isOverdue) {
-            const diasA = getDaysLate(a.dueDate);
-            const diasB = getDaysLate(b.dueDate);
-            return diasB - diasA; // Más días primero
-        }
-
-        // 3. Si ninguna vencida: más próxima a vencer primero
-        const fechaA = new Date(a.dueDate);
-        const fechaB = new Date(b.dueDate);
-        return fechaA - fechaB;
-    };
+    const cuotasVencidas = cuotasPendientes.filter(c => c.isOverdue);
+    const totalSelected = selectedCuotas.reduce((sum, c) => sum + c.pending, 0);
 
     const toggleCuota = (cuota) => {
-        // ✅ No permitir seleccionar cuotas pagadas
         if (cuota.isPaid) return;
 
         setSelectedCuotas(prev => {
@@ -637,10 +431,9 @@ function AlumnoCard({ alumno, showNotification }) {
     };
 
     const selectAllCuotas = () => {
-        // ✅ Solo seleccionar cuotas pendientes (no pagadas)
         const allCuotas = alumno.cursos.flatMap(curso =>
             curso.cuotas
-                .filter(cuota => !cuota.isPaid)  // Excluir pagadas
+                .filter(cuota => !cuota.isPaid)
                 .map(cuota => ({
                     ...cuota,
                     courseName: curso.courseName
@@ -657,11 +450,8 @@ function AlumnoCard({ alumno, showNotification }) {
         if (selectedCuotas.length === 0) return '';
 
         const total = selectedCuotas.reduce((sum, c) => sum + c.pending, 0);
-
-        // ✅ Ordenar cuotas seleccionadas antes de generar mensaje
-        const cuotasOrdenadas = [...selectedCuotas].sort(compararCuotas);
-        const cuotasVencidas = cuotasOrdenadas.filter(c => c.isOverdue);
-        const cuotasPorVencer = cuotasOrdenadas.filter(c => !c.isOverdue);
+        const cuotasVencidas = selectedCuotas.filter(c => c.isOverdue);
+        const cuotasPorVencer = selectedCuotas.filter(c => !c.isOverdue);
 
         let message = `Hola ${alumno.studentName}, te recordamos que tienes cuotas pendientes:\n\n`;
 
@@ -688,17 +478,6 @@ function AlumnoCard({ alumno, showNotification }) {
         return message;
     };
 
-    const handleSendEmail = () => {
-        if (selectedCuotas.length === 0) {
-            showNotification('warning', 'Selecciona al menos una cuota para enviar');
-            return;
-        }
-
-        const message = generateMessage();
-        showNotification('info', `Enviando email a ${alumno.contact.email || 'Sin email'} con ${selectedCuotas.length} cuota${selectedCuotas.length !== 1 ? 's' : ''}`);
-        console.log('Email message:', message);
-    };
-
     const handleSendWhatsApp = () => {
         if (selectedCuotas.length === 0) {
             showNotification('warning', 'Selecciona al menos una cuota para enviar');
@@ -711,191 +490,283 @@ function AlumnoCard({ alumno, showNotification }) {
 
         if (phoneNumber) {
             window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
-            showNotification('success', `WhatsApp abierto para ${alumno.studentName} con ${selectedCuotas.length} cuota${selectedCuotas.length !== 1 ? 's' : ''}`);
+            showNotification('success', `WhatsApp abierto para ${alumno.studentName}`);
         } else {
             showNotification('error', 'No hay número de teléfono para enviar WhatsApp');
         }
     };
 
-    const handleSendSMS = () => {
+    const handleSendEmail = () => {
         if (selectedCuotas.length === 0) {
             showNotification('warning', 'Selecciona al menos una cuota para enviar');
             return;
         }
 
         const message = generateMessage();
-        showNotification('info', `Enviando SMS a ${alumno.contact.telefono || 'Sin teléfono'} con ${selectedCuotas.length} cuota${selectedCuotas.length !== 1 ? 's' : ''}`);
-        console.log('SMS message:', message);
-    };
+        const subject = `Recordatorio de pago - ${alumno.studentName}`;
+        const mailto = `mailto:${alumno.contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
 
-    const hasSelectedCuotas = selectedCuotas.length > 0;
-    const totalSelected = selectedCuotas.reduce((sum, c) => sum + c.pending, 0);
+        window.location.href = mailto;
+        showNotification('info', `Email preparado para ${alumno.studentName}`);
+    };
 
     return (
         <motion.div
-            layout
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-xl border-2 border-gray-200 overflow-hidden hover:shadow-2xl transition-shadow"
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed inset-0 z-50 bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto"
         >
-            <div
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="bg-gradient-to-r from-red-600 to-blue-600 text-white p-4 lg:p-6 cursor-pointer hover:from-red-700 hover:to-blue-700 transition-colors"
-            >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex-1">
-                        <h2 className="text-xl lg:text-2xl font-bold mb-2">{alumno.studentName}</h2>
-                        <div className="flex flex-wrap gap-2 text-sm">
-                            {alumno.contact.email && (
-                                <div className="flex items-center gap-1 bg-white/20 px-2 lg:px-3 py-1 rounded-full">
-                                    <FiMail className="w-3 h-3" />
-                                    <span className="text-xs lg:text-sm">{alumno.contact.email}</span>
-                                </div>
-                            )}
-                            {alumno.contact.telefono && (
-                                <div className="flex items-center gap-1 bg-white/20 px-2 lg:px-3 py-1 rounded-full">
-                                    <FiPhone className="w-3 h-3" />
-                                    <span className="text-xs lg:text-sm">{alumno.contact.telefono}</span>
-                                </div>
-                            )}
-                            {hasSelectedCuotas && (
-                                <div className="flex items-center gap-1 bg-green-500 px-2 lg:px-3 py-1 rounded-full">
-                                    <FiCheck className="w-3 h-3" />
-                                    <span className="text-xs lg:text-sm">
-                                        {selectedCuotas.length} cuota{selectedCuotas.length !== 1 ? 's' : ''} seleccionada{selectedCuotas.length !== 1 ? 's' : ''}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-2xl lg:text-4xl font-bold mb-1">
-                            ${formatNumber(alumno.totalPending)}
-                        </div>
-                        <div className="text-xs lg:text-sm text-blue-100">
-                            {alumno.cursos.length} curso{alumno.cursos.length !== 1 ? 's' : ''}
-                        </div>
-                        <div className="text-xs lg:text-sm text-blue-100">
-                            {totalCuotasPendientes} cuota{totalCuotasPendientes !== 1 ? 's' : ''} pendiente{totalCuotasPendientes !== 1 ? 's' : ''}
-                        </div>
-                    </div>
-                    <motion.div
-                        animate={{ rotate: isExpanded ? 180 : 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="hidden lg:block"
-                    >
-                        <FiChevronDown className="w-6 h-6 lg:w-8 lg:h-8" />
-                    </motion.div>
-                </div>
-            </div>
-
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-                            {/* Panel de selección de cuotas */}
-                            {hasSelectedCuotas && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4"
+            <div className="max-w-6xl mx-auto p-4 lg:p-6">
+                {/* Header */}
+                <div className="bg-white rounded-2xl shadow-xl mb-6 overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={onClose}
+                                    className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-lg transition-colors"
                                 >
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div>
-                                            <h4 className="font-bold text-blue-800 text-lg">
-                                                {selectedCuotas.length} cuota{selectedCuotas.length !== 1 ? 's' : ''} seleccionada{selectedCuotas.length !== 1 ? 's' : ''}
-                                            </h4>
-                                            <p className="text-blue-600 text-sm">
-                                                Total seleccionado: <span className="font-bold">${formatNumber(totalSelected)}</span>
-                                            </p>
+                                    <FiArrowLeft className="w-5 h-5" />
+                                </button>
+                                <div>
+                                    <h1 className="text-2xl font-bold text-white">{alumno.studentName}</h1>
+                                    <p className="text-blue-100">Detalle completo de deudas</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-3xl font-bold text-white mb-1">
+                                    ${formatNumber(alumno.totalPending)}
+                                </div>
+                                <div className="text-blue-100 text-sm">
+                                    Total pendiente
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+                                <div className="text-white text-sm mb-1">Cuotas totales</div>
+                                <div className="text-2xl font-bold text-white">{cuotasPendientes.length}</div>
+                            </div>
+                            <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+                                <div className="text-white text-sm mb-1">Cuotas vencidas</div>
+                                <div className="text-2xl font-bold text-white">{cuotasVencidas.length}</div>
+                            </div>
+                            <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+                                <div className="text-white text-sm mb-1">Cursos</div>
+                                <div className="text-2xl font-bold text-white">{alumno.cursos.length}</div>
+                            </div>
+                            <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+                                <div className="text-white text-sm mb-1">Contacto</div>
+                                <div className="text-lg font-semibold text-white truncate">
+                                    {alumno.contact.telefono || alumno.contact.email || 'Sin contacto'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Panel de acciones */}
+                    <div className="p-6 border-b border-gray-200">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Acciones rápidas</h3>
+                                <p className="text-gray-600 text-sm">Selecciona cuotas para enviar recordatorios</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={selectAllCuotas}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                                >
+                                    <FiCheck className="w-4 h-4" />
+                                    Seleccionar todas
+                                </button>
+                                <button
+                                    onClick={clearSelection}
+                                    disabled={selectedCuotas.length === 0}
+                                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${selectedCuotas.length === 0
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                    }`}
+                                >
+                                    <FiX className="w-4 h-4" />
+                                    Limpiar
+                                </button>
+                                <select
+                                    value={metodoPago}
+                                    onChange={(e) => setMetodoPago(e.target.value)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700"
+                                >
+                                    <option value="Transferencia">Transferencia</option>
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Tarjeta">Tarjeta</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Cuotas seleccionadas */}
+                        {selectedCuotas.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4"
+                            >
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-blue-700 font-bold">{selectedCuotas.length}</span>
+                                            <span className="text-blue-600">cuotas seleccionadas</span>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={clearSelection}
-                                                className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-sm transition-colors"
-                                            >
-                                                Limpiar
-                                            </button>
-                                            <button
-                                                onClick={selectAllCuotas}
-                                                className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold text-sm transition-colors"
-                                            >
-                                                Seleccionar Todas
-                                            </button>
+                                        <div className="text-2xl font-bold text-blue-800">
+                                            ${formatNumber(totalSelected)}
                                         </div>
                                     </div>
-                                </motion.div>
-                            )}
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleSendWhatsApp}
+                                            disabled={!alumno.contact.telefono}
+                                            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${alumno.contact.telefono
+                                                ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <FiMessageSquare className="w-4 h-4" />
+                                            Enviar WhatsApp
+                                        </button>
+                                        <button
+                                            onClick={handleSendEmail}
+                                            disabled={!alumno.contact.email}
+                                            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${alumno.contact.email
+                                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <FiMail className="w-4 h-4" />
+                                            Enviar Email
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </div>
+                </div>
 
-                            {/* Botones de acción */}
-                            <div className="flex flex-wrap gap-2 lg:gap-3">
-                                <button
-                                    onClick={handleSendEmail}
-                                    disabled={!alumno.contact.email || !hasSelectedCuotas}
-                                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2 rounded-lg font-semibold transition-colors text-sm lg:text-base ${
-                                        alumno.contact.email && hasSelectedCuotas
-                                            ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                >
-                                    <FiMail className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Enviar Email</span>
-                                    <span className="sm:hidden">Email</span>
-                                </button>
-                                <button
-                                    onClick={handleSendWhatsApp}
-                                    disabled={!alumno.contact.telefono || !hasSelectedCuotas}
-                                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2 rounded-lg font-semibold transition-colors text-sm lg:text-base ${
-                                        alumno.contact.telefono && hasSelectedCuotas
-                                            ? 'bg-green-500 hover:bg-green-600 text-white'
-                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                >
-                                    <FiMessageSquare className="w-4 h-4" />
-                                    <span className="hidden sm:inline">WhatsApp</span>
-                                    <span className="sm:hidden">WA</span>
-                                </button>
-                                <button
-                                    onClick={handleSendSMS}
-                                    disabled={!alumno.contact.telefono || !hasSelectedCuotas}
-                                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2 rounded-lg font-semibold transition-colors text-sm lg:text-base ${
-                                        alumno.contact.telefono && hasSelectedCuotas
-                                            ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                >
-                                    <FiBell className="w-4 h-4" />
-                                    <span className="hidden sm:inline">SMS</span>
-                                    <span className="sm:hidden">SMS</span>
-                                </button>
+                {/* Lista de cursos */}
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <FiFileText className="w-5 h-5 text-blue-600" />
+                        Cursos con cuotas pendientes
+                    </h2>
+
+                    {alumno.cursos.map((curso, idx) => (
+                        <div key={idx} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                            <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 border-b border-gray-200">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-blue-100 p-2 rounded-lg">
+                                            <FiFileText className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900">{curso.courseName}</h3>
+                                            <p className="text-gray-600 text-sm">
+                                                {curso.cuotas.filter(c => !c.isPaid).length} cuotas pendientes
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-lg font-bold text-gray-900">
+                                            ${formatNumber(curso.cuotas.filter(c => !c.isPaid).reduce((sum, c) => sum + c.pending, 0))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Lista de cursos */}
-                            <div className="space-y-4">
-                                <h3 className="text-base lg:text-lg font-bold text-gray-800 flex items-center gap-2">
-                                    <FiDollarSign className="w-4 h-4 lg:w-5 lg:h-5 text-red-600" />
-                                    Cursos con cuotas pendientes
-                                </h3>
-                                {alumno.cursos.map((curso, idx) => (
-                                    <CursoCard
-                                        key={idx}
-                                        curso={curso}
-                                        selectedCuotas={selectedCuotas}
-                                        onToggleCuota={toggleCuota}
-                                        showCheckbox={true}
-                                    />
-                                ))}
+                            {/* Cuotas del curso */}
+                            <div className="p-4">
+                                <div className="space-y-3">
+                                    {curso.cuotas
+                                        .filter(c => !c.isPaid)
+                                        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+                                        .map((cuota, cIdx) => (
+                                            <div
+                                                key={cIdx}
+                                                onClick={() => toggleCuota(cuota)}
+                                                className={`p-4 rounded-lg border cursor-pointer transition-all ${selectedCuotas.some(sc =>
+                                                    sc.installmentNumber === cuota.installmentNumber && sc.dueDate === cuota.dueDate
+                                                ) ? 'bg-blue-50 border-blue-300 border-l-4 border-l-blue-500' :
+                                                    cuota.isOverdue ? 'bg-red-50 border-red-200 border-l-4 border-l-red-500' :
+                                                        'bg-gray-50 border-gray-200 hover:border-blue-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-5 h-5 border rounded flex items-center justify-center ${selectedCuotas.some(sc =>
+                                                            sc.installmentNumber === cuota.installmentNumber && sc.dueDate === cuota.dueDate
+                                                        ) ? 'bg-blue-600 border-blue-600' : 'border-gray-400'}`}>
+                                                            {selectedCuotas.some(sc =>
+                                                                sc.installmentNumber === cuota.installmentNumber && sc.dueDate === cuota.dueDate
+                                                            ) && <FiCheck className="w-3 h-3 text-white" />}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-semibold text-gray-900">
+                                                                Cuota #{cuota.installmentNumber}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                <FiCalendar className="w-3 h-3" />
+                                                                Vence: {formatDate(cuota.dueDate)}
+                                                                {cuota.isOverdue && (
+                                                                    <span className="text-red-600 font-medium">
+                                                                        ({getDaysLate(cuota.dueDate)} días de atraso)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-xl font-bold text-gray-900">
+                                                            ${formatNumber(cuota.pending)}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">
+                                                            {cuota.isOverdue ? 'Vencido' : 'Pendiente'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
                             </div>
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    ))}
+                </div>
+
+                {/* Información de contacto */}
+                <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Información de contacto</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-gray-600">
+                                <FiMail className="w-4 h-4" />
+                                <span className="font-medium">Email:</span>
+                                <span>{alumno.contact.email || 'No especificado'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                                <FiPhone className="w-4 h-4" />
+                                <span className="font-medium">Teléfono:</span>
+                                <span>{alumno.contact.telefono || 'No especificado'}</span>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <button
+                                onClick={onClose}
+                                className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg font-medium transition-all shadow-md"
+                            >
+                                Volver al listado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </motion.div>
     );
 }
@@ -907,6 +778,7 @@ export default function Deudores() {
     const [search, setSearch] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('todos');
     const [filtroFecha, setFiltroFecha] = useState({ desde: null, hasta: null });
+    const [deudorExpandido, setDeudorExpandido] = useState(null);
 
     const showNotification = (type, message) => {
         const id = Date.now();
@@ -918,57 +790,6 @@ export default function Deudores() {
         setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
-    // ✅ Función de comparación para ordenar cuotas (modificada para Deudores)
-    const compararCuotas = (a, b) => {
-        // 0. PRIMERO: Las pagadas siempre al final
-        if (a.isPaid && !b.isPaid) return 1;
-        if (!a.isPaid && b.isPaid) return -1;
-
-        // Si ambas están pagadas, ordenar por número de cuota
-        if (a.isPaid && b.isPaid) {
-            return Number(a.installmentNumber) - Number(b.installmentNumber);
-        }
-
-        // 1. Segundo: vencidas vs no vencidas (entre las no pagadas)
-        if (a.isOverdue && !b.isOverdue) return -1;
-        if (!a.isOverdue && b.isOverdue) return 1;
-
-        // 2. Si ambas vencidas: más días de atraso primero
-        if (a.isOverdue && b.isOverdue) {
-            const diasA = getDaysLate(a.dueDate);
-            const diasB = getDaysLate(b.dueDate);
-            return diasB - diasA; // Más días primero
-        }
-
-        // 3. Si ninguna vencida: más próxima a vencer primero
-        const fechaA = new Date(a.dueDate);
-        const fechaB = new Date(b.dueDate);
-        return fechaA - fechaB;
-    };
-
-    // Función para verificar si una cuota coincide con el filtro de fecha
-    const cuotaCoincideConFiltroFecha = (cuota) => {
-        if (!filtroFecha.desde && !filtroFecha.hasta) return true;
-
-        const fechaCuota = new Date(cuota.dueDate);
-        fechaCuota.setHours(0, 0, 0, 0);
-
-        if (filtroFecha.desde) {
-            const desde = new Date(filtroFecha.desde);
-            desde.setHours(0, 0, 0, 0);
-            if (fechaCuota < desde) return false;
-        }
-
-        if (filtroFecha.hasta) {
-            const hasta = new Date(filtroFecha.hasta);
-            hasta.setHours(23, 59, 59, 999);
-            if (fechaCuota > hasta) return false;
-        }
-
-        return true;
-    };
-
-    // ✅ LÓGICA CORREGIDA: Incluir TODAS las cuotas (pagadas y pendientes)
     const debtors = useMemo(() => {
         console.log('\n🔍 [DEUDORES] Calculando deudores...');
         console.log('   Estudiantes:', students.length);
@@ -985,14 +806,8 @@ export default function Deudores() {
 
             if (!student || !course) return;
 
-            // ✅ INCLUIR TODAS las cuotas (pagadas y pendientes)
-            // Las pagadas se mostrarán bloqueadas en gris
-            const todasLasCuotas = (ins.installments || []).filter(inst => {
-                // Incluir todas las cuotas sin excluir ninguna
-                return true;
-            });
+            const todasLasCuotas = (ins.installments || []).filter(inst => true);
 
-            // Solo mostrar el alumno si tiene al menos una cuota pendiente (no pagada)
             const tieneCuotasPendientes = todasLasCuotas.some(inst => {
                 const dueDate = new Date(inst.dueDate);
                 dueDate.setHours(0, 0, 0, 0);
@@ -1023,24 +838,18 @@ export default function Deudores() {
 
             const deudor = byStudent.get(ins.studentId);
 
-            // ✅ Procesar TODAS las cuotas (pagadas y pendientes)
             const cuotasData = todasLasCuotas.map(inst => {
                 const dueDate = new Date(inst.dueDate);
                 dueDate.setHours(0, 0, 0, 0);
                 const isOverdue = !inst.frozen && today > dueDate;
 
-                // Método por defecto de la inscripción
                 const defaultMethod = ins.paymentType || 'Transferencia';
-
-                // ✅ Calcular precio actual según método y vencimiento
                 const montoActual = calcularPrecioPorMetodo(ins, course, inst, defaultMethod, isOverdue);
                 const pending = Math.max(montoActual - Number(inst.amountPaid || 0), 0);
 
-                // Calcular también los montos en fecha y vencido para mostrar
                 const amountEnFecha = calcularPrecioPorMetodo(ins, course, inst, defaultMethod, false);
                 const amountVencido = calcularPrecioPorMetodo(ins, course, inst, defaultMethod, true);
 
-                // ✅ Determinar si la cuota está pagada
                 const isPaid = pending === 0 || inst.status === 'Pagada' || inst.status === 'Pagado';
 
                 return {
@@ -1055,37 +864,31 @@ export default function Deudores() {
                     frozen: inst.frozen || false,
                     estado: inst.status || 'Pendiente',
                     courseName: course.nombre,
-                    isPaid: isPaid  // ✅ Nueva propiedad para identificar cuotas pagadas
+                    isPaid: isPaid
                 };
             });
 
-            // ✅ ORDENAR cuotas dentro de cada curso (igual que en Cobros.jsx)
-            const cuotasOrdenadas = cuotasData.sort(compararCuotas);
-
-            const totalCurso = cuotasOrdenadas.filter(c => !c.isPaid).reduce((sum, c) => sum + c.pending, 0);
+            const totalCurso = cuotasData.filter(c => !c.isPaid).reduce((sum, c) => sum + c.pending, 0);
             deudor.totalPending += totalCurso;
-            deudor.cuotas.push(...cuotasOrdenadas);
+            deudor.cuotas.push(...cuotasData);
 
             deudor.cursos.push({
                 courseName: course.nombre,
                 inscriptionId: ins.id,
                 estadoCurso: ins.status || 'Cursando',
                 fechaInscripcion: ins.createdAt || ins.fechaInscripcion,
-                cuotas: cuotasOrdenadas  // ✅ Usar las cuotas ordenadas
+                cuotas: cuotasData
             });
         });
 
         const result = Array.from(byStudent.values()).sort((a, b) => b.totalPending - a.totalPending);
-
-        console.log(`🎯 [DEUDORES] Total: ${result.length} deudores, $${result.reduce((sum, d) => sum + d.totalPending, 0)}`);
-
+        console.log(`🎯 [DEUDORES] Total: ${result.length} deudores`);
         return result;
     }, [students, inscriptions, courses]);
 
     const deudoresFiltrados = useMemo(() => {
         let filtered = debtors;
 
-        // Filtro de búsqueda por texto
         if (search) {
             const searchLower = search.toLowerCase();
             filtered = filtered.filter(d =>
@@ -1095,47 +898,41 @@ export default function Deudores() {
             );
         }
 
-        // Aplicar filtros combinados (tipo y fecha)
-        filtered = filtered.map(d => {
-            const cursosFiltrados = d.cursos.map(curso => {
-                // ✅ Siempre incluir todas las cuotas para visualización
-                // Pero para filtros, excluir las pagadas de la lógica de filtrado
-                const cuotasFiltradas = curso.cuotas.filter(c => {
-                    // ✅ PRIMERO: Excluir cuotas pagadas de los filtros
-                    if (c.isPaid) return false;
-
-                    // Filtro por tipo (vencidas/mesActual/todos)
-                    let pasaFiltroTipo = true;
-                    if (filtroTipo === 'vencidas') pasaFiltroTipo = c.isOverdue;
-                    else if (filtroTipo === 'mesActual') pasaFiltroTipo = isCurrentMonth(c.dueDate);
-
-                    // Filtro por rango de fechas
-                    const pasaFiltroFecha = cuotaCoincideConFiltroFecha(c);
-
-                    return pasaFiltroTipo && pasaFiltroFecha;
-                });
-
-                // ✅ Devolver TODAS las cuotas originales, pero marcar las que pasan el filtro
-                return {
-                    ...curso,
-                    cuotas: curso.cuotas, // Todas las cuotas para visualización
-                    cuotasFiltradasParaTotal: cuotasFiltradas // Solo para cálculos
-                };
-            }).filter(curso => curso.cuotasFiltradasParaTotal.length > 0);
-
-            if (cursosFiltrados.length === 0) return null;
-
-            const totalPending = cursosFiltrados.reduce(
-                (sum, curso) => sum + curso.cuotasFiltradasParaTotal.reduce((s, c) => s + c.pending, 0), 0
+        if (filtroTipo === 'vencidas') {
+            filtered = filtered.filter(d =>
+                d.cuotas.some(c => c.isOverdue && !c.isPaid)
             );
+        } else if (filtroTipo === 'mesActual') {
+            filtered = filtered.filter(d =>
+                d.cuotas.some(c => isCurrentMonth(c.dueDate) && !c.isPaid)
+            );
+        }
 
-            return {
-                ...d,
-                cursos: cursosFiltrados,
-                cuotas: cursosFiltrados.flatMap(c => c.cuotas),
-                totalPending
-            };
-        }).filter(d => d !== null);
+        if (filtroFecha.desde || filtroFecha.hasta) {
+            filtered = filtered.filter(d => {
+                const cuotasFiltradas = d.cuotas.filter(c => {
+                    if (!filtroFecha.desde && !filtroFecha.hasta) return true;
+
+                    const fechaCuota = new Date(c.dueDate);
+                    fechaCuota.setHours(0, 0, 0, 0);
+
+                    if (filtroFecha.desde) {
+                        const desde = new Date(filtroFecha.desde);
+                        desde.setHours(0, 0, 0, 0);
+                        if (fechaCuota < desde) return false;
+                    }
+
+                    if (filtroFecha.hasta) {
+                        const hasta = new Date(filtroFecha.hasta);
+                        hasta.setHours(23, 59, 59, 999);
+                        if (fechaCuota > hasta) return false;
+                    }
+
+                    return true;
+                });
+                return cuotasFiltradas.length > 0;
+            });
+        }
 
         return filtered;
     }, [debtors, search, filtroTipo, filtroFecha]);
@@ -1144,11 +941,9 @@ export default function Deudores() {
         return {
             totalDeudores: deudoresFiltrados.length,
             totalDeuda: deudoresFiltrados.reduce((sum, d) => sum + (d.totalPending || 0), 0),
-            // ✅ Contar solo cuotas pendientes (no pagadas)
             totalCuotas: deudoresFiltrados.reduce((sum, d) =>
                 sum + ((d.cuotas || []).filter(c => !c.isPaid).length), 0
             ),
-            // ✅ Contar solo cuotas vencidas que no estén pagadas
             cuotasVencidas: deudoresFiltrados.reduce((sum, d) =>
                 sum + ((d.cuotas || []).filter(c => c.isOverdue && !c.isPaid).length), 0
             )
@@ -1158,150 +953,237 @@ export default function Deudores() {
     const tieneFiltrosActivos = search || filtroTipo !== 'todos' || filtroFecha.desde || filtroFecha.hasta;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 lg:p-6">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 lg:p-6">
             <Notifications notifications={notifications} remove={removeNotification} />
 
-            <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-red-600 to-blue-600 rounded-2xl shadow-2xl p-6 lg:p-8 text-white"
-                >
-                    <h1 className="text-2xl lg:text-4xl font-bold mb-2 flex items-center gap-3">
-                        <FiAlertCircle className="w-6 h-6 lg:w-10 lg:h-10" />
-                        Gestión de Deudores
-                    </h1>
-                    <p className="text-red-100 text-sm lg:text-base">
-                        Control y seguimiento de cuotas pendientes de pago
-                    </p>
-                </motion.div>
-
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4"
-                >
-                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-red-500">
-                        <div className="text-xl lg:text-3xl font-bold text-red-700 mb-1">
-                            {stats.totalDeudores}
-                        </div>
-                        <div className="text-xs lg:text-sm text-gray-600">
-                            {stats.totalDeudores === 1 ? 'Deudor' : 'Deudores'}
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-blue-500">
-                        <div className="text-xl lg:text-3xl font-bold text-blue-700 mb-1">
-                            ${formatNumber(stats.totalDeuda)}
-                        </div>
-                        <div className="text-xs lg:text-sm text-gray-600">Total Pendiente</div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-red-400">
-                        <div className="text-xl lg:text-3xl font-bold text-red-700 mb-1">
-                            {stats.totalCuotas}
-                        </div>
-                        <div className="text-xs lg:text-sm text-gray-600">
-                            {stats.totalCuotas === 1 ? 'Cuota Pendiente' : 'Cuotas Pendientes'}
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 border-l-4 border-blue-400">
-                        <div className="text-xl lg:text-3xl font-bold text-blue-700 mb-1">
-                            {stats.cuotasVencidas}
-                        </div>
-                        <div className="text-xs lg:text-sm text-gray-600">
-                            {stats.cuotasVencidas === 1 ? 'Cuota Vencida' : 'Cuotas Vencidas'}
-                        </div>
-                    </div>
-                </motion.div>
-
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl shadow-lg p-4 lg:p-6 space-y-4"
-                >
-                    <div className="flex flex-col lg:flex-row gap-4">
-                        <div className="flex-1">
-                            <div className="relative">
-                                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 lg:w-5 lg:h-5" />
-                                <input
-                                    type="text"
-                                    placeholder="Buscar por nombre, email o teléfono..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full pl-9 lg:pl-10 pr-4 py-2 lg:py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none transition-colors text-black text-sm lg:text-base"
-                                />
+            {deudorExpandido ? (
+                <DeudorExpandido
+                    alumno={deudorExpandido}
+                    onClose={() => setDeudorExpandido(null)}
+                    showNotification={showNotification}
+                />
+            ) : (
+                <div className="max-w-7xl mx-auto space-y-6">
+                    {/* Header */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-2xl overflow-hidden"
+                    >
+                        <div className="p-6 lg:p-8">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                                        <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                                            <FiAlertCircle className="w-8 h-8 text-white" />
+                                        </div>
+                                        Gestión de Deudores
+                                    </h1>
+                                    <p className="text-blue-100 mt-2">
+                                        Control profesional de cuotas pendientes de pago
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-sm text-blue-200">Total pendiente en sistema</div>
+                                    <div className="text-4xl font-bold text-white">${formatNumber(stats.totalDeuda)}</div>
+                                </div>
                             </div>
                         </div>
+                    </motion.div>
 
-                        <div className="lg:w-64">
-                            <select
-                                value={filtroTipo}
-                                onChange={(e) => setFiltroTipo(e.target.value)}
-                                className="w-full px-4 py-2 lg:py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-black bg-white text-sm lg:text-base"
-                            >
-                                <option value="todos">Todas las cuotas</option>
-                                <option value="mesActual">Mes actual</option>
-                                <option value="vencidas">Solo vencidas</option>
-                            </select>
-                        </div>
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="bg-white rounded-xl shadow-lg p-5 border border-gray-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 rounded-xl">
+                                    <FiUsers className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <div className="text-2xl font-bold text-gray-900">{stats.totalDeudores}</div>
+                                    <div className="text-sm text-gray-600">Deudores activos</div>
+                                </div>
+                            </div>
+                        </motion.div>
 
-                        <FiltroRangoFechas
-                            filtroFecha={filtroFecha}
-                            setFiltroFecha={setFiltroFecha}
-                            showNotification={showNotification}
-                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="bg-white rounded-xl shadow-lg p-5 border border-gray-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gradient-to-r from-red-500 to-red-600 p-3 rounded-xl">
+                                    <FiTrendingUp className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <div className="text-2xl font-bold text-gray-900">${formatNumber(stats.totalDeuda)}</div>
+                                    <div className="text-sm text-gray-600">Total adeudado</div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="bg-white rounded-xl shadow-lg p-5 border border-gray-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-3 rounded-xl">
+                                    <FiFileText className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <div className="text-2xl font-bold text-gray-900">{stats.totalCuotas}</div>
+                                    <div className="text-sm text-gray-600">Cuotas pendientes</div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                            className="bg-white rounded-xl shadow-lg p-5 border border-gray-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3 rounded-xl">
+                                    <FiAlertCircle className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <div className="text-2xl font-bold text-gray-900">{stats.cuotasVencidas}</div>
+                                    <div className="text-sm text-gray-600">Cuotas vencidas</div>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
 
-                    {tieneFiltrosActivos && (
-                        <div className="flex items-center justify-between bg-red-50 px-3 lg:px-4 py-2 rounded-lg">
-                            <span className="text-xs lg:text-sm text-red-700">
-                                Mostrando {deudoresFiltrados.length} de {debtors.length} deudores
-                                {(filtroFecha.desde || filtroFecha.hasta) && ' • Con filtro de fechas'}
-                            </span>
-                            <button
-                                onClick={() => {
-                                    setSearch('');
-                                    setFiltroTipo('todos');
-                                    setFiltroFecha({ desde: null, hasta: null });
-                                }}
-                                className="text-xs lg:text-sm text-red-600 hover:text-red-800 font-semibold"
-                            >
-                                Limpiar todos los filtros
-                            </button>
-                        </div>
-                    )}
-                </motion.div>
+                    {/* Search and Filters */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6"
+                    >
+                        <div className="space-y-4">
+                            <div className="flex flex-col lg:flex-row gap-3">
+                                <div className="flex-1">
+                                    <div className="relative">
+                                        <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar deudor por nombre, email o teléfono..."
+                                            value={search}
+                                            onChange={(e) => setSearch(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all text-base text-gray-900 placeholder-gray-500"
+                                        />
+                                    </div>
+                                </div>
 
-                <div className="space-y-4 lg:space-y-6">
+                                <FiltroAvanzado
+                                    filtroFecha={filtroFecha}
+                                    setFiltroFecha={setFiltroFecha}
+                                    filtroTipo={filtroTipo}
+                                    setFiltroTipo={setFiltroTipo}
+                                    showNotification={showNotification}
+                                />
+                            </div>
+
+                            {tieneFiltrosActivos && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-3 rounded-xl border border-blue-200"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-blue-800">
+                                            <FiFilter className="w-4 h-4" />
+                                            <span className="font-medium">
+                                                Mostrando {deudoresFiltrados.length} de {debtors.length} deudores
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setSearch('');
+                                                setFiltroTipo('todos');
+                                                setFiltroFecha({ desde: null, hasta: null });
+                                            }}
+                                            className="text-blue-700 hover:text-blue-900 font-medium flex items-center gap-1"
+                                        >
+                                            <FiRefreshCw className="w-3 h-3" />
+                                            Limpiar filtros
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </div>
+                    </motion.div>
+
+                    {/* Grid de Deudores */}
                     {deudoresFiltrados.length === 0 ? (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="bg-white rounded-xl shadow-lg p-8 lg:p-12 text-center"
+                            className="bg-white rounded-2xl shadow-xl border border-gray-200 p-12 text-center"
                         >
-                            <FiAlertCircle className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-xl lg:text-2xl font-bold text-gray-700 mb-2">
-                                No hay deudores
-                            </h3>
-                            <p className="text-gray-500 text-sm lg:text-base">
-                                {tieneFiltrosActivos
-                                    ? 'No se encontraron deudores con los filtros aplicados'
-                                    : '¡Todos los alumnos están al día con sus pagos!'}
-                            </p>
+                            <div className="max-w-md mx-auto">
+                                <div className="bg-gradient-to-r from-gray-100 to-gray-200 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                    <FiAlertCircle className="w-10 h-10 text-gray-400" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                                    {tieneFiltrosActivos ? 'No hay coincidencias' : '¡Todo al día!'}
+                                </h3>
+                                <p className="text-gray-600 mb-6">
+                                    {tieneFiltrosActivos
+                                        ? 'No se encontraron deudores con los filtros aplicados.'
+                                        : 'Excelente trabajo, todos los alumnos están al corriente con sus pagos.'}
+                                </p>
+                                {tieneFiltrosActivos && (
+                                    <button
+                                        onClick={() => {
+                                            setSearch('');
+                                            setFiltroTipo('todos');
+                                            setFiltroFecha({ desde: null, hasta: null });
+                                        }}
+                                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all shadow-md"
+                                    >
+                                        Ver todos los deudores
+                                    </button>
+                                )}
+                            </div>
                         </motion.div>
                     ) : (
-                        deudoresFiltrados.map((alumno) => (
-                            <AlumnoCard
-                                key={alumno.studentId}
-                                alumno={alumno}
-                                showNotification={showNotification}
-                            />
-                        ))
+                        <>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    Deudores <span className="text-blue-600">({deudoresFiltrados.length})</span>
+                                </h2>
+                                <div className="text-sm text-gray-600">
+                                    Haz clic en cualquier card para ver detalles
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <AnimatePresence>
+                                    {deudoresFiltrados.map((alumno) => (
+                                        <DeudorCard
+                                            key={alumno.studentId}
+                                            alumno={alumno}
+                                            isActive={deudorExpandido?.studentId === alumno.studentId}
+                                            onClick={() => setDeudorExpandido(alumno)}
+                                            showNotification={showNotification}
+                                        />
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        </>
                     )}
                 </div>
-            </div>
+            )}
         </div>
     );
 }

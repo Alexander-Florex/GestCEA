@@ -1,5 +1,5 @@
 // src/pages/Cobros.jsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiSearch, FiChevronDown, FiDollarSign,
@@ -7,7 +7,8 @@ import {
     FiUser, FiMail, FiFileText, FiCalendar, FiCheck,
     FiMoreVertical, FiTrash2, FiFilter, FiCheckCircle,
     FiAlertCircle, FiInfo, FiShoppingCart,
-    FiPercent, FiLock, FiRefreshCw
+    FiPercent, FiLock, FiRefreshCw, FiEye, FiEyeOff,
+    FiClock, FiBarChart2, FiTag, FiList, FiZap, FiArrowUpRight
 } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 
@@ -88,33 +89,62 @@ const calcularPrecioPorMetodo = (inscription, course, installment, metodo, isOve
     return precio;
 };
 
-/* ================== STATS CARD ================== */
-function StatsCard({ icon: Icon, title, value, color, description }) {
+/* ================== STATS CARD MEJORADA - DISEÑO PROFESIONAL ================== */
+function StatsCard({ icon: Icon, title, value, color, description, trend }) {
+    const colorClasses = {
+        blue: { bg: 'from-blue-50/80 to-blue-100/50', text: 'text-blue-700', border: 'border-blue-200' },
+        red: { bg: 'from-red-50/80 to-rose-100/50', text: 'text-red-700', border: 'border-red-200' },
+        green: { bg: 'from-emerald-50/80 to-green-100/50', text: 'text-emerald-700', border: 'border-emerald-200' },
+        purple: { bg: 'from-violet-50/80 to-purple-100/50', text: 'text-violet-700', border: 'border-violet-200' },
+        orange: { bg: 'from-amber-50/80 to-orange-100/50', text: 'text-amber-700', border: 'border-amber-200' }
+    };
+
+    const colorKey = color.includes('red') ? 'red' :
+        color.includes('blue') ? 'blue' :
+            color.includes('green') ? 'green' :
+                color.includes('purple') ? 'purple' : 'orange';
+
     return (
         <motion.div
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-all"
+            whileHover={{ y: -4, scale: 1.02 }}
+            className={`relative bg-gradient-to-br ${colorClasses[colorKey].bg} rounded-2xl p-5 border ${colorClasses[colorKey].border} shadow-sm hover:shadow-lg transition-all duration-300 backdrop-blur-sm overflow-hidden group`}
         >
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-gray-600 text-sm font-medium mb-2">{title}</p>
-                    <p className={`text-3xl font-bold ${color}`}>{value}</p>
+            {/* Efecto de fondo sutil */}
+            <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full ${colorClasses[colorKey].text} opacity-10 group-hover:opacity-20 transition-opacity`}>
+                <Icon className="w-full h-full" />
+            </div>
+
+            <div className="flex items-start justify-between relative z-10">
+                <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className={`p-2.5 rounded-xl bg-white/70 shadow-sm border ${colorClasses[colorKey].border}`}>
+                            <Icon className={`w-5 h-5 ${color}`} />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-700 tracking-wide">{title}</span>
+                    </div>
+                    <p className={`text-2xl md:text-3xl font-bold ${color} mb-2 tracking-tight`}>{value}</p>
                     {description && (
-                        <p className="text-gray-500 text-xs mt-2">{description}</p>
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-medium text-gray-600">{description}</p>
+                            {trend !== undefined && (
+                                <span className={`text-xs px-2 py-1 rounded-full font-semibold flex items-center gap-1 ${
+                                    trend > 0 ? 'bg-emerald-100 text-emerald-800' : trend < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                    {trend > 0 ? '↗' : trend < 0 ? '↘' : '→'} {trend > 0 ? '+' : ''}{trend}%
+                                </span>
+                            )}
+                        </div>
                     )}
-                </div>
-                <div className={`p-3 rounded-xl ${color.includes('red') ? 'bg-red-50' : color.includes('blue') ? 'bg-blue-50' : 'bg-green-50'} shadow-inner`}>
-                    <Icon className={`w-6 h-6 ${color}`} />
                 </div>
             </div>
         </motion.div>
     );
 }
 
-/* ================== NOTIFICACIONES ================== */
+/* ================== NOTIFICACIONES MEJORADAS - DISEÑO PROFESIONAL ================== */
 function Notifications({ notifications, remove }) {
     return (
-        <div className="fixed top-6 right-6 flex flex-col space-y-3 z-50 max-w-sm">
+        <div className="fixed top-6 right-6 flex flex-col space-y-3 z-50 max-w-xs w-full sm:max-w-sm">
             <AnimatePresence>
                 {notifications.map(n => (
                     <motion.div
@@ -122,24 +152,29 @@ function Notifications({ notifications, remove }) {
                         initial={{ opacity: 0, x: 100, scale: 0.9 }}
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: 100, scale: 0.9 }}
-                        className={`px-5 py-4 rounded-xl shadow-2xl cursor-pointer border-l-4 backdrop-blur-sm ${n.type === 'success'
-                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-900 border-green-500'
-                            : n.type === 'error'
-                                ? 'bg-gradient-to-r from-red-50 to-rose-50 text-red-900 border-red-500'
-                                : 'bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-900 border-blue-500'
+                        className={`px-5 py-4 rounded-xl shadow-xl cursor-pointer border-l-4 backdrop-blur-md border-opacity-90 ${
+                            n.type === 'success'
+                                ? 'bg-gradient-to-r from-emerald-50/95 to-green-50/95 text-emerald-900 border-emerald-500'
+                                : n.type === 'error'
+                                    ? 'bg-gradient-to-r from-rose-50/95 to-red-50/95 text-rose-900 border-rose-500'
+                                    : 'bg-gradient-to-r from-blue-50/95 to-cyan-50/95 text-blue-900 border-blue-500'
                         }`}
                         onClick={() => remove(n.id)}
                     >
                         <div className="flex items-center gap-4">
-                            <div className={`p-2 rounded-lg ${n.type === 'success' ? 'bg-green-100' : n.type === 'error' ? 'bg-red-100' : 'bg-blue-100'}`}>
+                            <div className={`p-2 rounded-lg ${
+                                n.type === 'success' ? 'bg-emerald-100' :
+                                    n.type === 'error' ? 'bg-rose-100' :
+                                        'bg-blue-100'
+                            }`}>
                                 {n.type === 'success' ? <FiCheckCircle className="w-5 h-5" /> :
                                     n.type === 'error' ? <FiAlertCircle className="w-5 h-5" /> :
                                         <FiInfo className="w-5 h-5" />}
                             </div>
                             <div className="flex-1">
-                                <span className="font-semibold">{n.message}</span>
+                                <span className="text-sm font-semibold">{n.message}</span>
                             </div>
-                            <button className="text-gray-400 hover:text-gray-600">
+                            <button className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-white/50 rounded">
                                 <FiX className="w-4 h-4" />
                             </button>
                         </div>
@@ -150,46 +185,50 @@ function Notifications({ notifications, remove }) {
     );
 }
 
-/* ================== FILTROS MEJORADOS ================== */
+/* ================== FILTROS MEJORADOS Y COMPACTOS - DISEÑO PROFESIONAL ================== */
 function FilterBar({ onFilterChange, filters }) {
     const filterOptions = [
-        { id: 'todas', label: 'Todas', icon: FiFileText },
-        { id: 'vencidas', label: 'Solo Vencidas', icon: FiAlertCircle },
-        { id: 'freeze', label: 'Con Freeze', icon: FiTrendingUp },
-        { id: 'hoy', label: 'Vence Hoy', icon: FiCalendar },
-        { id: 'proximaSemana', label: 'Próxima Semana', icon: FiCalendar }
+        { id: 'todas', label: 'Todas', icon: FiList, color: 'bg-gray-100 text-gray-700 border-gray-300', activeColor: 'bg-gray-800 text-white' },
+        { id: 'vencidas', label: 'Vencidas', icon: FiAlertCircle, color: 'bg-rose-100 text-rose-700 border-rose-300', activeColor: 'bg-rose-600 text-white' },
+        { id: 'freeze', label: 'Freeze', icon: FiClock, color: 'bg-blue-100 text-blue-700 border-blue-300', activeColor: 'bg-blue-600 text-white' },
+        { id: 'hoy', label: 'Hoy', icon: FiCalendar, color: 'bg-amber-100 text-amber-700 border-amber-300', activeColor: 'bg-amber-600 text-white' },
+        { id: 'proximaSemana', label: 'Próx. semana', icon: FiCalendar, color: 'bg-violet-100 text-violet-700 border-violet-300', activeColor: 'bg-violet-600 text-white' }
     ];
 
     const handleFilterChange = (filterId) => {
         if (filterId === filters) {
-            onFilterChange('todas'); // Deseleccionar
+            onFilterChange('todas');
         } else {
             onFilterChange(filterId);
         }
     };
 
     return (
-        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 border border-gray-200 shadow-md">
-            <div className="flex items-center gap-3 mb-5">
-                <FiFilter className="w-5 h-5 text-gradient-to-r from-blue-600 to-red-600" />
-                <h3 className="font-bold text-gray-800 text-lg">Filtrar por estado</h3>
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-gray-200/80 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg">
+                    <FiFilter className="w-4 h-4 text-blue-600" />
+                </div>
+                <h3 className="font-semibold text-sm text-gray-800">Filtrar por estado</h3>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
                 {filterOptions.map((option) => {
                     const Icon = option.icon;
                     const isActive = filters === option.id;
                     return (
-                        <button
+                        <motion.button
                             key={option.id}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => handleFilterChange(option.id)}
-                            className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all duration-200 ${isActive
-                                ? 'bg-gradient-to-r from-blue-50 to-red-50 border-blue-500 text-blue-700 font-semibold shadow-md'
-                                : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:shadow-sm'
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-200 ${
+                                isActive
+                                    ? `${option.activeColor} border-transparent shadow-md`
+                                    : `${option.color} hover:shadow-sm hover:-translate-y-0.5`
                             }`}
                         >
-                            <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                            <Icon className="w-3.5 h-3.5" />
                             {option.label}
-                        </button>
+                        </motion.button>
                     );
                 })}
             </div>
@@ -197,9 +236,9 @@ function FilterBar({ onFilterChange, filters }) {
     );
 }
 
-/* ================== MODAL DE DEPÓSITO INDIVIDUAL ================== */
+/* ================== MODAL DE DEPÓSITO INDIVIDUAL - DISEÑO PROFESIONAL ================== */
 function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }) {
-    const { depositarCuota, inscriptions, courses } = useDB();
+    const { depositarCuota, inscriptions, courses, refreshData } = useDB();
     const [formData, setFormData] = useState({
         monto: '',
         formaPago: 'Efectivo',
@@ -207,11 +246,8 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
     });
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // ✅ Obtener datos frescos de la inscripción
     const inscription = inscriptions.find(ins => ins.id === inscriptionId);
     const course = inscription ? courses.find(c => c.id === inscription.courseId) : null;
-
-    // ✅ Obtener la cuota fresca de la inscripción (no del prop)
     const cuotaActual = inscription?.installments?.find(i => i.number === installment.number);
 
     const today = new Date();
@@ -220,14 +256,11 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
     dueDate.setHours(0, 0, 0, 0);
     const isOverdue = !cuotaActual?.frozen && today > dueDate;
 
-    // ✅ CRÍTICO: Calcular precio usando datos frescos
     const precioActual = useMemo(() => {
         if (!cuotaActual) return 0;
-        const precio = calcularPrecioPorMetodo(inscription, course, cuotaActual, formData.formaPago, isOverdue);
-        return precio;
+        return calcularPrecioPorMetodo(inscription, course, cuotaActual, formData.formaPago, isOverdue);
     }, [formData.formaPago, inscription, course, cuotaActual, isOverdue]);
 
-    // ✅ Usar amountPaid fresco de la cuota actual
     const montoPendiente = Math.max(precioActual - Number(cuotaActual?.amountPaid || 0), 0);
 
     const handleSubmit = async (e) => {
@@ -257,7 +290,10 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                 formData.observaciones
             );
 
-            onSuccess(`Depósito de $${formatNumber(montoAPagar)} registrado exitosamente`);
+            // ACTUALIZACIÓN EN TIEMPO REAL
+            await refreshData();
+
+            onSuccess(`Depósito de $${formatNumber(montoAPagar)} registrado`);
             onClose();
         } catch (error) {
             alert(error.message || 'Error al procesar el depósito');
@@ -274,25 +310,26 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
                 onClick={onClose}
             >
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border border-gray-300"
+                    className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto border border-gray-200/50"
                 >
-                    <div className="bg-gradient-to-r from-red-600 via-red-500 to-blue-600 text-white p-6 rounded-t-2xl">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 text-white p-6 rounded-t-2xl">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-                                    <FiDollarSign className="w-7 h-7" />
+                                <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+                                    <FiDollarSign className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold">Depositar Cuota #{installment.number}</h2>
-                                    <p className="text-blue-100 text-sm mt-1 flex items-center gap-2">
+                                    <h2 className="text-xl font-bold">Depositar Cuota #{installment.number}</h2>
+                                    <p className="text-blue-100 text-sm mt-1.5 flex items-center gap-2">
                                         <FiCalendar className="w-4 h-4" />
                                         Vencimiento: {formatDate(installment.dueDate)}
                                         {cuotaActual?.frozen && ' (Freeze)'}
@@ -303,67 +340,73 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                                 onClick={onClose}
                                 className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-all hover:scale-110"
                             >
-                                <FiX className="w-6 h-6" />
+                                <FiX className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="p-6 space-y-6">
                         {/* Estado de la Cuota */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-200 shadow-inner">
-                            <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-3 text-lg">
-                                <FiFileText className="w-5 h-5" />
+                        <div className="bg-gradient-to-br from-gray-50 to-blue-50/50 p-5 rounded-xl border border-gray-200/70">
+                            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-3 text-base">
+                                <div className="p-1.5 bg-blue-100 rounded-lg">
+                                    <FiFileText className="w-4 h-4 text-blue-600" />
+                                </div>
                                 Estado de la Cuota
                             </h3>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
-                                    <div className="text-gray-600 mb-2">Precio {formData.formaPago}:</div>
-                                    <div className="font-bold text-blue-900 text-xl">${formatNumber(precioActual)}</div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                    <div className="text-gray-600 text-xs mb-1.5 font-medium">Precio {formData.formaPago}:</div>
+                                    <div className="font-bold text-blue-700 text-lg">${formatNumber(precioActual)}</div>
                                 </div>
-                                <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm">
-                                    <div className="text-gray-600 mb-2">Ya Pagado:</div>
-                                    <div className="font-bold text-green-700 text-xl">${formatNumber(cuotaActual?.amountPaid || 0)}</div>
+                                <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                    <div className="text-gray-600 text-xs mb-1.5 font-medium">Ya Pagado:</div>
+                                    <div className="font-bold text-emerald-600 text-lg">${formatNumber(cuotaActual?.amountPaid || 0)}</div>
                                 </div>
-                                <div className="col-span-2 bg-white p-5 rounded-xl border border-red-200 shadow-lg">
-                                    <div className="text-gray-600 mb-2">Monto Pendiente:</div>
-                                    <div className="font-bold text-red-700 text-3xl">${formatNumber(montoPendiente)}</div>
+                                <div className="col-span-2 bg-gradient-to-r from-rose-50 to-pink-50 p-5 rounded-xl border border-rose-200 shadow-sm">
+                                    <div className="text-gray-700 text-xs mb-1.5 font-semibold">Monto Pendiente:</div>
+                                    <div className="font-bold text-rose-600 text-2xl">${formatNumber(montoPendiente)}</div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Forma de Pago */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-4 flex items-center gap-3 text-lg">
-                                <FiCreditCard className="w-5 h-5 text-blue-600" />
+                            <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-3">
+                                <div className="p-1.5 bg-blue-100 rounded-lg">
+                                    <FiCreditCard className="w-4 h-4 text-blue-600" />
+                                </div>
                                 Forma de Pago
                             </label>
                             <div className="grid grid-cols-3 gap-3">
                                 {['Efectivo', 'Transferencia', 'Tarjeta'].map(metodo => (
-                                    <button
+                                    <motion.button
                                         key={metodo}
                                         type="button"
-                                        onClick={() => {
-                                            setFormData(prev => ({ ...prev, formaPago: metodo }));
-                                        }}
-                                        className={`p-5 rounded-xl border font-semibold transition-all duration-300 ${formData.formaPago === metodo
-                                            ? 'bg-gradient-to-r from-blue-50 to-red-50 border-blue-500 text-blue-900 shadow-lg scale-105'
-                                            : 'bg-white border-gray-200 text-gray-700 hover:border-blue-400 hover:shadow-md'
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setFormData(prev => ({ ...prev, formaPago: metodo }))}
+                                        className={`py-3.5 rounded-xl border text-sm font-semibold transition-all ${
+                                            formData.formaPago === metodo
+                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-lg'
+                                                : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:shadow-md'
                                         }`}
                                     >
                                         {metodo}
-                                    </button>
+                                    </motion.button>
                                 ))}
                             </div>
                         </div>
 
                         {/* Monto a Depositar */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-4 flex items-center gap-3 text-lg">
-                                <FiDollarSign className="w-5 h-5 text-blue-600" />
+                            <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-3">
+                                <div className="p-1.5 bg-blue-100 rounded-lg">
+                                    <FiDollarSign className="w-4 h-4 text-blue-600" />
+                                </div>
                                 Monto a Depositar
                             </label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold text-lg">$</span>
+                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-600 font-bold">$</span>
                                 <input
                                     type="number"
                                     name="monto"
@@ -372,22 +415,23 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
-                                    className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-black font-medium text-lg shadow-sm"
+                                    className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none text-gray-900 font-bold text-base transition-all"
                                     required
                                 />
                             </div>
-                            <button
+                            <motion.button
                                 type="button"
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setFormData(prev => ({ ...prev, monto: montoPendiente.toFixed(2) }))}
-                                className="mt-4 text-sm bg-gradient-to-r from-blue-100 to-red-100 text-blue-700 hover:from-blue-200 hover:to-red-200 px-4 py-2 rounded-lg font-semibold transition-all shadow-md"
+                                className="mt-3 text-sm bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 px-4 py-2.5 rounded-lg font-semibold transition-all border border-blue-200"
                             >
-                                Pagar total pendiente: ${formatNumber(montoPendiente)}
-                            </button>
+                                Pagar total: ${formatNumber(montoPendiente)}
+                            </motion.button>
                         </div>
 
                         {/* Observaciones */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-4 text-lg">
+                            <label className="block text-sm font-semibold text-gray-800 mb-3">
                                 Observaciones (opcional)
                             </label>
                             <textarea
@@ -395,23 +439,25 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                                 onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
                                 placeholder="Ej: Pago parcial, acuerdo de pago, etc."
                                 rows={3}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-black resize-none shadow-sm"
+                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none text-gray-900 text-sm resize-none transition-all"
                             />
                         </div>
 
                         {/* Botones */}
-                        <div className="flex gap-4 pt-6">
-                            <button
+                        <div className="flex gap-4 pt-4">
+                            <motion.button
                                 type="button"
+                                whileTap={{ scale: 0.95 }}
                                 onClick={onClose}
-                                className="flex-1 px-6 py-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold shadow-md hover:shadow-lg"
+                                className="flex-1 px-5 py-3.5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold text-sm"
                             >
                                 Cancelar
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
                                 type="submit"
+                                whileTap={{ scale: 0.95 }}
                                 disabled={isProcessing || !formData.monto || Number(formData.monto) <= 0}
-                                className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-red-600 text-white rounded-xl hover:from-blue-700 hover:to-red-700 transition-all font-bold disabled:opacity-50 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 transform hover:scale-[1.02]"
+                                className="flex-1 px-5 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 flex items-center justify-center gap-3 text-sm shadow-lg hover:shadow-xl"
                             >
                                 {isProcessing ? (
                                     <>
@@ -424,7 +470,7 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
                                         Confirmar Depósito
                                     </>
                                 )}
-                            </button>
+                            </motion.button>
                         </div>
                     </form>
                 </motion.div>
@@ -433,22 +479,16 @@ function DepositModal({ isOpen, onClose, installment, inscriptionId, onSuccess }
     );
 }
 
-/* ================== MODAL DE PAGO MÚLTIPLE ================== */
+/* ================== MODAL DE PAGO MÚLTIPLE - DISEÑO PROFESIONAL ================== */
 function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification, onSuccess }) {
-    const { registrarPago, inscriptions, courses } = useDB();
+    const { registrarPago, inscriptions, courses, refreshData } = useDB();
     const [paymentMethod, setPaymentMethod] = useState('Efectivo');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // ✅ CRÍTICO: Recalcula usando datos FRESCOS de inscriptions
     const cuotasConPrecio = useMemo(() => {
-        console.log(`🔄 [PaymentModal] Recalculando precios para ${paymentMethod}`);
-
         return selectedInstallments.map(item => {
-            // ✅ Obtener inscripción FRESCA de la DB
             const inscription = inscriptions.find(ins => ins.id === item.inscriptionId);
             const course = inscription ? courses.find(c => c.id === inscription.courseId) : null;
-
-            // ✅ Obtener cuota FRESCA de la inscripción
             const cuotaFresca = inscription?.installments?.find(i => i.number === item.number);
 
             const today = new Date();
@@ -457,14 +497,9 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
             dueDate.setHours(0, 0, 0, 0);
             const isOverdue = !cuotaFresca?.frozen && today > dueDate;
 
-            // ✅ Calcular precio usando la cuota fresca
             const precio = calcularPrecioPorMetodo(inscription, course, cuotaFresca || item, paymentMethod, isOverdue);
-
-            // ✅ Usar amountPaid FRESCO
             const amountPaidFresco = Number(cuotaFresca?.amountPaid || 0);
             const pending = Math.max(precio - amountPaidFresco, 0);
-
-            console.log(`  Cuota #${item.number}: ${paymentMethod} = $${precio}, pagado=$${amountPaidFresco}, pendiente = $${pending}`);
 
             return {
                 ...item,
@@ -473,16 +508,13 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
                 amountPaid: amountPaidFresco,
                 isOverdue,
                 courseName: course?.nombre || 'Curso desconocido',
-                // ✅ Guardar referencia a si la cuota ya está pagada
                 yaEstaPagada: cuotaFresca?.status === 'Pagada' || cuotaFresca?.status === 'Pagado' || pending <= 0
             };
-        }).filter(c => !c.yaEstaPagada && c.pending > 0); // ✅ Filtrar cuotas ya pagadas
+        }).filter(c => !c.yaEstaPagada && c.pending > 0);
     }, [selectedInstallments, paymentMethod, inscriptions, courses]);
 
     const totalAmount = useMemo(() => {
-        const total = cuotasConPrecio.reduce((sum, c) => sum + c.pending, 0);
-        console.log(`💰 Total para ${paymentMethod}: $${total}`);
-        return total;
+        return cuotasConPrecio.reduce((sum, c) => sum + c.pending, 0);
     }, [cuotasConPrecio, paymentMethod]);
 
     const handleConfirm = async () => {
@@ -502,15 +534,12 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
             let successCount = 0;
             let errorCount = 0;
 
-            // ✅ Procesar una cuota a la vez para evitar inconsistencias
             for (const cuota of cuotasConPrecio) {
                 try {
-                    // ✅ Re-verificar el monto pendiente antes de cada pago
                     const inscripcionActual = inscriptions.find(ins => ins.id === cuota.inscriptionId);
                     const cuotaActual = inscripcionActual?.installments?.find(i => i.number === cuota.number);
 
                     if (cuotaActual?.status === 'Pagada' || cuotaActual?.status === 'Pagado') {
-                        console.log(`⏭️ Cuota #${cuota.number} ya está pagada, saltando...`);
                         continue;
                     }
 
@@ -525,16 +554,13 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
                     const pendienteActual = Math.max(precioActual - Number(cuotaActual?.amountPaid || 0), 0);
 
                     if (pendienteActual <= 0) {
-                        console.log(`⏭️ Cuota #${cuota.number} ya no tiene pendiente, saltando...`);
                         continue;
                     }
-
-                    console.log(`💳 Procesando cuota #${cuota.number}: $${pendienteActual}`);
 
                     await registrarPago(
                         cuota.inscriptionId,
                         cuota.number,
-                        pendienteActual, // ✅ Usar el pendiente recalculado
+                        pendienteActual,
                         paymentMethod,
                         `Pago completo de cuota #${cuota.number}`
                     );
@@ -544,6 +570,9 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
                     errorCount++;
                 }
             }
+
+            // ACTUALIZACIÓN EN TIEMPO REAL
+            await refreshData();
 
             if (successCount > 0) {
                 showNotification('success', `${successCount} cuota(s) cobrada(s) exitosamente`);
@@ -574,26 +603,26 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
                 onClick={onClose}
             >
                 <motion.div
-                    initial={{ scale: 0.9, y: 50 }}
+                    initial={{ scale: 0.95, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
-                    exit={{ scale: 0.9, y: 50 }}
+                    exit={{ scale: 0.95, y: 20 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border border-gray-300"
+                    className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-auto border border-gray-200/50"
                 >
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-red-600 via-red-500 to-blue-600 text-white p-6 rounded-t-2xl">
+                    <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-500 text-white p-6 rounded-t-2xl">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-                                    <FiCreditCard className="w-7 h-7" />
+                                <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+                                    <FiCreditCard className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold">Procesar Pago Múltiple</h2>
-                                    <p className="text-blue-100 text-sm mt-1">
+                                    <h2 className="text-xl font-bold">Procesar Pago Múltiple</h2>
+                                    <p className="text-emerald-100 text-sm mt-1.5">
                                         {cuotasConPrecio.length} cuota{cuotasConPrecio.length !== 1 ? 's' : ''} pendiente{cuotasConPrecio.length !== 1 ? 's' : ''}
                                     </p>
                                 </div>
@@ -602,7 +631,7 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
                                 onClick={onClose}
                                 className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition-all hover:scale-110"
                             >
-                                <FiX className="w-6 h-6" />
+                                <FiX className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
@@ -611,61 +640,65 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
                     <div className="p-6 space-y-6">
                         {cuotasConPrecio.length === 0 ? (
                             <div className="text-center py-10">
-                                <div className="bg-gradient-to-r from-green-100 to-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <FiCheck className="w-12 h-12 text-green-600" />
+                                <div className="bg-gradient-to-r from-emerald-50 to-green-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                                    <FiCheck className="w-10 h-10 text-emerald-600" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-800 mb-3">¡Todas las cuotas ya están pagadas!</h3>
-                                <p className="text-gray-500 text-lg">No hay cuotas pendientes para procesar.</p>
+                                <h3 className="text-xl font-bold text-gray-800 mb-3">¡Todas las cuotas ya están pagadas!</h3>
+                                <p className="text-gray-500 text-sm max-w-md mx-auto">No hay cuotas pendientes para procesar en el carrito seleccionado.</p>
                             </div>
                         ) : (
                             <>
                                 {/* Detalle de Cuotas */}
-                                <div className="bg-gradient-to-br from-blue-50 to-red-50 p-6 rounded-2xl border border-blue-200 shadow-inner">
-                                    <h3 className="font-bold text-blue-900 mb-5 flex items-center gap-3 text-xl">
-                                        <FiFileText className="w-6 h-6" />
+                                <div className="bg-gradient-to-br from-gray-50 to-blue-50/30 p-5 rounded-xl border border-gray-200/70">
+                                    <h3 className="font-bold text-gray-800 mb-5 flex items-center gap-3 text-base">
+                                        <div className="p-1.5 bg-blue-100 rounded-lg">
+                                            <FiFileText className="w-4 h-4 text-blue-600" />
+                                        </div>
                                         Detalle de Cuotas
                                     </h3>
-                                    <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                                    <div className="space-y-4 max-h-72 overflow-y-auto pr-2">
                                         {cuotasConPrecio.map((cuota, index) => (
                                             <motion.div
                                                 key={index}
-                                                initial={{ opacity: 0, x: -20 }}
+                                                initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
-                                                className="bg-white p-5 rounded-xl border border-blue-100 shadow-lg hover:shadow-xl transition-all"
+                                                className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group"
                                             >
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-3 mb-3">
-                                                            <div className="font-bold text-gray-800 bg-gradient-to-r from-blue-100 to-red-100 text-blue-800 px-3 py-1.5 rounded-xl text-sm">
+                                                            <span className="font-bold text-gray-800 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-3 py-1.5 rounded-lg text-xs border border-blue-200">
                                                                 Cuota #{cuota.number}
-                                                            </div>
+                                                            </span>
                                                             {cuota.isOverdue && (
-                                                                <div className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-3 py-1.5 rounded-xl text-xs font-bold">
+                                                                <span className="bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 px-3 py-1.5 rounded-lg text-xs font-bold">
                                                                     ⚠️ Vencida
-                                                                </div>
+                                                                </span>
                                                             )}
                                                         </div>
-                                                        <div className="text-gray-800 font-semibold mb-2 text-lg">{cuota.courseName}</div>
-                                                        <div className="text-sm text-gray-500 flex items-center gap-2">
-                                                            <FiCalendar className="w-4 h-4" />
+                                                        <div className="text-gray-900 font-bold text-sm mb-2">{cuota.courseName}</div>
+                                                        <div className="text-xs text-gray-600 flex items-center gap-2 mb-3">
+                                                            <div className="p-1 bg-gray-100 rounded">
+                                                                <FiCalendar className="w-3 h-3" />
+                                                            </div>
                                                             Vencimiento: {formatDate(cuota.dueDate)}
                                                         </div>
-                                                        <div className="flex gap-4 mt-3">
-                                                            <div className="text-sm text-blue-600 font-semibold">
-                                                                Precio {paymentMethod}: ${formatNumber(cuota.precio)}
+                                                        <div className="flex gap-4">
+                                                            <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-lg">
+                                                                Precio: ${formatNumber(cuota.precio)}
                                                             </div>
                                                             {cuota.amountPaid > 0 && (
-                                                                <div className="text-sm text-green-600 font-semibold">
-                                                                    Ya pagado: ${formatNumber(cuota.amountPaid)}
+                                                                <div className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg">
+                                                                    Pagado: ${formatNumber(cuota.amountPaid)}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="font-bold text-2xl text-green-700">
+                                                        <div className="font-bold text-xl text-emerald-700 mb-1">
                                                             ${formatNumber(cuota.pending)}
                                                         </div>
-                                                        <div className="text-xs text-gray-500 mt-1">pendiente</div>
+                                                        <div className="text-xs text-gray-500 font-medium">pendiente</div>
                                                     </div>
                                                 </div>
                                             </motion.div>
@@ -675,55 +708,61 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
 
                                 {/* Método de Pago */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-5 flex items-center gap-3 text-xl">
-                                        <FiCreditCard className="w-6 h-6 text-blue-600" />
+                                    <label className="block text-sm font-semibold text-gray-800 mb-4 flex items-center gap-3">
+                                        <div className="p-1.5 bg-blue-100 rounded-lg">
+                                            <FiCreditCard className="w-4 h-4 text-blue-600" />
+                                        </div>
                                         Método de Pago
                                     </label>
-                                    <div className="grid grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-3 gap-3">
                                         {['Efectivo', 'Transferencia', 'Tarjeta'].map(method => (
-                                            <button
+                                            <motion.button
                                                 key={method}
                                                 type="button"
-                                                onClick={() => {
-                                                    setPaymentMethod(method);
-                                                }}
-                                                className={`p-5 rounded-xl border font-semibold transition-all duration-300 ${paymentMethod === method
-                                                    ? 'bg-gradient-to-br from-blue-100 to-red-100 border-blue-500 text-blue-900 shadow-lg scale-105'
-                                                    : 'bg-white border-gray-200 text-gray-700 hover:border-blue-400 hover:shadow-md'
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => setPaymentMethod(method)}
+                                                className={`py-4 rounded-xl border text-sm font-bold transition-all ${
+                                                    paymentMethod === method
+                                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-lg'
+                                                        : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:shadow-md'
                                                 }`}
                                             >
                                                 {method}
-                                            </button>
+                                            </motion.button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Total */}
-                                <div className="bg-gradient-to-r from-red-100 to-blue-100 p-7 rounded-2xl border border-red-300 shadow-xl">
+                                <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-5 rounded-2xl border border-emerald-200 shadow-lg">
                                     <div className="flex justify-between items-center">
-                                        <div className="text-gray-800 font-bold text-xl flex items-center gap-3">
-                                            <FiDollarSign className="w-7 h-7" />
+                                        <div className="text-gray-900 font-bold text-lg flex items-center gap-3">
+                                            <div className="p-2 bg-gradient-to-r from-emerald-100 to-green-100 rounded-xl">
+                                                <FiDollarSign className="w-5 h-5 text-emerald-600" />
+                                            </div>
                                             TOTAL A COBRAR:
                                         </div>
-                                        <div className="text-gray-800 font-bold text-4xl">
+                                        <div className="text-gray-900 font-bold text-3xl">
                                             ${formatNumber(totalAmount)}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Botones */}
-                                <div className="flex gap-4 pt-6">
-                                    <button
+                                <div className="flex gap-4 pt-2">
+                                    <motion.button
                                         type="button"
+                                        whileTap={{ scale: 0.95 }}
                                         onClick={onClose}
-                                        className="flex-1 px-6 py-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold shadow-md hover:shadow-lg hover:border-red-400 hover:text-red-700"
+                                        className="flex-1 px-5 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-bold text-sm"
                                     >
                                         Cancelar
-                                    </button>
-                                    <button
+                                    </motion.button>
+                                    <motion.button
                                         onClick={handleConfirm}
+                                        whileTap={{ scale: 0.95 }}
                                         disabled={isProcessing || cuotasConPrecio.length === 0}
-                                        className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-red-600 text-white rounded-xl hover:from-blue-700 hover:to-red-700 transition-all font-bold disabled:opacity-50 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 transform hover:scale-[1.02]"
+                                        className="flex-1 px-5 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all font-bold disabled:opacity-50 flex items-center justify-center gap-3 text-sm shadow-lg hover:shadow-xl"
                                     >
                                         {isProcessing ? (
                                             <>
@@ -736,7 +775,7 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
                                                 Confirmar Pago
                                             </>
                                         )}
-                                    </button>
+                                    </motion.button>
                                 </div>
                             </>
                         )}
@@ -747,14 +786,13 @@ function PaymentModal({ isOpen, onClose, selectedInstallments, showNotification,
     );
 }
 
-/* ================== CARD DE CUOTA MEJORADA ================== */
+/* ================== CARD DE CUOTA - DISEÑO PROFESIONAL MEJORADO ================== */
 function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelection, showNotification, onActionCompleted }) {
-    const { freezarCuota, inscriptions, courses } = useDB();
+    const { freezarCuota, inscriptions, courses, refreshData } = useDB();
     const [showDepositModal, setShowDepositModal] = useState(false);
     const [showActions, setShowActions] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Obtener datos frescos de la inscripción
     const inscription = inscriptions.find(ins => ins.id === inscriptionId);
     const course = inscription ? courses.find(c => c.id === inscription.courseId) : null;
 
@@ -766,24 +804,25 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
     const isToday = !installment.frozen && today.getTime() === dueDate.getTime();
     const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
 
-    // Verificar si la cuota está completamente pagada
-    const isFullyPaid = installment.status === 'Pagada' || installment.status === 'Pagado';
-
-    // Mostramos precio en Transferencia por defecto (o el método de la inscripción)
+    const isFullyPaid = installment.status === 'Pagada' || installment.status === 'Pagado' || installment.status === 'pagada' || installment.status === 'pagado';
     const defaultMethod = inscription?.paymentType || 'Transferencia';
     const defaultPrice = calcularPrecioPorMetodo(inscription, course, installment, defaultMethod, isOverdue);
     const amountPaid = Number(installment.amountPaid || 0);
     const pending = Math.max(defaultPrice - amountPaid, 0);
-
-    // Verificar si la cuota tiene pagos parciales
     const hasPartialPayment = amountPaid > 0 && amountPaid < defaultPrice;
+    const paidPercentage = defaultPrice > 0 ? Math.round((amountPaid / defaultPrice) * 100) : 0;
 
-    const handleFreeze = async () => {
+    // ACTUALIZACIÓN EN TIEMPO REAL: Usamos useCallback para optimizar
+    const handleFreeze = useCallback(async () => {
         try {
             setIsLoading(true);
             const newStatus = !installment.frozen;
             await freezarCuota(inscriptionId, installment.number, newStatus);
-            showNotification('success', `Cuota ${newStatus ? 'freeze aplicado' : 'freeze removido'} exitosamente`);
+
+            // ACTUALIZACIÓN INMEDIATA
+            await refreshData();
+
+            showNotification('success', `Cuota ${newStatus ? 'freeze aplicado' : 'freeze removido'}`);
             setShowActions(false);
             if (onActionCompleted) onActionCompleted();
         } catch (error) {
@@ -791,7 +830,7 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [installment.frozen, installment.number, inscriptionId, freezarCuota, refreshData, showNotification, onActionCompleted]);
 
     const handlePartialPaymentAction = () => {
         setShowDepositModal(true);
@@ -799,129 +838,167 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
     };
 
     const handleDiscount = () => {
-        // Aquí iría la lógica para aplicar descuento
         showNotification('info', 'Función de descuento en desarrollo');
         setShowActions(false);
     };
 
     const handleCardClick = (e) => {
-        // Solo permitir selección si no está completamente pagada
-        if (e.target.closest('button') || e.target.closest('.actions-container')) {
+        if (e.target.closest('button') || e.target.closest('.actions-container') || e.target.closest('.action-menu')) {
             return;
         }
-        if (!isFullyPaid && pending > 0) {
+        if (!isFullyPaid) {
             onToggleSelection();
         }
     };
 
-    // Determinar color según urgencia y estado de pago
-    let statusColor = 'text-gray-600';
-    let statusBg = 'bg-gray-100';
-    let statusText = '';
-
+    // Estilos mejorados para estado
+    let statusConfig = {};
     if (isFullyPaid) {
-        statusColor = 'text-gray-500';
-        statusBg = 'bg-gray-100';
-        statusText = '🔒 Pagada';
+        statusConfig = {
+            color: 'text-emerald-700',
+            bg: 'bg-gradient-to-r from-emerald-50 to-green-50',
+            border: 'border-emerald-200',
+            text: 'Pagada'
+        };
     } else if (hasPartialPayment) {
-        statusColor = 'text-blue-600';
-        statusBg = 'bg-blue-100';
-        statusText = `🔄 ${Math.round((amountPaid / defaultPrice) * 100)}% Pagado`;
+        statusConfig = {
+            color: 'text-blue-700',
+            bg: 'bg-gradient-to-r from-blue-50 to-indigo-50',
+            border: 'border-blue-200',
+            text: `${paidPercentage}% Pagado`
+        };
     } else if (installment.frozen) {
-        statusColor = 'text-blue-600';
-        statusBg = 'bg-blue-100';
-        statusText = '❄️ Freeze';
+        statusConfig = {
+            color: 'text-indigo-700',
+            bg: 'bg-gradient-to-r from-indigo-50 to-violet-50',
+            border: 'border-indigo-200',
+            text: 'Freeze'
+        };
     } else if (isOverdue) {
-        statusColor = 'text-red-600';
-        statusBg = 'bg-red-100';
-        statusText = `⚠️ Vencida hace ${Math.abs(daysUntilDue)} día${Math.abs(daysUntilDue) !== 1 ? 's' : ''}`;
+        statusConfig = {
+            color: 'text-rose-700',
+            bg: 'bg-gradient-to-r from-rose-50 to-pink-50',
+            border: 'border-rose-200',
+            text: `Vencida hace ${Math.abs(daysUntilDue)} día${Math.abs(daysUntilDue) !== 1 ? 's' : ''}`
+        };
     } else if (isToday) {
-        statusColor = 'text-orange-600';
-        statusBg = 'bg-orange-100';
-        statusText = '⏰ Vence hoy';
+        statusConfig = {
+            color: 'text-amber-700',
+            bg: 'bg-gradient-to-r from-amber-50 to-orange-50',
+            border: 'border-amber-200',
+            text: 'Vence hoy'
+        };
     } else if (daysUntilDue <= 3) {
-        statusColor = 'text-orange-600';
-        statusBg = 'bg-orange-100';
-        statusText = `⏳ Vence en ${daysUntilDue} día${daysUntilDue !== 1 ? 's' : ''}`;
+        statusConfig = {
+            color: 'text-orange-700',
+            bg: 'bg-gradient-to-r from-orange-50 to-amber-50',
+            border: 'border-orange-200',
+            text: `Vence en ${daysUntilDue} día${daysUntilDue !== 1 ? 's' : ''}`
+        };
     } else if (daysUntilDue <= 7) {
-        statusColor = 'text-yellow-600';
-        statusBg = 'bg-yellow-100';
-        statusText = `📅 Vence en ${daysUntilDue} día${daysUntilDue !== 1 ? 's' : ''}`;
+        statusConfig = {
+            color: 'text-yellow-700',
+            bg: 'bg-gradient-to-r from-yellow-50 to-amber-50',
+            border: 'border-yellow-200',
+            text: `Vence en ${daysUntilDue} día${daysUntilDue !== 1 ? 's' : ''}`
+        };
     } else {
-        statusColor = 'text-green-600';
-        statusBg = 'bg-green-100';
-        statusText = `✅ Vence en ${daysUntilDue} días`;
+        statusConfig = {
+            color: 'text-emerald-700',
+            bg: 'bg-gradient-to-r from-emerald-50 to-green-50',
+            border: 'border-emerald-200',
+            text: `Vence en ${daysUntilDue} días`
+        };
     }
-
-    // Calcular porcentaje pagado
-    const paidPercentage = defaultPrice > 0 ? Math.round((amountPaid / defaultPrice) * 100) : 0;
 
     return (
         <>
             <motion.div
-                whileHover={!isFullyPaid ? { scale: 1.01 } : {}}
+                whileHover={!isFullyPaid ? { scale: 1.005, y: -2 } : {}}
                 onClick={handleCardClick}
-                className={`p-5 rounded-2xl border transition-all duration-300 ${isFullyPaid
-                    ? 'bg-gradient-to-r from-gray-100 to-gray-200 border-gray-300 cursor-not-allowed'
-                    : isSelected
-                        ? 'bg-gradient-to-r from-blue-50 to-red-50 border-blue-500 shadow-xl ring-4 ring-blue-200 cursor-pointer'
-                        : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-lg cursor-pointer'
+                className={`relative rounded-2xl p-5 border-2 transition-all duration-300 overflow-visible group ${
+                    isFullyPaid
+                        ? 'bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200 cursor-default'
+                        : isSelected
+                            ? 'bg-gradient-to-br from-blue-50 to-indigo-50/30 border-blue-400 shadow-xl ring-2 ring-blue-200 cursor-pointer'
+                            : 'bg-gradient-to-br from-white to-gray-50/50 border-gray-200 hover:border-blue-300 hover:shadow-lg cursor-pointer'
                 }`}
             >
-                <div className="flex items-start gap-5">
-                    {/* Checkbox de selección - Solo para cuotas no pagadas */}
-                    {!isFullyPaid && pending > 0 && (
+                {/* Efecto de selección sutil */}
+                {isSelected && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 pointer-events-none"></div>
+                )}
+
+                <div className="flex items-start gap-4 relative z-10">
+                    {/* Checkbox de selección - Mejorado */}
+                    {!isFullyPaid && (
                         <div className="flex items-start pt-1">
                             <motion.div
                                 whileTap={{ scale: 0.9 }}
-                                className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all ${isSelected
-                                    ? 'bg-gradient-to-r from-blue-500 to-red-500 border-blue-500 shadow-md'
-                                    : 'border-gray-300'
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleSelection();
+                                }}
+                                className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
+                                    isSelected
+                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-transparent shadow-md'
+                                        : 'border-gray-300 bg-white hover:border-blue-400'
                                 }`}
                             >
                                 {isSelected && (
-                                    <FiCheck className="w-4 h-4 text-white" />
+                                    <FiCheck className="w-3.5 h-3.5 text-white" />
                                 )}
                             </motion.div>
                         </div>
                     )}
 
                     <div className="flex-1">
-                        {/* Encabezado con estado */}
+                        {/* Encabezado */}
                         <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
+                            <div>
                                 <div className="flex items-center gap-3 mb-3">
-                                    <h4 className={`font-bold text-xl ${isFullyPaid ? 'text-gray-500' : 'text-gray-900'}`}>
+                                    <h4 className={`font-bold text-base ${
+                                        isFullyPaid ? 'text-gray-600' : 'text-gray-900'
+                                    }`}>
                                         Cuota #{installment.number}
                                     </h4>
-                                    <span className={`px-3 py-1.5 ${statusBg} ${statusColor} rounded-full text-xs font-bold shadow-sm`}>
-                                        {statusText}
-                                        {isFullyPaid && <FiLock className="inline ml-1 w-3 h-3" />}
+                                    <span className={`px-3 py-1.5 ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border} rounded-xl text-xs font-bold border`}>
+                                        {statusConfig.text}
                                     </span>
                                 </div>
 
-                                <div className={`flex items-center gap-4 text-sm ${isFullyPaid ? 'text-gray-500' : 'text-gray-600'} mb-4`}>
+                                <div className={`flex items-center gap-4 text-sm ${
+                                    isFullyPaid ? 'text-gray-500' : 'text-gray-600'
+                                }`}>
                                     <div className="flex items-center gap-2">
-                                        <FiCalendar className="w-4 h-4" />
-                                        <span className="font-medium">Vencimiento:</span> {formatDate(installment.dueDate)}
+                                        <div className="p-1 bg-gray-100 rounded-lg">
+                                            <FiCalendar className="w-3.5 h-3.5" />
+                                        </div>
+                                        {formatDate(installment.dueDate)}
                                     </div>
                                     <div className="w-px h-4 bg-gray-300"></div>
                                     <div className="flex items-center gap-2">
-                                        <FiCreditCard className="w-4 h-4" />
-                                        <span className="font-medium">Método:</span> {defaultMethod}
+                                        <div className="p-1 bg-gray-100 rounded-lg">
+                                            <FiCreditCard className="w-3.5 h-3.5" />
+                                        </div>
+                                        {defaultMethod}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Monto pendiente */}
                             <div className="text-right">
-                                <div className={`text-sm ${isFullyPaid ? 'text-gray-500' : 'text-gray-600'} mb-2`}>
+                                <div className={`text-xs font-semibold ${
+                                    isFullyPaid ? 'text-gray-500' : 'text-gray-600'
+                                }`}>
                                     {isFullyPaid ? 'Pagada' : 'Pendiente'}
                                 </div>
-                                <div className={`font-bold text-3xl ${isFullyPaid ? 'text-gray-500' : 'text-red-700'}`}>
+                                <div className={`font-bold text-xl ${
+                                    isFullyPaid ? 'text-emerald-600' : 'text-rose-600'
+                                }`}>
                                     {isFullyPaid ? (
                                         <>
-                                            <FiCheckCircle className="inline mr-2 w-6 h-6 text-green-500" />
+                                            <FiCheckCircle className="inline mr-2 w-5 h-5 text-emerald-500" />
                                             ${formatNumber(defaultPrice)}
                                         </>
                                     ) : (
@@ -931,120 +1008,151 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
                             </div>
                         </div>
 
-                        {/* Barra de progreso - Solo para cuotas no completamente pagadas */}
+                        {/* Barra de progreso mejorada */}
                         {!isFullyPaid && defaultPrice > 0 && (
                             <div className="mb-4">
-                                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                                <div className="flex justify-between text-sm font-medium text-gray-700 mb-2">
                                     <span>Progreso del pago</span>
-                                    <span className="font-medium">
+                                    <span className="font-bold">
                                         {paidPercentage}%
                                     </span>
                                 </div>
-                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
-                                        style={{ width: `${Math.min(paidPercentage, 100)}%` }}
-                                    ></div>
+                                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${Math.min(paidPercentage, 100)}%` }}
+                                        transition={{ duration: 0.8, ease: "easeOut" }}
+                                        className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-emerald-400 rounded-full shadow-sm"
+                                    />
                                 </div>
                             </div>
                         )}
 
                         {/* Detalles de pago */}
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className={`p-3 rounded-xl ${isFullyPaid ? 'bg-gray-100' : 'bg-gradient-to-r from-blue-50 to-gray-50'}`}>
-                                <div className={`text-xs ${isFullyPaid ? 'text-gray-500' : 'text-gray-600'} mb-1`}>Precio Total</div>
-                                <div className={`font-bold ${isFullyPaid ? 'text-gray-600' : 'text-gray-800'}`}>${formatNumber(defaultPrice)}</div>
+                        <div className="grid grid-cols-2 gap-3 mb-5">
+                            <div className={`p-4 rounded-xl border ${
+                                isFullyPaid ? 'bg-gray-100/50 border-gray-200' : 'bg-gradient-to-r from-blue-50 to-indigo-50/50 border-blue-100'
+                            }`}>
+                                <div className={`text-xs font-semibold ${
+                                    isFullyPaid ? 'text-gray-600' : 'text-gray-700'
+                                }`}>Precio Total</div>
+                                <div className={`font-bold text-base ${
+                                    isFullyPaid ? 'text-gray-700' : 'text-gray-900'
+                                }`}>${formatNumber(defaultPrice)}</div>
                             </div>
-                            <div className={`p-3 rounded-xl ${isFullyPaid ? 'bg-gray-100' : 'bg-gradient-to-r from-green-50 to-emerald-50'}`}>
-                                <div className={`text-xs ${isFullyPaid ? 'text-gray-500' : 'text-gray-600'} mb-1`}>Pagado</div>
-                                <div className={`font-bold ${isFullyPaid ? 'text-gray-600' : 'text-green-700'}`}>${formatNumber(amountPaid)}</div>
+                            <div className={`p-4 rounded-xl border ${
+                                isFullyPaid ? 'bg-gray-100/50 border-gray-200' : 'bg-gradient-to-r from-emerald-50 to-green-50/50 border-emerald-100'
+                            }`}>
+                                <div className={`text-xs font-semibold ${
+                                    isFullyPaid ? 'text-gray-600' : 'text-gray-700'
+                                }`}>Pagado</div>
+                                <div className={`font-bold text-base ${
+                                    isFullyPaid ? 'text-gray-700' : 'text-emerald-600'
+                                }`}>${formatNumber(amountPaid)}</div>
                             </div>
                         </div>
 
-                        {/* Botones de acción - Solo para cuotas no completamente pagadas */}
-                        {!isFullyPaid && pending > 0 && (
-                            <div className="flex gap-4 items-center">
-                                {/* Botón Acciones que muestra el menú con animación */}
-                                <div className="relative actions-container">
-                                    <motion.button
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => setShowActions(!showActions)}
-                                        disabled={isLoading}
-                                        className={`px-5 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl flex items-center justify-center gap-3 transition-all duration-300 ${showActions
-                                            ? 'bg-gradient-to-r from-blue-600 to-red-600 text-white'
-                                            : 'bg-gradient-to-r from-blue-100 to-red-100 text-blue-700 hover:from-blue-200 hover:to-red-200'
-                                        } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        {isLoading ? (
-                                            <>
-                                                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                                                Procesando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FiMoreVertical className="w-5 h-5" />
-                                                Acciones
-                                            </>
-                                        )}
-                                    </motion.button>
+                        {/* Botones de acción - DISEÑO HORIZONTAL CON ANIMACIÓN */}
+                        {!isFullyPaid && (
+                            <div className="flex flex-col gap-3">
+                                {/* Botón Acciones */}
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowActions(!showActions);
+                                    }}
+                                    disabled={isLoading}
+                                    className={`px-4 py-2.5 rounded-lg font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                                        showActions
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                                            : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 hover:from-gray-200 hover:to-gray-300'
+                                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                            Procesando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FiMoreVertical className="w-4 h-4" />
+                                            Acciones
+                                        </>
+                                    )}
+                                </motion.button>
 
-                                    <AnimatePresence>
-                                        {showActions && (
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.95, y: -20 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="absolute left-0 top-14 bg-white rounded-2xl shadow-xl border border-gray-200 z-10 min-w-56 overflow-hidden"
-                                            >
+                                {/* Botones de acción horizontales con animación */}
+                                <AnimatePresence>
+                                    {showActions && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.3 }}
+                                            className="overflow-hidden"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <div className="flex gap-3 pt-1">
+                                                {/* Descontar */}
                                                 <motion.button
-                                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
-                                                    onClick={handlePartialPaymentAction}
-                                                    className="w-full px-5 py-4 text-left flex items-center gap-3 transition-all text-gray-700 hover:text-blue-700 border-b border-gray-100"
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -20 }}
+                                                    transition={{ duration: 0.3, delay: 0 }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDiscount();
+                                                    }}
+                                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 text-amber-800 font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-md hover:shadow-lg border border-amber-200"
+                                                >
+                                                    <FiPercent className="w-4 h-4" />
+                                                    Descontar
+                                                </motion.button>
+
+                                                {/* Aplicar Freeze */}
+                                                <motion.button
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -20 }}
+                                                    transition={{ duration: 0.3, delay: 0.1 }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleFreeze();
+                                                    }}
+                                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-100 to-indigo-100 hover:from-blue-200 hover:to-indigo-200 text-blue-800 font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-md hover:shadow-lg border border-blue-200"
+                                                >
+                                                    <FiLock className="w-4 h-4" />
+                                                    {installment.frozen ? 'Quitar' : 'Aplicar'} Freeze
+                                                </motion.button>
+
+                                                {/* Pago Parcial */}
+                                                <motion.button
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -20 }}
+                                                    transition={{ duration: 0.3, delay: 0.2 }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handlePartialPaymentAction();
+                                                    }}
+                                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-100 to-green-100 hover:from-emerald-200 hover:to-green-200 text-emerald-800 font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-md hover:shadow-lg border border-emerald-200"
                                                 >
                                                     <FiDollarSign className="w-4 h-4" />
                                                     Pago Parcial
                                                 </motion.button>
-                                                <motion.button
-                                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
-                                                    onClick={handleFreeze}
-                                                    className={`w-full px-5 py-4 text-left flex items-center gap-3 transition-all border-b border-gray-100 ${installment.frozen
-                                                        ? 'text-blue-700 font-semibold'
-                                                        : 'text-gray-700 hover:text-blue-700'
-                                                    }`}
-                                                >
-                                                    {installment.frozen ? (
-                                                        <>
-                                                            <FiX className="w-4 h-4" />
-                                                            Quitar Freeze
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <FiTrendingUp className="w-4 h-4" />
-                                                            Aplicar Freeze
-                                                        </>
-                                                    )}
-                                                </motion.button>
-                                                <motion.button
-                                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
-                                                    onClick={handleDiscount}
-                                                    className="w-full px-5 py-4 text-left flex items-center gap-3 transition-all text-gray-700 hover:text-blue-700"
-                                                >
-                                                    <FiPercent className="w-4 h-4" />
-                                                    Descontar Cuota
-                                                </motion.button>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         )}
 
                         {/* Indicador de cuota pagada */}
                         {isFullyPaid && (
-                            <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                                <FiCheckCircle className="w-5 h-5 text-green-600" />
-                                <span className="text-green-700 font-medium">Cuota completamente pagada</span>
+                            <div className="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
+                                <FiCheckCircle className="w-5 h-5 text-emerald-500" />
+                                <span className="text-emerald-700 text-sm font-bold">Cuota pagada completamente</span>
                             </div>
                         )}
                     </div>
@@ -1066,9 +1174,9 @@ function InstallmentCard({ installment, inscriptionId, isSelected, onToggleSelec
     );
 }
 
-/* ================== PÁGINA PRINCIPAL ================== */
+/* ================== PÁGINA PRINCIPAL - DISEÑO PROFESIONAL ================== */
 export default function Cobros() {
-    const { students = [], courses = [], inscriptions = [] } = useDB();
+    const { students = [], courses = [], inscriptions = [], refreshData: refreshDB } = useDB();
     const [search, setSearch] = useState('');
     const [notifications, setNotifications] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -1078,17 +1186,18 @@ export default function Cobros() {
     const [activeFilter, setActiveFilter] = useState('todas');
     const [sortBy, setSortBy] = useState('deudaDesc');
     const [showStudentCards, setShowStudentCards] = useState(false);
-    const [refreshKey, setRefreshKey] = useState(0); // Para forzar refresco
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [viewMode, setViewMode] = useState('cards');
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const showNotification = (type, message) => {
         const id = Date.now();
         setNotifications(prev => [...prev, { id, type, message }]);
         setTimeout(() => {
             setNotifications(prev => prev.filter(n => n.id !== id));
-        }, 5000);
+        }, 4000);
     };
 
-    // Función helper para mostrar el label del ordenamiento
     const getSortLabel = (sortValue) => {
         switch (sortValue) {
             case 'apellido': return 'Apellido (A-Z)';
@@ -1101,11 +1210,19 @@ export default function Cobros() {
         }
     };
 
-    // Función para refrescar los datos
-    const refreshData = () => {
-        setRefreshKey(prev => prev + 1);
-        console.log('🔄 Refrescando datos...');
-    };
+    // ACTUALIZACIÓN EN TIEMPO REAL: Función mejorada para refrescar datos
+    const refreshData = useCallback(async () => {
+        setIsRefreshing(true);
+        try {
+            await refreshDB();
+            setRefreshKey(prev => prev + 1);
+            showNotification('success', 'Datos actualizados en tiempo real');
+        } catch (error) {
+            showNotification('error', 'Error al actualizar datos');
+        } finally {
+            setIsRefreshing(false);
+        }
+    }, [refreshDB]);
 
     // Calcular estadísticas
     const stats = useMemo(() => {
@@ -1172,16 +1289,13 @@ export default function Cobros() {
         return students
             .map(student => {
                 const studentInscriptions = inscriptions.filter(ins => ins.studentId === student.id);
-
                 let pendingInstallments = [];
 
                 studentInscriptions.forEach(inscription => {
                     const course = courses.find(c => c.id === inscription.courseId);
 
                     (inscription.installments || []).forEach(inst => {
-                        // ✅ Excluir cuotas ya pagadas del conteo de deuda activa
                         if (inst.status === 'Pagada' || inst.status === 'Pagado') {
-                            // Pero las incluimos en la lista para mostrarlas
                             pendingInstallments.push({
                                 ...inst,
                                 courseName: course?.nombre || 'Sin curso',
@@ -1203,13 +1317,11 @@ export default function Cobros() {
                         const isToday = !inst.frozen && today.getTime() === dueDate.getTime();
                         const isNextWeek = !inst.frozen && dueDate <= nextWeek && dueDate >= today;
 
-                        // ✅ Aplicar filtros
                         if (activeFilter === 'vencidas' && !isOverdue) return;
                         if (activeFilter === 'freeze' && !inst.frozen) return;
                         if (activeFilter === 'hoy' && !isToday) return;
                         if (activeFilter === 'proximaSemana' && !isNextWeek) return;
 
-                        // Usamos Transferencia por defecto para calcular deuda total
                         const defaultMethod = inscription.paymentType || 'Transferencia';
                         const price = calcularPrecioPorMetodo(inscription, course, inst, defaultMethod, isOverdue);
                         const pending = Math.max(price - Number(inst.amountPaid || 0), 0);
@@ -1229,7 +1341,6 @@ export default function Cobros() {
                     });
                 });
 
-                // Si hay filtro activo, ordenar por fecha de vencimiento
                 if (activeFilter !== 'todas') {
                     pendingInstallments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
                 }
@@ -1238,7 +1349,6 @@ export default function Cobros() {
                     ...student,
                     pendingInstallments,
                     totalPending: pendingInstallments.filter(i => !i.fullyPaid).reduce((sum, i) => sum + i.pending, 0),
-                    // Para mostrar estadísticas rápidas
                     vencidasCount: pendingInstallments.filter(i => i.isOverdue && !i.fullyPaid).length,
                     hoyCount: pendingInstallments.filter(i => i.isToday && !i.fullyPaid).length,
                     proximaSemanaCount: pendingInstallments.filter(i => i.isNextWeek && !i.fullyPaid).length,
@@ -1246,7 +1356,7 @@ export default function Cobros() {
                     cuotasPagadas: pendingInstallments.filter(i => i.fullyPaid).length
                 };
             })
-            .filter(s => s.pendingInstallments.length > 0); // Mostrar estudiantes que tengan cuotas (pagadas o no)
+            .filter(s => s.pendingInstallments.length > 0);
     }, [students, inscriptions, courses, activeFilter, refreshKey]);
 
     const filteredStudents = useMemo(() => {
@@ -1260,7 +1370,6 @@ export default function Cobros() {
         );
     }, [studentsWithDebt, search]);
 
-    // NUEVA FUNCIÓN: Ordenar estudiantes según el criterio seleccionado
     const sortedStudents = useMemo(() => {
         let sorted = [...filteredStudents];
 
@@ -1284,7 +1393,6 @@ export default function Cobros() {
                 sorted.sort((a, b) => a.totalCuotas - b.totalCuotas);
                 break;
             default:
-                // Por defecto ordenar por mayor deuda
                 sorted.sort((a, b) => b.totalPending - a.totalPending);
         }
 
@@ -1311,13 +1419,11 @@ export default function Cobros() {
         return Object.values(courseGroups);
     }, [selectedStudent]);
 
-    // ✅ Recalcular el total del carrito con datos frescos
     const totalCarrito = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         return selectedInstallments.reduce((sum, item) => {
-            // Obtener datos frescos
             const inscription = inscriptions.find(ins => ins.id === item.inscriptionId);
             const cuotaFresca = inscription?.installments?.find(i => i.number === item.number);
             const course = inscription ? courses.find(c => c.id === inscription.courseId) : null;
@@ -1339,7 +1445,6 @@ export default function Cobros() {
     }, [selectedInstallments, inscriptions, courses, refreshKey]);
 
     const toggleInstallmentSelection = (courseId, installmentNumber, installment) => {
-        // No permitir seleccionar cuotas completamente pagadas
         if (installment.fullyPaid) return;
 
         const key = `${courseId}-${installmentNumber}`;
@@ -1381,25 +1486,28 @@ export default function Cobros() {
         setShowPaymentModal(true);
     };
 
-    const handlePaymentSuccess = () => {
+    const handlePaymentSuccess = async () => {
         setSelectedInstallments([]);
         setExpandedCourses({});
-        refreshData(); // Refrescar datos después del pago
-        // ✅ Re-seleccionar el estudiante para refrescar datos
+
+        // ACTUALIZACIÓN EN TIEMPO REAL: Forzar actualización inmediata
+        await refreshData();
+
         if (selectedStudent) {
             const updatedStudent = studentsWithDebt.find(s => s.id === selectedStudent.id);
             setSelectedStudent(updatedStudent || null);
         }
-        showNotification('success', 'Pago procesado exitosamente. Datos actualizados.');
+        showNotification('success', 'Pago procesado exitosamente');
     };
 
-    const handleActionCompleted = () => {
-        refreshData(); // Refrescar datos después de cualquier acción
+    const handleActionCompleted = async () => {
+        // ACTUALIZACIÓN EN TIEMPO REAL: Actualizar inmediatamente después de cualquier acción
+        await refreshData();
     };
 
     const clearAllSelections = () => {
         setSelectedInstallments([]);
-        showNotification('success', 'Todas las selecciones han sido limpiadas');
+        showNotification('success', 'Selecciones limpiadas');
     };
 
     const clearFilters = () => {
@@ -1410,96 +1518,109 @@ export default function Cobros() {
         refreshData();
     };
 
-    // Función para manejar la búsqueda/filtros
     const handleSearchOrFilter = () => {
         if (search || activeFilter !== 'todas') {
             setShowStudentCards(true);
         }
     };
 
-    // Efecto para mostrar cards cuando hay búsqueda o filtro activo
-    React.useEffect(() => {
+    // ACTUALIZACIÓN EN TIEMPO REAL: Efecto para sincronizar datos automáticamente
+    useEffect(() => {
         if (search || activeFilter !== 'todas') {
             setShowStudentCards(true);
         }
     }, [search, activeFilter]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-blue-50 p-4 md:p-6">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/20 p-4 md:p-5 lg:p-6">
             <Notifications notifications={notifications} remove={(id) =>
                 setNotifications(prev => prev.filter(n => n.id !== id))
             } />
 
-            <div className="max-w-7xl mx-auto space-y-6">
-                {/* Header con botón de refresh */}
+            <div className="max-w-7xl mx-auto space-y-5 md:space-y-6">
+                {/* Header */}
                 <motion.div
-                    initial={{ opacity: 0, y: -20 }}
+                    initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-red-600 via-red-500 to-blue-600 rounded-2xl shadow-2xl p-8 text-white border border-white/20 relative"
+                    className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl md:rounded-3xl shadow-2xl p-5 md:p-7 text-white overflow-hidden"
                 >
-                    <button
-                        onClick={refreshData}
-                        className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-3 rounded-xl backdrop-blur-sm transition-all hover:scale-110"
-                        title="Refrescar datos"
-                    >
-                        <FiRefreshCw className="w-6 h-6" />
-                    </button>
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                        <div className="flex items-center gap-5">
-                            <div className="bg-white/20 p-4 rounded-2xl backdrop-blur-sm">
-                                <FiDollarSign className="w-12 h-12" />
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative">
+                        {/* Efecto de fondo */}
+                        <div className="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+
+                        <div className="flex items-center gap-4 md:gap-5 relative z-10">
+                            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-3 md:p-4 rounded-2xl backdrop-blur-sm border border-white/10">
+                                <FiDollarSign className="w-6 h-6 md:w-7 md:h-7" />
                             </div>
                             <div>
-                                <h1 className="text-4xl font-bold mb-2">Gestión de Cobros</h1>
-                                <p className="text-blue-100 text-lg">
-                                    Sistema de cobro de cuotas pendientes con precios dinámicos
+                                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2 tracking-tight">Gestión de Cobros</h1>
+                                <p className="text-gray-300 text-sm md:text-base">
+                                    Sistema de cobro de cuotas pendientes • Actualizado en tiempo real
                                 </p>
                             </div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl">
-                            <div className="text-sm text-blue-100">Deuda total del sistema</div>
-                            <div className="text-3xl font-bold">${formatNumber(stats.totalDeuda)}</div>
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm p-3 md:p-4 rounded-2xl border border-white/10">
+                                <div className="text-xs md:text-sm text-gray-300 font-medium">Deuda total</div>
+                                <div className="text-xl md:text-2xl font-bold">${formatNumber(stats.totalDeuda)}</div>
+                            </div>
+                            <motion.button
+                                onClick={refreshData}
+                                whileTap={{ scale: 0.95 }}
+                                className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 hover:from-blue-500/30 hover:to-purple-500/30 p-3 rounded-xl transition-all border border-white/10 backdrop-blur-sm"
+                                title="Refrescar datos en tiempo real"
+                            >
+                                {isRefreshing ? (
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <FiRefreshCw className="w-5 h-5" />
+                                )}
+                            </motion.button>
                         </div>
                     </div>
                 </motion.div>
 
-                {/* Stats Cards - Siempre visibles */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                     <StatsCard
                         icon={FiUser}
                         title="Alumnos con deuda"
                         value={stats.totalAlumnos}
                         color="text-blue-700"
                         description={`${studentsWithDebt.length} encontrados`}
+                        trend={2}
                     />
                     <StatsCard
                         icon={FiFileText}
                         title="Cuotas pendientes"
                         value={stats.totalCuotas}
-                        color="text-red-700"
+                        color="text-rose-700"
                         description={`$${formatNumber(stats.totalDeuda)} total`}
+                        trend={-1}
                     />
                     <StatsCard
                         icon={FiAlertCircle}
-                        title="Cuotas vencidas"
+                        title="Vencidas"
                         value={stats.totalVencidas}
-                        color="text-red-600"
-                        description="Necesitan atención inmediata"
+                        color="text-rose-600"
+                        description="Necesitan atención urgente"
+                        trend={5}
                     />
                     <StatsCard
                         icon={FiCalendar}
                         title="Por vencer"
                         value={stats.totalHoy + stats.totalProximaSemana}
-                        color="text-orange-600"
-                        description={`${stats.totalHoy} hoy, ${stats.totalProximaSemana} próx. semana`}
+                        color="text-amber-700"
+                        description={`${stats.totalHoy} hoy`}
+                        trend={0}
                     />
                 </div>
 
                 {/* Search and Filters */}
-                <div className="space-y-4">
-                    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg p-6 border border-gray-200">
-                        <div className="relative mb-4">
-                            <FiSearch className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
+                <div className="space-y-4 md:space-y-5">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 shadow-lg border border-gray-200/80">
+                        <div className="relative mb-4 md:mb-5">
+                            <FiSearch className="absolute left-4 md:left-5 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5 md:w-6 md:h-6" />
                             <input
                                 type="text"
                                 placeholder="Buscar alumno por nombre, DNI o email..."
@@ -1508,11 +1629,11 @@ export default function Cobros() {
                                     setSearch(e.target.value);
                                     handleSearchOrFilter();
                                 }}
-                                className="w-full pl-14 pr-4 py-4 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none transition-all text-black text-lg shadow-sm hover:shadow-md"
+                                className="w-full pl-12 md:pl-14 pr-4 py-3.5 md:py-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-3 focus:ring-blue-200 focus:outline-none transition-all text-gray-900 text-base placeholder-gray-500 font-medium"
                             />
                         </div>
 
-                        <div className="flex flex-col md:flex-row gap-4 mb-6">
+                        <div className="flex flex-col lg:flex-row gap-4 md:gap-5">
                             <div className="flex-1">
                                 <FilterBar onFilterChange={(filter) => {
                                     setActiveFilter(filter);
@@ -1520,17 +1641,48 @@ export default function Cobros() {
                                 }} filters={activeFilter} />
                             </div>
 
-                            {/* Selector de Ordenamiento */}
-                            <div className="w-full md:w-64">
-                                <div className="bg-gradient-to-r from-blue-50 to-red-50 rounded-xl p-4 border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <FiChevronDown className="w-5 h-5 text-blue-600" />
-                                        <h3 className="font-bold text-gray-800 text-lg">Ordenar por</h3>
+                            {/* View Mode and Sort */}
+                            <div className="flex flex-col md:flex-row gap-3">
+                                {/* View Mode Toggle */}
+                                <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 border border-gray-200/80">
+                                    <div className="flex items-center gap-1">
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => setViewMode('cards')}
+                                            className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                                                viewMode === 'cards'
+                                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200'
+                                                    : 'text-gray-700 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            <FiEye className="w-4 h-4" />
+                                            Tarjetas
+                                        </motion.button>
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => setViewMode('list')}
+                                            className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                                                viewMode === 'list'
+                                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200'
+                                                    : 'text-gray-700 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            <FiList className="w-4 h-4" />
+                                            Lista
+                                        </motion.button>
+                                    </div>
+                                </div>
+
+                                {/* Sort */}
+                                <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 border border-gray-200/80">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <FiChevronDown className="w-4 h-4 text-gray-600" />
+                                        <h3 className="font-semibold text-xs text-gray-800">Ordenar por</h3>
                                     </div>
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none transition-all text-black bg-white font-semibold shadow-sm"
+                                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-all text-gray-900 text-sm font-semibold bg-white"
                                     >
                                         <option value="apellido">Apellido (A-Z)</option>
                                         <option value="nombre">Nombre (A-Z)</option>
@@ -1545,204 +1697,269 @@ export default function Cobros() {
 
                         {(activeFilter !== 'todas' || search || sortBy !== 'deudaDesc') && (
                             <div className="mt-4 flex items-center gap-3">
-                                <button
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={clearFilters}
-                                    className="text-sm text-red-600 hover:text-red-800 font-semibold flex items-center gap-2 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"
+                                    className="text-sm text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-2 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-colors border border-rose-200"
                                 >
                                     <FiX className="w-4 h-4" />
-                                    Limpiar todos los filtros
-                                </button>
-                                <div className="text-sm text-gray-500">
-                                    {activeFilter !== 'todas' && `Filtro: ${activeFilter === 'vencidas' ? 'Solo Vencidas' :
-                                        activeFilter === 'freeze' ? 'Con Freeze' :
-                                            activeFilter === 'hoy' ? 'Vence Hoy' : 'Próxima Semana'}`}
+                                    Limpiar filtros
+                                </motion.button>
+                                <div className="text-sm text-gray-600 font-medium">
+                                    {activeFilter !== 'todas' && `Filtro: ${activeFilter}`}
                                     {search && activeFilter !== 'todas' && ' • '}
-                                    {search && `Búsqueda: "${search}"`}
-                                    {sortBy !== 'deudaDesc' && (search || activeFilter !== 'todas') && ' • '}
-                                    {sortBy !== 'deudaDesc' && `Orden: ${getSortLabel(sortBy)}`}
+                                    {search && `"${search}"`}
+                                    {sortBy !== 'deudaDesc' && ` • Orden: ${getSortLabel(sortBy)}`}
                                 </div>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Main Content - Solo muestra estudiantes cuando hay búsqueda o filtro */}
+                {/* Main Content */}
                 {showStudentCards && (
-                    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg p-6 border border-gray-200">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/80 p-4 md:p-5">
                         {!selectedStudent ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-800">
-                                        Alumnos con cuotas ({sortedStudents.length})
-                                    </h2>
-                                    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
-                                        Ordenado por {getSortLabel(sortBy)}
+                            <div className="space-y-4 md:space-y-5">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-lg md:text-xl font-bold text-gray-900">
+                                            Alumnos ({sortedStudents.length})
+                                        </h2>
+                                        <div className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                                            {getSortLabel(sortBy)}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-600 bg-gray-100 px-2.5 py-1.5 rounded-lg font-medium">
+                                        Actualizado en tiempo real
                                     </div>
                                 </div>
 
-                                {sortedStudents.map(student => (
-                                    <motion.div
-                                        key={student.id}
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        whileHover={{ scale: 1.01 }}
-                                        onClick={() => setSelectedStudent(student)}
-                                        className="bg-gradient-to-r from-red-50 to-blue-50 rounded-2xl p-6 cursor-pointer hover:shadow-2xl transition-all duration-300 border border-gray-200 hover:border-blue-400"
-                                    >
-                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                            <div className="flex items-start gap-5">
-                                                <div className="bg-gradient-to-r from-blue-100 to-red-100 p-4 rounded-2xl shadow-md">
-                                                    <FiUser className="w-8 h-8 text-blue-700" />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                                                        {student.apellido}, {student.nombre}
-                                                    </h3>
-                                                    <div className="text-gray-700 space-y-3">
-                                                        <div className="flex items-center gap-3 text-sm">
-                                                            <FiFileText className="w-4 h-4 text-blue-600" />
-                                                            <span className="font-medium">DNI:</span> {student.dni}
-                                                        </div>
-                                                        {student.email && (
-                                                            <div className="flex items-center gap-3 text-sm">
-                                                                <FiMail className="w-4 h-4 text-blue-600" />
-                                                                <span className="font-medium">Email:</span> {student.email}
+                                {viewMode === 'cards' ? (
+                                    /* Cards View */
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                                        {sortedStudents.map(student => (
+                                            <motion.div
+                                                key={student.id}
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                whileHover={{ scale: 1.02, y: -3 }}
+                                                onClick={() => setSelectedStudent(student)}
+                                                className="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl p-5 cursor-pointer hover:shadow-xl transition-all duration-300 border-2 border-gray-200/70 hover:border-blue-400/50 group overflow-hidden"
+                                            >
+                                                <div className="flex items-start gap-4">
+                                                    <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-3 rounded-xl">
+                                                        <FiUser className="w-6 h-6 text-blue-600" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h3 className="font-bold text-gray-900 text-lg mb-2 group-hover:text-blue-700 transition-colors">
+                                                            {student.apellido}, {student.nombre}
+                                                        </h3>
+                                                        <div className="text-gray-700 space-y-2 text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="p-1 bg-gray-100 rounded-lg">
+                                                                    <FiFileText className="w-3.5 h-3.5 text-gray-600" />
+                                                                </div>
+                                                                <span className="font-medium">DNI: {student.dni}</span>
                                                             </div>
-                                                        )}
-                                                        <div className="flex items-center gap-3 flex-wrap">
-                                                            <div className="bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                                                                <span className="text-red-600 font-bold">
-                                                                    {student.totalCuotas} cuotas total
-                                                                </span>
+                                                            {student.email && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="p-1 bg-gray-100 rounded-lg">
+                                                                        <FiMail className="w-3.5 h-3.5 text-gray-600" />
+                                                                    </div>
+                                                                    <span className="truncate font-medium">{student.email}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2 mt-4">
+                                                            <div className="bg-gradient-to-r from-rose-50 to-pink-50 px-3 py-1.5 rounded-lg border border-rose-200">
+                                                                <span className="text-rose-700 text-xs font-bold">{student.totalCuotas} cuotas</span>
                                                             </div>
                                                             {student.cuotasPagadas > 0 && (
-                                                                <div className="bg-green-100 px-3 py-1.5 rounded-lg shadow-sm">
-                                                                    <span className="text-green-700 font-bold">
-                                                                        {student.cuotasPagadas} pagadas
-                                                                    </span>
+                                                                <div className="bg-gradient-to-r from-emerald-50 to-green-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                                                    <span className="text-emerald-700 text-xs font-bold">{student.cuotasPagadas} pagadas</span>
                                                                 </div>
                                                             )}
                                                             {student.vencidasCount > 0 && (
-                                                                <div className="bg-red-100 px-3 py-1.5 rounded-lg shadow-sm">
-                                                                    <span className="text-red-700 font-bold">
-                                                                        {student.vencidasCount} vencidas
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {student.hoyCount > 0 && (
-                                                                <div className="bg-orange-100 px-3 py-1.5 rounded-lg shadow-sm">
-                                                                    <span className="text-orange-700 font-bold">
-                                                                        {student.hoyCount} hoy
-                                                                    </span>
+                                                                <div className="bg-gradient-to-r from-rose-100 to-red-100 px-3 py-1.5 rounded-lg border border-rose-300">
+                                                                    <span className="text-rose-800 text-xs font-bold">{student.vencidasCount} vencidas</span>
                                                                 </div>
                                                             )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-sm text-gray-600 mb-2">Deuda Pendiente</div>
-                                                <div className="text-4xl font-bold text-red-700">
-                                                    ${formatNumber(student.totalPending)}
+                                                <div className="mt-5 pt-4 border-t border-gray-200/70">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="text-sm text-gray-600 font-medium">Deuda pendiente</div>
+                                                        <div className="font-bold text-rose-600 text-xl">
+                                                            ${formatNumber(student.totalPending)}
+                                                        </div>
+                                                    </div>
+                                                    <button className="w-full mt-3 text-blue-600 hover:text-blue-800 font-bold flex items-center justify-center gap-2 hover:bg-blue-50 py-2.5 rounded-xl transition-colors text-sm border-2 border-blue-200 hover:border-blue-300 group">
+                                                        Ver cuotas detalladas
+                                                        <FiArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                                    </button>
                                                 </div>
-                                                <button className="mt-4 text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-2 hover:bg-blue-50 px-4 py-2 rounded-xl transition-colors">
-                                                    Ver cuotas
-                                                    <FiChevronDown className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    /* List View */
+                                    <div className="overflow-x-auto rounded-xl border border-gray-200/70">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50">
+                                            <tr>
+                                                <th className="px-4 py-3.5 text-left font-bold text-gray-800 text-sm">Alumno</th>
+                                                <th className="px-4 py-3.5 text-left font-bold text-gray-800 text-sm">DNI</th>
+                                                <th className="px-4 py-3.5 text-left font-bold text-gray-800 text-sm">Cuotas</th>
+                                                <th className="px-4 py-3.5 text-left font-bold text-gray-800 text-sm">Vencidas</th>
+                                                <th className="px-4 py-3.5 text-left font-bold text-gray-800 text-sm">Deuda</th>
+                                                <th className="px-4 py-3.5 text-left font-bold text-gray-800 text-sm"></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {sortedStudents.map(student => (
+                                                <tr key={student.id}
+                                                    onClick={() => setSelectedStudent(student)}
+                                                    className="border-b border-gray-200/50 hover:bg-gradient-to-r from-blue-50/30 to-indigo-50/20 cursor-pointer transition-all duration-200 group">
+                                                    <td className="px-4 py-4">
+                                                        <div className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+                                                            {student.apellido}, {student.nombre}
+                                                        </div>
+                                                        <div className="text-xs text-gray-600 truncate max-w-[200px] font-medium">
+                                                            {student.email}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4 font-medium">{student.dni}</td>
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-rose-700 font-bold">{student.totalCuotas}</span>
+                                                            {student.cuotasPagadas > 0 && (
+                                                                <span className="text-emerald-600 text-xs font-medium bg-emerald-50 px-2 py-0.5 rounded">({student.cuotasPagadas} pagadas)</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        {student.vencidasCount > 0 ? (
+                                                            <span className="bg-gradient-to-r from-rose-100 to-pink-100 text-rose-800 px-3 py-1.5 rounded-lg text-xs font-bold border border-rose-200">
+                                                                    {student.vencidasCount}
+                                                                </span>
+                                                        ) : (
+                                                            <span className="text-gray-500 text-xs font-medium bg-gray-100 px-2 py-1 rounded">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-4 font-bold text-rose-600 text-lg">
+                                                        ${formatNumber(student.totalPending)}
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <button className="text-blue-600 hover:text-blue-800 p-1.5 group">
+                                                            <FiChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
 
                                 {sortedStudents.length === 0 && (
-                                    <div className="bg-gradient-to-r from-red-50 to-blue-50 rounded-2xl shadow-lg p-12 text-center border border-gray-200">
-                                        <div className="bg-gradient-to-r from-white to-blue-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                                            <FiCheckCircle className="w-12 h-12 text-green-500" />
+                                    <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/30 rounded-2xl p-8 md:p-10 text-center border-2 border-dashed border-gray-300/70">
+                                        <div className="bg-gradient-to-r from-white to-gray-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+                                            <FiCheckCircle className="w-10 h-10 text-emerald-500" />
                                         </div>
-                                        <h3 className="text-2xl font-bold text-gray-800 mb-3">
-                                            {search || activeFilter !== 'todas' ? 'No hay resultados' : '¡Todos los alumnos están al día!'}
+                                        <h3 className="text-xl font-bold text-gray-800 mb-3">
+                                            {search || activeFilter !== 'todas' ? 'No hay resultados' : '¡Todos los alumnos al día!'}
                                         </h3>
-                                        <p className="text-gray-600 text-lg mb-6">
-                                            {search ? 'No se encontraron alumnos con los filtros aplicados' : 'No hay deudas pendientes en el sistema'}
+                                        <p className="text-gray-600 text-base mb-6 max-w-md mx-auto">
+                                            {search ? 'No se encontraron alumnos con los criterios de búsqueda' : 'No hay deudas pendientes en el sistema'}
                                         </p>
                                         {(search || activeFilter !== 'todas') && (
-                                            <button
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
                                                 onClick={clearFilters}
-                                                className="bg-gradient-to-r from-blue-600 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-red-700 transition-all shadow-md"
+                                                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
                                             >
-                                                Limpiar búsqueda
-                                            </button>
+                                                Limpiar búsqueda y filtros
+                                            </motion.button>
                                         )}
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="space-y-6">
+                            <div className="space-y-5 md:space-y-6">
                                 {/* Student Header */}
-                                <div className="bg-gradient-to-r from-red-50 to-blue-50 rounded-2xl shadow-lg p-6 border border-gray-200">
-                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
-                                        <div className="flex items-center gap-4">
-                                            <button
+                                <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/50 rounded-2xl p-5 border-2 border-blue-200/70 shadow-sm">
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
+                                        <div className="flex items-center gap-3 md:gap-4">
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
                                                 onClick={() => {
                                                     setSelectedStudent(null);
                                                     setSelectedInstallments([]);
                                                     setExpandedCourses({});
                                                 }}
-                                                className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-3 text-lg hover:bg-blue-50 px-4 py-3 rounded-xl transition-all shadow-sm"
+                                                className="text-blue-700 hover:text-blue-900 font-bold flex items-center gap-3 hover:bg-blue-100 px-4 py-2.5 rounded-xl transition-all text-sm border-2 border-blue-200 hover:border-blue-300"
                                             >
-                                                <FiArrowLeft className="w-5 h-5" />
+                                                <FiArrowLeft className="w-4 h-4" />
                                                 Volver a la lista
-                                            </button>
+                                            </motion.button>
 
-                                            <button
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
                                                 onClick={refreshData}
-                                                className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-3 text-lg hover:bg-blue-50 px-4 py-3 rounded-xl transition-all shadow-sm"
-                                                title="Refrescar datos del alumno"
+                                                className="text-blue-700 hover:text-blue-900 font-bold flex items-center gap-3 hover:bg-blue-100 px-4 py-2.5 rounded-xl transition-all text-sm border-2 border-blue-200 hover:border-blue-300"
+                                                title="Actualizar datos en tiempo real"
                                             >
-                                                <FiRefreshCw className="w-5 h-5" />
-                                                Refrescar
-                                            </button>
+                                                <FiRefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                                Actualizar ahora
+                                            </motion.button>
                                         </div>
 
                                         {selectedInstallments.length > 0 && (
-                                            <button
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
                                                 onClick={clearAllSelections}
-                                                className="text-red-600 hover:text-red-800 font-semibold flex items-center gap-3 text-lg hover:bg-red-50 px-4 py-3 rounded-xl transition-all shadow-sm"
+                                                className="text-rose-700 hover:text-rose-900 font-bold flex items-center gap-3 hover:bg-rose-100 px-4 py-2.5 rounded-xl transition-all text-sm border-2 border-rose-200 hover:border-rose-300"
                                             >
-                                                <FiTrash2 className="w-5 h-5" />
-                                                Limpiar selecciones ({selectedInstallments.length})
-                                            </button>
+                                                <FiTrash2 className="w-4 h-4" />
+                                                Limpiar selección ({selectedInstallments.length})
+                                            </motion.button>
                                         )}
                                     </div>
 
-                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                        <div className="flex items-center gap-5">
-                                            <div className="bg-gradient-to-r from-blue-100 to-red-100 p-4 rounded-2xl shadow-lg">
-                                                <FiUser className="w-10 h-10 text-blue-700" />
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+                                        <div className="flex items-center gap-4 md:gap-5">
+                                            <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-3 md:p-4 rounded-2xl shadow-sm">
+                                                <FiUser className="w-6 h-6 md:w-7 md:h-7 text-blue-600" />
                                             </div>
                                             <div>
-                                                <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                                                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
                                                     {selectedStudent.apellido}, {selectedStudent.nombre}
                                                 </h2>
-                                                <div className="text-gray-700 space-y-3">
-                                                    <div className="flex items-center gap-3 text-sm">
-                                                        <FiFileText className="w-4 h-4 text-blue-600" />
-                                                        <span className="font-medium">DNI:</span> {selectedStudent.dni}
+                                                <div className="text-gray-800 space-y-2 text-sm md:text-base">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-1.5 bg-gray-100 rounded-lg">
+                                                            <FiFileText className="w-4 h-4 text-gray-600" />
+                                                        </div>
+                                                        <span className="font-semibold">DNI: {selectedStudent.dni}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-3 text-sm">
-                                                        <FiMail className="w-4 h-4 text-blue-600" />
-                                                        <span className="font-medium">Email:</span> {selectedStudent.email}
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-1.5 bg-gray-100 rounded-lg">
+                                                            <FiMail className="w-4 h-4 text-gray-600" />
+                                                        </div>
+                                                        <span className="font-semibold">{selectedStudent.email}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-sm text-gray-600 mb-2">Deuda Pendiente</div>
-                                            <div className="text-5xl font-bold text-red-700">
+                                            <div className="text-sm md:text-base text-gray-700 font-bold">Deuda Pendiente Total</div>
+                                            <div className="text-3xl md:text-4xl font-bold text-rose-600 mb-2">
                                                 ${formatNumber(selectedStudent.totalPending)}
                                             </div>
-                                            <div className="text-sm text-gray-500 mt-3 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                                                {selectedStudent.totalCuotas - selectedStudent.cuotasPagadas} cuotas pendientes de {selectedStudent.totalCuotas} total
+                                            <div className="text-xs text-gray-600 font-medium bg-white px-3 py-1.5 rounded-lg border border-gray-200">
+                                                {selectedStudent.totalCuotas - selectedStudent.cuotasPagadas} de {selectedStudent.totalCuotas} cuotas pendientes
                                             </div>
                                         </div>
                                     </div>
@@ -1750,28 +1967,28 @@ export default function Cobros() {
 
                                 {/* Courses */}
                                 {studentCourses.map(course => (
-                                    <div key={course.id} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-all duration-300">
+                                    <div key={course.id} className="bg-white rounded-2xl shadow-lg border-2 border-gray-200/70 overflow-hidden">
                                         <div
-                                            className="bg-gradient-to-r from-red-500 via-red-400 to-blue-500 text-white p-6 cursor-pointer hover:from-red-600 hover:to-blue-600 transition-all duration-300 flex justify-between items-center"
+                                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 text-white p-4 md:p-5 cursor-pointer hover:from-blue-700 hover:via-blue-600 hover:to-indigo-600 transition-all duration-300 flex justify-between items-center"
                                             onClick={() => toggleCourseExpansion(course.id)}
                                         >
-                                            <div className="flex items-center gap-5">
-                                                <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-                                                    <FiFileText className="w-7 h-7" />
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                                                    <FiFileText className="w-5 h-5 md:w-6 md:h-6" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-xl font-bold">{course.courseName}</h3>
-                                                    <div className="text-sm text-red-100 mt-2 flex items-center gap-3">
-                                                        <span>{course.installments.length} cuotas total</span>
-                                                        <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                                                        <span>Pendiente: ${formatNumber(course.installments.filter(i => !i.fullyPaid).reduce((sum, i) => sum + i.pending, 0))}</span>
+                                                    <h3 className="font-bold text-base md:text-lg">{course.courseName}</h3>
+                                                    <div className="text-blue-100 text-sm mt-1 flex items-center gap-3">
+                                                        <span className="font-medium">{course.installments.length} cuotas</span>
+                                                        <span className="w-1 h-1 bg-white/50 rounded-full"></span>
+                                                        <span className="font-medium">Pendiente: ${formatNumber(course.installments.filter(i => !i.fullyPaid).reduce((sum, i) => sum + i.pending, 0))}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <motion.div
                                                 animate={{ rotate: expandedCourses[course.id] ? 180 : 0 }}
                                                 transition={{ duration: 0.3 }}
-                                                className="bg-white/20 p-3 rounded-xl backdrop-blur-sm"
+                                                className="bg-white/20 p-2 rounded-xl backdrop-blur-sm"
                                             >
                                                 <FiChevronDown className="w-5 h-5" />
                                             </motion.div>
@@ -1783,9 +2000,9 @@ export default function Cobros() {
                                                     initial={{ height: 0, opacity: 0 }}
                                                     animate={{ height: 'auto', opacity: 1 }}
                                                     exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden"
+                                                    className="overflow-visible"
                                                 >
-                                                    <div className="p-6 space-y-4 bg-gradient-to-b from-blue-50 via-white to-red-50">
+                                                    <div className="p-4 md:p-5 space-y-3 md:space-y-4 bg-gradient-to-b from-gray-50/50 to-blue-50/30">
                                                         {course.installments.map(installment => (
                                                             <InstallmentCard
                                                                 key={installment.number}
@@ -1811,33 +2028,34 @@ export default function Cobros() {
                 {/* Cart Floating Button */}
                 {selectedInstallments.length > 0 && (
                     <motion.div
-                        initial={{ y: 100, opacity: 0, scale: 0.9 }}
-                        animate={{ y: 0, opacity: 1, scale: 1 }}
-                        exit={{ y: 100, opacity: 0, scale: 0.9 }}
-                        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 via-blue-500 to-red-600 text-white rounded-2xl shadow-2xl p-6 min-w-96 z-40 border border-white/20 backdrop-blur-sm"
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-6 right-6 bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-500 text-white rounded-2xl shadow-2xl p-4 md:p-5 z-40 border-2 border-emerald-400/30 min-w-[300px] md:min-w-[350px] backdrop-blur-sm"
                     >
-                        <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-white/20 p-3 rounded-xl">
-                                    <FiShoppingCart className="w-6 h-6" />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3 md:gap-4">
+                                <div className="bg-white/20 p-2 md:p-2.5 rounded-xl backdrop-blur-sm">
+                                    <FiShoppingCart className="w-5 h-5 md:w-6 md:h-6" />
                                 </div>
                                 <div>
-                                    <div className="text-sm text-blue-100">Total a cobrar</div>
-                                    <div className="text-3xl font-bold">${formatNumber(totalCarrito)}</div>
+                                    <div className="text-xs text-emerald-100 font-medium">Total a cobrar</div>
+                                    <div className="text-xl md:text-2xl font-bold">${formatNumber(totalCarrito)}</div>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-sm text-blue-100">Cuotas seleccionadas</div>
-                                <div className="text-2xl font-bold">{selectedInstallments.length}</div>
+                                <div className="text-xs text-emerald-100 font-medium">Cuotas seleccionadas</div>
+                                <div className="text-lg md:text-xl font-bold">{selectedInstallments.length}</div>
                             </div>
                         </div>
-                        <button
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
                             onClick={handleProcessPayment}
-                            className="w-full bg-gradient-to-r from-white to-blue-100 text-blue-700 font-bold py-4 rounded-xl hover:from-blue-50 hover:to-red-50 transition-all duration-300 flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl text-lg transform hover:scale-[1.02]"
+                            className="w-full bg-white text-emerald-700 font-bold py-3 md:py-3.5 rounded-xl hover:bg-emerald-50 transition-all duration-200 flex items-center justify-center gap-3 text-sm shadow-lg hover:shadow-xl"
                         >
                             <FiCreditCard className="w-5 h-5" />
-                            Procesar Pago
-                        </button>
+                            Procesar Pago Múltiple
+                        </motion.button>
                     </motion.div>
                 )}
 

@@ -4,6 +4,66 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FiEye, FiEdit, FiTrash2, FiX, FiCheck, FiChevronDown, FiClock, FiCalendar, FiUser, FiBook, FiDollarSign, FiPercent, FiFileText, FiTag, FiCreditCard, FiTrendingUp, FiPlus, FiMinus, FiChevronRight } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 
+/* ================== FUNCIÓN PARA DISTRIBUIR MONTOS EN NÚMEROS REDONDOS ================== */
+/**
+ * Distribuye un monto total en N cuotas con números redondos
+ * Ejemplo: 220,000 en 3 cuotas → [73000, 73000, 74000]
+ * @param {number} montoTotal - El monto total a distribuir (EXACTO, no se redondea)
+ * @param {number} numCuotas - Número de cuotas
+ * @param {number} redondeoBase - Base de redondeo (100, 500, 1000, etc.)
+ * @returns {number[]} - Array con los montos de cada cuota
+ */
+function distribuirEnCuotasRedondas(montoTotal, numCuotas, redondeoBase = 1000) {
+    if (numCuotas <= 0 || montoTotal <= 0) return [];
+
+    // NO redondeamos el total - lo mantenemos exacto
+    const totalExacto = Math.round(montoTotal);
+
+    // Calcular el monto base por cuota (redondeado hacia abajo)
+    const montoBase = Math.floor(totalExacto / numCuotas / redondeoBase) * redondeoBase;
+
+    // Calcular cuánto falta para completar el total
+    const sumaParcial = montoBase * numCuotas;
+    const diferencia = totalExacto - sumaParcial;
+
+    // Crear array con el monto base en todas las cuotas
+    const cuotas = new Array(numCuotas).fill(montoBase);
+
+    // Si hay diferencia, la distribuimos en las últimas cuotas
+    if (diferencia > 0) {
+        // Calcular cuántas cuotas necesitan el incremento
+        const cuotasConIncremento = Math.ceil(diferencia / redondeoBase);
+
+        // Aplicar el incremento a las últimas cuotas
+        for (let i = 0; i < cuotasConIncremento && i < numCuotas; i++) {
+            const incremento = Math.min(redondeoBase, diferencia - (i * redondeoBase));
+            cuotas[numCuotas - 1 - i] += incremento;
+        }
+    }
+
+    // Verificar que la suma sea correcta
+    const sumaFinal = cuotas.reduce((sum, val) => sum + val, 0);
+
+    // Si hay una pequeña diferencia por redondeo, ajustar la última cuota
+    if (sumaFinal !== totalExacto) {
+        cuotas[numCuotas - 1] += (totalExacto - sumaFinal);
+    }
+
+    return cuotas;
+}
+
+/**
+ * Determina el redondeo base óptimo según el monto
+ * Montos pequeños: redondeo de 100
+ * Montos medianos: redondeo de 500
+ * Montos grandes: redondeo de 1000
+ */
+function obtenerRedondeoBase(monto) {
+    if (monto < 10000) return 100;      // Menos de 10k → redondeo a 100
+    if (monto < 50000) return 500;      // Entre 10k y 50k → redondeo a 500
+    return 1000;                        // Más de 50k → redondeo a 1000
+}
+
 /* ================== Select buscable mejorado ================== */
 function SearchableSelect({ options, value, onChange, placeholder, getLabel, getValue }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -724,34 +784,25 @@ export default function Inscripciones() {
                     const totalFinalEnFechaRound = Math.round(totalCursoFinalEnFecha);
                     const totalFinalVencidoRound = Math.round(totalCursoFinalVencido);
 
-                    const baseEnFecha = Math.round(totalFinalEnFechaRound / numCuotas);
-                    const baseVencido = Math.round(totalFinalVencidoRound / numCuotas);
+                    // ============= NUEVO: DISTRIBUCIÓN INTELIGENTE CON NÚMEROS REDONDOS =============
+                    // Determinar el redondeo base según el monto
+                    const redondeoBase = obtenerRedondeoBase(totalFinalEnFechaRound);
 
-                    let accEnFecha = 0;
-                    let accVencido = 0;
+                    // Distribuir el monto en cuotas redondas
+                    const cuotasEnFecha = distribuirEnCuotasRedondas(totalFinalEnFechaRound, numCuotas, redondeoBase);
+                    const cuotasVencido = distribuirEnCuotasRedondas(totalFinalVencidoRound, numCuotas, redondeoBase);
 
+                    // Crear las cuotas con los montos calculados
                     for (let i = 0; i < numCuotas; i++) {
                         const fechaVenc = new Date(fechaInicio);
                         fechaVenc.setMonth(fechaVenc.getMonth() + i);
 
-                        let montoEnFecha, montoVencido;
-
-                        if (i === numCuotas - 1) {
-                            montoEnFecha = totalFinalEnFechaRound - accEnFecha;
-                            montoVencido = totalFinalVencidoRound - accVencido;
-                        } else {
-                            montoEnFecha = baseEnFecha;
-                            montoVencido = baseVencido;
-                            accEnFecha += montoEnFecha;
-                            accVencido += montoVencido;
-                        }
-
                         installments.push({
                             number: i + 1,
                             dueDate: fechaVenc.toISOString().split("T")[0],
-                            amount: montoEnFecha,
-                            amountEnFecha: montoEnFecha,
-                            amountVencido: montoVencido,
+                            amount: cuotasEnFecha[i],
+                            amountEnFecha: cuotasEnFecha[i],
+                            amountVencido: cuotasVencido[i],
                             amountPaid: 0,
                             status: "Pendiente",
                             paidAt: null,

@@ -1,9 +1,10 @@
 // src/pages/Alumnos.jsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEye, FiEdit, FiTrash2, FiX, FiUserPlus, FiClock, FiSearch, FiChevronDown, FiUser, FiMapPin, FiPhone, FiMail, FiCalendar, FiBook, FiFilter, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiX, FiUserPlus, FiClock, FiSearch, FiChevronDown, FiUser, FiMapPin, FiPhone, FiMail, FiCalendar, FiBook, FiFilter, FiCheckCircle, FiXCircle, FiPrinter } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import jsPDF from 'jspdf';
 
 // Componente SearchableSelect
 function SearchableSelect({ options, value, onChange, placeholder, getLabel, getValue }) {
@@ -258,6 +259,59 @@ export default function Alumnos() {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
+    // Función para generar el PDF
+    const generatePDF = (alumno, studentId) => {
+        const doc = new jsPDF();
+
+        // Configurar fuente y tamaño
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+
+        // Título
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CURSOS CEA', 105, 20, null, null, 'center');
+
+        // Subtítulo
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Reconocidos con 1ª hora DE SENSACIÓN / VIGORIZO', 105, 28, null, null, 'center');
+        doc.text('Horario: Lunes y Viernes de 4 | 2 | Tx. Salón 9 | 10 h', 105, 34, null, null, 'center');
+
+        // Información del alumno
+        doc.setFontSize(12);
+        doc.text(`Alumno: ${alumno.nombre} ${alumno.apellido}`, 20, 50);
+        doc.text(`Número de Recibo: ${studentId}`, 20, 60);
+        doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 20, 70);
+        doc.text(`Op: ${user?.name || 'Usuario'}`, 20, 80);
+        doc.text('Descripción del pago: Se inscribió alumno al sistema CEA', 20, 90);
+
+        // Tabla de valores
+        doc.text('Valor Matrícula', 20, 110);
+        doc.text('Descuento', 20, 120);
+        doc.text('TOTAL', 20, 130);
+
+        // Valores numéricos alineados a la derecha
+        const valorMatricula = 25000;
+        const descuento = 0;
+        const total = valorMatricula - descuento;
+
+        doc.text(`$ ${valorMatricula.toLocaleString('es-ES')}`, 180, 110, null, null, 'right');
+        doc.text(`$ ${descuento.toLocaleString('es-ES')}`, 180, 120, null, null, 'right');
+        doc.text(`$ ${total.toLocaleString('es-ES')}`, 180, 130, null, null, 'right');
+
+        // Línea separadora
+        doc.setLineWidth(0.5);
+        doc.line(20, 140, 190, 140);
+
+        // Pie de página
+        doc.setFontSize(8);
+        doc.text('SE RECUERDA QUE LOS DESCUENTOS SE EFECTUAN RESPETANDO EL CRONOGRAMA DE PAGOS', 105, 150, null, null, 'center');
+
+        // Guardar el PDF
+        doc.save(`recibo_${studentId}_${alumno.nombre}_${alumno.apellido}.pdf`);
+    };
+
     // Crear / editar
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -268,11 +322,17 @@ export default function Alumnos() {
             if (editing) {
                 updateStudent(editing.id, { ...formData });
                 showNotification('success', 'Alumno editado correctamente');
+                closeForm();
             } else {
-                addStudent({ ...formData });
+                // Crear alumno y obtener el ID
+                const studentId = addStudent({ ...formData });
                 showNotification('success', 'Alumno creado correctamente');
+
+                // Generar PDF
+                generatePDF(formData, studentId);
+
+                closeForm();
             }
-            closeForm();
         } catch (err) {
             showNotification('error', err.message);
         }
@@ -1393,7 +1453,8 @@ export default function Alumnos() {
                                             type="submit"
                                             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium flex items-center justify-center space-x-2"
                                         >
-                                            <span>{editing ? 'Guardar Cambios' : 'Crear Alumno'}</span>
+                                            <span>{editing ? 'Guardar Cambios' : 'Crear + Imprimir'}</span>
+                                            {!editing && <FiPrinter className="w-4 h-4" />}
                                         </button>
                                     </div>
                                 </div>

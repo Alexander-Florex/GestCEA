@@ -345,7 +345,7 @@ const defaultDB = {
         autoBackup: true,
         backupInterval: 30,
         enableAudit: true,
-        porcentajeTransferencia: 5,
+        montoMatricula: 25000,
         porcentajeTarjeta: 15,
         porcentajeIVAFacturaA: 21
     },
@@ -1512,6 +1512,11 @@ const migrations = {
             }
         });
 
+        return db;
+    },
+    7: (db) => {
+        // ✅ Migración para agregar montoMatricula
+        if (!db.settings.montoMatricula) db.settings.montoMatricula = 25000;
         return db;
     }
 };

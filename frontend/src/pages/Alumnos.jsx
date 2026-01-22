@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiEye, FiEdit, FiTrash2, FiX, FiUserPlus, FiClock, FiSearch, FiChevronDown, FiUser, FiMapPin, FiPhone, FiMail, FiCalendar, FiBook, FiFilter, FiCheckCircle, FiXCircle, FiPrinter } from 'react-icons/fi';
 import { useDB } from "../contexts/AppDB.jsx";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import jsPDF from 'jspdf';
+import { jsPDF } from "jspdf";
 
 // Componente SearchableSelect
 function SearchableSelect({ options, value, onChange, placeholder, getLabel, getValue }) {
